@@ -2,9 +2,11 @@
   "name": "pet_hospital_api",
   "version": "1.0.0",
   "description": "",
+  "type": "commonjs",
   "main": "index.js",
   "scripts": {
     "start": "nodemon --inspect src/index.js",
+    "migrate": "node src/migrations/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
