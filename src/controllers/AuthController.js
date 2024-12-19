@@ -160,6 +160,24 @@ class AuthController {
       message: "Đặt lại mật khẩu thành công",
     });
   }
+
+  async googleCallback(req, res) {
+    const token = req.user.generateAuthToken();
+    
+    res.json({
+      status: 'success',
+      data: {
+        user: {
+          id: req.user.id,
+          email: req.user.email,
+          full_name: req.user.full_name,
+          role: req.user.role,
+          avatar: req.user.avatar
+        },
+        token
+      }
+    });
+  }
 }
 
 module.exports = new AuthController();

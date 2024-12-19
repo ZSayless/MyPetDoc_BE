@@ -3,6 +3,7 @@ require("dotenv").config({ path: ".env" });
 const config = require("../config/db");
 const createDatabase = require("./create_database");
 const createUsers = require("./create_users");
+const createGoogleOauth = require("./create_google_fields");
 const createHospitals = require("./create_hospitals");
 const createFavorites = require("./create_favorites");
 const createReportReasons = require("./create_report_reasons");
@@ -38,6 +39,7 @@ const runMigrations = async () => {
     await connection.query(`USE ${process.env.DB_NAME}`);
 
     console.log("Creating tables...");
+    await createGoogleOauth(connection);
     await createUsers(connection);
     await createHospitals(connection);
     await createReviews(connection);

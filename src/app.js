@@ -4,6 +4,7 @@ const ApiError = require("./exceptions/ApiError");
 const routes = require("./routes");
 const cors = require("cors");
 const morgan = require("morgan");
+const passport = require('./config/passport');
 
 const app = express();
 
@@ -16,6 +17,13 @@ app.use(express.json());
 
 // Parse urlencoded request body
 app.use(express.urlencoded({ extended: true }));
+
+// Passport middleware
+// sử dụng phía fe
+//<a href="/api/auth/google" class="google-login-btn">
+//   Đăng nhập bằng Google
+// </a>
+app.use(passport.initialize());
 
 // API routes - đặt routes TRƯỚC middleware xử lý lỗi 404
 app.use("/api", routes);
