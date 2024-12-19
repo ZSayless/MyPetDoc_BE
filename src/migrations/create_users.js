@@ -11,8 +11,12 @@ module.exports = async (connection) => {
         full_name VARCHAR(100) NOT NULL,
         password VARCHAR(255) NOT NULL,
         role ENUM('GENERAL_USER', 'HOSPITAL_ADMIN') NOT NULL,
-        is_active BIT(1) DEFAULT 1,
-        is_locked BIT(1) DEFAULT 0
+        is_active BIT(1) DEFAULT 0,
+        is_locked BIT(1) DEFAULT 0,
+        verification_token VARCHAR(255),
+        verification_expires DATETIME,
+        reset_password_token VARCHAR(255),
+        reset_password_expires DATETIME
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
     console.log("Users table created successfully");

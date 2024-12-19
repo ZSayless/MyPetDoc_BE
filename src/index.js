@@ -1,20 +1,27 @@
-const bodyParser = require("body-parser");
-const express = require("express");
-const morgan = require("morgan");
+const app = require("./app");
 require("dotenv").config();
-const app = express();
+
+const port = process.env.PORT || 3000;
+
+// Kết nối database
 const db = require("./config/db");
 const conn = db.connection;
-const port = 3000;
 
-app.use(morgan("combined"));
-app.use(express.json());
-app.use(bodyParser.json());
-
-app.get("/petHospital/api/v1/", (req, res) => {
-  res.send("Hello World!");
+// Khởi động server
+app.listen(port, () => {
+  console.log(`Server đang chạy trên port ${port}`);
 });
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+// Xử lý lỗi không được xử lý (Unhandled Promise Rejection)
+process.on("unhandledRejection", (err) => {
+  console.log("UNHANDLED REJECTION! 💥 Shutting down...");
+  console.log(err.name, err.message);
+  process.exit(1);
+});
+
+// Xử lý lỗi không mong muốn
+process.on("uncaughtException", (err) => {
+  console.log("UNCAUGHT EXCEPTION! 💥 Shutting down...");
+  console.log(err.name, err.message);
+  process.exit(1);
 });
