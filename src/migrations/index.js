@@ -8,6 +8,11 @@ const createHospitals = require("./create_hospitals");
 const createFavorites = require("./create_favorites");
 const createReportReasons = require("./create_report_reasons");
 const createFaqs = require("./create_faqs");
+const createAboutUs = require("./create_about_us");
+const createBlogCategories = require("./create_blog_categories");
+const createBlogPosts = require("./create_blog_posts");
+const createPrivacyPolicy = require("./create_privacy_policy");
+const createTermsAndConditions = require("./create_terms_conditions");
 const createReviews = require("./create_reviews");
 const createContactInformation = require("./create_contact_information");
 const createContactMessages = require("./create_contact_messages");
@@ -39,19 +44,27 @@ const runMigrations = async () => {
     await connection.query(`USE ${process.env.DB_NAME}`);
 
     console.log("Creating tables...");
-    await createGoogleOauth(connection);
+    // 1. Tạo bảng users và fields liên quan trước
     await createUsers(connection);
+    await createGoogleOauth(connection);
+    // 2. Tạo các bảng có khóa ngoại tham chiếu đến users
     await createHospitals(connection);
+    await createBanners(connection);
+    await createAboutUs(connection);
+    await createPrivacyPolicy(connection);
+    await createTermsAndConditions(connection);
+    await createBlogCategories(connection);
+    await createBlogPosts(connection);
+    // 3. Tạo các bảng có khóa ngoại tham chiếu đến hospitals hoặc users
     await createReviews(connection);
     await createReportReasons(connection);
     await createFavorites(connection);
-    await createBanners(connection);
     await createPhotos(connection);
     await createContactMessages(connection);
+    // 4. Tạo các bảng độc lập không có khóa ngoại
     await createContactInformation(connection);
     await createFaqs(connection);
     await createCtaContents(connection);
-
     console.log("Migrations completed successfully.");
     await connection.end();
   } catch (error) {

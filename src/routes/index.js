@@ -1,14 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const authRoutes = require("./authRoutes");
+const userRoutes = require("./userRoutes");
 
-// Định nghĩa các routes
 router.use("/auth", authRoutes);
 
-// Có thể thêm các routes khác ở đây
-// router.use('/users', userRoutes);
-// router.use('/hospitals', hospitalRoutes);
-// router.use('/reviews', reviewRoutes);
-// ...
-
+router.use("/users", userRoutes);
 module.exports = router;

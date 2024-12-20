@@ -13,7 +13,8 @@ class AuthController {
     if (await User.isEmailTaken(email)) {
       throw new ApiError(400, "Email đã được sử dụng");
     }
-
+    // Mã hóa mật khẩu
+    const hashedPassword = await bcrypt.hash(password, 10);
     // Tạo verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 giờ
@@ -21,7 +22,7 @@ class AuthController {
     // Tạo user mới
     const user = await User.create({
       email,
-      password,
+      password: hashedPassword,
       full_name,
       role,
       is_active: false,
@@ -46,7 +47,7 @@ class AuthController {
     // Kiểm tra user tồn tại
     const user = await User.findByEmail(email);
     if (!user) {
-      throw new ApiError(401, "Email hoặc mật khẩu không đúng");
+      throw new ApiError(401, "Email không tồn tại");
     }
 
     // Kiểm tra mật khẩu
@@ -62,7 +63,34 @@ class AuthController {
 
     // Kiểm tra tài khoản có active
     if (!user.is_active) {
-      throw new ApiError(401, "Tài khoản chưa được kích hoạt");
+      // Kiểm tra token xác thực đã hết hạn chưa
+      if (
+        !user.verification_token ||
+        new Date() > new Date(user.verification_expires)
+      ) {
+        // Tạo verification token mới
+        const verificationToken = crypto.randomBytes(32).toString("hex");
+        const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 giờ
+
+        // Cập nhật token mới
+        await User.update(user.id, {
+          verification_token: verificationToken,
+          verification_expires: verificationExpires,
+        });
+
+        // Gửi lại email xác thực
+        await emailService.sendVerificationEmail(user.email, verificationToken);
+
+        throw new ApiError(
+          401,
+          "Mã xác thực đã hết hạn. Chúng tôi đã gửi lại mã xác thực mới vào email của bạn."
+        );
+      }
+
+      throw new ApiError(
+        401,
+        "Tài khoản chưa được kích hoạt. Vui lòng kiểm tra email để xác thực tài khoản."
+      );
     }
 
     const token = user.generateAuthToken();
@@ -162,21 +190,33 @@ class AuthController {
   }
 
   async googleCallback(req, res) {
-    const token = req.user.generateAuthToken();
-    
-    res.json({
-      status: 'success',
-      data: {
-        user: {
-          id: req.user.id,
-          email: req.user.email,
-          full_name: req.user.full_name,
-          role: req.user.role,
-          avatar: req.user.avatar
+    try {
+      const user = req.user;
+      const isNewUser = user.created_at === user.updated_at; // Kiểm tra user mới
+
+      const token = user.generateAuthToken();
+
+      res.json({
+        status: "success",
+        message: isNewUser ? "Đăng ký thành công" : "Đăng nhập thành công",
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            full_name: user.full_name,
+            role: user.role,
+            avatar: user.avatar,
+          },
+          token,
         },
-        token
-      }
-    });
+      });
+    } catch (error) {
+      console.error("Google callback error:", error);
+      res.status(error.statusCode || 500).json({
+        status: "error",
+        message: error.message || "Xác thực thất bại",
+      });
+    }
   }
 }
 

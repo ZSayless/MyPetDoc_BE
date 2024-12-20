@@ -8,9 +8,14 @@ class BaseModel {
       const [rows] = await db.execute(sql, params);
       return rows;
     } catch (error) {
-      console.error('Query error:', error);
       throw error;
     }
+  }
+
+  static async findById(id) {
+    const sql = `SELECT * FROM ${this.tableName} WHERE id = ?`;
+    const rows = await this.query(sql, [id]);
+    return rows && rows.length > 0 ? rows[0] : null;
   }
 
   static async findOne(conditions) {
@@ -19,11 +24,57 @@ class BaseModel {
       const where = entries.map(([key]) => `${key} = ?`).join(" AND ");
       const values = entries.map(([_, value]) => value);
 
-      const sql = `SELECT * FROM ${this.tableName} WHERE ${where} LIMIT 1`;
+      const sql = `SELECT * FROM ${this.tableName} WHERE ${where} AND is_deleted = 0 LIMIT 1`;
       const rows = await this.query(sql, values);
-      return rows[0];
+      return rows && rows.length > 0 ? rows[0] : null;
     } catch (error) {
-      console.error('FindOne error:', error);
+      throw error;
+    }
+  }
+
+  static async findAll(filters = {}, options = {}) {
+    try {
+      const { offset = 0, limit = 10 } = options;
+      const entries = Object.entries(filters);
+      const where =
+        entries.length > 0
+          ? entries.map(([key]) => `${key} = ?`).join(" AND ")
+          : "1=1";
+      const values = entries.map(([_, value]) => value);
+
+      const limitValue = parseInt(limit);
+      const offsetValue = parseInt(offset);
+
+      const sql = `
+        SELECT * FROM ${this.tableName} 
+        WHERE ${where} AND is_deleted = 0
+        LIMIT ${limitValue} OFFSET ${offsetValue}
+      `;
+
+      return await this.query(sql, values);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async count(filters = {}) {
+    try {
+      const entries = Object.entries(filters);
+      const where =
+        entries.length > 0
+          ? entries.map(([key]) => `${key} = ?`).join(" AND ")
+          : "1=1";
+      const values = entries.map(([_, value]) => value);
+
+      const sql = `
+        SELECT COUNT(*) as total 
+        FROM ${this.tableName} 
+        WHERE ${where} AND is_deleted = 0
+      `;
+
+      const [result] = await this.query(sql, values);
+      return result.total;
+    } catch (error) {
       throw error;
     }
   }
@@ -44,18 +95,9 @@ class BaseModel {
     return null;
   }
 
-  static async findById(id) {
-    const [rows] = await this.query(
-      `SELECT * FROM ${this.tableName} WHERE id = ? AND is_deleted = 0`,
-      [id]
-    );
-    return rows[0];
-  }
-
   static async update(id, data) {
     const keys = Object.keys(data);
     const values = Object.values(data);
-
     const setClause = keys.map((key) => `${key} = ?`).join(", ");
 
     await this.query(
