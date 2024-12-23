@@ -1,13 +1,7 @@
 const BaseModel = require("./BaseModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
-const convertBitToBoolean = (bitField) => {
-  if (bitField === null || bitField === undefined) return false;
-  return Buffer.isBuffer(bitField)
-    ? bitField.readInt8(0) === 1
-    : Boolean(bitField);
-};
+const convertBitToBoolean = require("../utils/convertBitToBoolean");
 
 class User extends BaseModel {
   static tableName = "users";

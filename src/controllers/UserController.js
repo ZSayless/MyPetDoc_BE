@@ -1,5 +1,6 @@
 const UserService = require("../services/UserService");
 const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../exceptions/ApiError");
 
 class UserController {
   getUsers = asyncHandler(async (req, res) => {

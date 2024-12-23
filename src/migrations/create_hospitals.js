@@ -10,6 +10,8 @@ module.exports = async (connection) => {
         address VARCHAR(255),
         contact VARCHAR(255),
         map_location VARCHAR(255),
+        description TEXT,
+        image VARCHAR(255),
         name VARCHAR(150) NOT NULL,
         department VARCHAR(255),
         operating_hours VARCHAR(255),

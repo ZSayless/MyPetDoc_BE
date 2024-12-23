@@ -7,9 +7,13 @@ module.exports = async (connection) => {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         is_deleted BIT(1) DEFAULT 0,
         version BIGINT DEFAULT 1,
-        email VARCHAR(100),
+        email VARCHAR(100) NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        phone VARCHAR(10) NOT NULL,
         message TEXT,
-        name VARCHAR(100),
+        response TEXT,
+        responded_at DATETIME,
+        status ENUM('pending', 'processing', 'completed', 'cancelled') DEFAULT 'pending',
         user_id BIGINT,
         FOREIGN KEY (user_id) REFERENCES users(id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

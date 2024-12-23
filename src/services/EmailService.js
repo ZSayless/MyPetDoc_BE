@@ -108,6 +108,49 @@ class EmailService {
       throw error;
     }
   }
+
+  async sendContactResponseEmail(
+    email,
+    { name, subject, originalMessage, responseText }
+  ) {
+    try {
+      const mailOptions = {
+        from: {
+          name: "Pet Hospital System",
+          address: process.env.SMTP_FROM,
+        },
+        to: email,
+        subject: `Phản hồi: ${subject || "Tin nhắn của bạn"}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #444;">Phản hồi tin nhắn của bạn</h2>
+            
+            <div style="background: #f5f5f5; padding: 15px; margin: 20px 0; border-left: 4px solid #ddd;">
+              <p style="color: #666; margin: 0;"><strong>Tin nhắn của bạn:</strong></p>
+              <p style="color: #444; margin: 10px 0;">${originalMessage}</p>
+            </div>
+
+            <div style="margin: 20px 0;">
+              <p style="color: #666;"><strong>Phản hồi của chúng tôi:</strong></p>
+              <p style="color: #444;">${responseText}</p>
+            </div>
+
+            <p style="color: #666; margin-top: 30px;">
+              Cảm ơn bạn đã liên hệ với chúng tôi.<br>
+              Nếu bạn có thêm câu hỏi, đừng ngần ngại liên hệ lại với chúng tôi.
+            </p>
+          </div>
+        `,
+      };
+
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log("Response email sent: %s", info.messageId);
+      return info;
+    } catch (error) {
+      console.error("Send contact response email error:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new EmailService();
