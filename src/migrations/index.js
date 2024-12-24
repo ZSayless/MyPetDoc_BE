@@ -3,13 +3,11 @@ require("dotenv").config({ path: ".env" });
 const config = require("../config/db");
 const createDatabase = require("./create_database");
 const createUsers = require("./create_users");
-const createGoogleOauth = require("./create_google_fields");
 const createHospitals = require("./create_hospitals");
 const createFavorites = require("./create_favorites");
 const createReportReasons = require("./create_report_reasons");
 const createFaqs = require("./create_faqs");
 const createAboutUs = require("./create_about_us");
-const createBlogCategories = require("./create_blog_categories");
 const createBlogPosts = require("./create_blog_posts");
 const createPrivacyPolicy = require("./create_privacy_policy");
 const createTermsAndConditions = require("./create_terms_conditions");
@@ -46,14 +44,12 @@ const runMigrations = async () => {
     console.log("Creating tables...");
     // 1. Tạo bảng users và fields liên quan trước
     await createUsers(connection);
-    await createGoogleOauth(connection);
     // 2. Tạo các bảng có khóa ngoại tham chiếu đến users
     await createHospitals(connection);
     await createBanners(connection);
     await createAboutUs(connection);
     await createPrivacyPolicy(connection);
     await createTermsAndConditions(connection);
-    await createBlogCategories(connection);
     await createBlogPosts(connection);
     // 3. Tạo các bảng có khóa ngoại tham chiếu đến hospitals hoặc users
     await createReviews(connection);

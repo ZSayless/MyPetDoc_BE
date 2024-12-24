@@ -15,9 +15,7 @@ module.exports = async (connection) => {
         published_at DATETIME,
         is_published BIT(1) DEFAULT 0,
         views_count INT DEFAULT 0,
-        category_id BIGINT,
         author_id BIGINT,
-        FOREIGN KEY (category_id) REFERENCES blog_categories(id),
         FOREIGN KEY (author_id) REFERENCES users(id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);

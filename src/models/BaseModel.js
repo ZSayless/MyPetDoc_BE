@@ -80,19 +80,70 @@ class BaseModel {
   }
 
   static async create(data) {
-    const keys = Object.keys(data);
-    const values = Object.values(data);
-    const placeholders = Array(values.length).fill("?").join(", ");
+    try {
+      // Lấy tên các cột trong bảng
+      const [columnsResult] = await this.query(
+        `
+        SELECT GROUP_CONCAT(COLUMN_NAME) as columns
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_NAME = ? AND TABLE_SCHEMA = DATABASE()
+      `,
+        [this.tableName]
+      );
 
-    const sql = `INSERT INTO ${this.tableName} (${keys.join(
-      ", "
-    )}) VALUES (${placeholders})`;
-    const [result] = await db.execute(sql, values);
+      // Kiểm tra và xử lý kết quả
+      if (!columnsResult || !columnsResult.columns) {
+        throw new Error("Could not fetch table columns");
+      }
 
-    if (result.insertId) {
-      return this.findOne({ id: result.insertId });
+      // Chuyển string columns thành array
+      const validFields = columnsResult.columns.split(",");
+
+      const filteredData = {};
+
+      for (const key in data) {
+        // Bỏ qua trường values và các trường tự động
+        if (
+          key === "values" ||
+          key === "id" ||
+          key === "created_at" ||
+          key === "updated_at"
+        )
+          continue;
+
+        if (validFields.includes(key)) {
+          filteredData[key] = data[key];
+        }
+      }
+
+      // Nếu không có dữ liệu hợp lệ
+      if (Object.keys(filteredData).length === 0) {
+        throw new Error("No valid fields provided");
+      }
+
+      // Tạo câu query
+      const fields = Object.keys(filteredData);
+      const values = Object.values(filteredData);
+      const placeholders = Array(values.length).fill("?").join(", ");
+
+      const sql = `
+        INSERT INTO ${this.tableName} 
+        (${fields.join(", ")}) 
+        VALUES (${placeholders})
+      `;
+
+      // Thực thi query
+      const result = await this.query(sql, values);
+
+      // Trả về dữ liệu vừa tạo
+      if (result && result[0] && result[0].insertId) {
+        return await this.findById(result[0].insertId);
+      }
+      return null;
+    } catch (error) {
+      console.error(`Create ${this.tableName} error:`, error);
+      throw error;
     }
-    return null;
   }
 
   static async update(id, data) {

@@ -33,8 +33,17 @@ class User extends BaseModel {
   }
 
   static async create(data) {
-    const userData = await super.create(data);
-    return new User(userData);
+    try {
+      if (data.password) {
+        const salt = await bcrypt.genSalt(10);
+        data.password = await bcrypt.hash(data.password, salt);
+      }
+      const userData = await super.create(data);
+      return new User(userData);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
   }
 
   static async update(id, data) {

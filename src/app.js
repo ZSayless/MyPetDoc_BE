@@ -4,7 +4,7 @@ const ApiError = require("./exceptions/ApiError");
 const routes = require("./routes");
 const cors = require("cors");
 const morgan = require("morgan");
-const passport = require('./config/passport');
+const passport = require("./config/passport");
 
 const app = express();
 

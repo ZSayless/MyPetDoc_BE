@@ -10,6 +10,8 @@ module.exports = async (connection) => {
         email VARCHAR(100) UNIQUE NOT NULL,
         full_name VARCHAR(100) NOT NULL,
         password VARCHAR(255) NOT NULL,
+        google_id VARCHAR(255) NULL,
+        avatar VARCHAR(255) NULL,
         role ENUM('GENERAL_USER', 'HOSPITAL_ADMIN') NOT NULL,
         is_active BIT(1) DEFAULT 0,
         is_locked BIT(1) DEFAULT 0,
