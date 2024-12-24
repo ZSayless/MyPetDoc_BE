@@ -1,6 +1,7 @@
 const UserService = require("../services/UserService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
+const passport = require("passport");
 
 class UserController {
   getUsers = asyncHandler(async (req, res) => {
@@ -19,7 +20,12 @@ class UserController {
   });
 
   createUser = asyncHandler(async (req, res) => {
-    const user = await UserService.createUser(req.body);
+    const userData = {
+      ...req.body,
+      password: passport.hash(req.body.password),
+    };
+    const user = await UserService.createUser(userData);
+    delete userData.password;
     res.status(201).json(user);
   });
 

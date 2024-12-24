@@ -11,7 +11,9 @@ module.exports = async (connection) => {
         phone VARCHAR(20),
         address TEXT,
         support_hours VARCHAR(255),
-        support_description TEXT
+        support_description TEXT,
+        last_updated_by BIGINT,
+        FOREIGN KEY (last_updated_by) REFERENCES users(id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
     console.log("Contact information table created successfully");

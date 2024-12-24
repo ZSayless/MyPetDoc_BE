@@ -6,15 +6,21 @@ const bcrypt = require("bcrypt");
 
 class AuthController {
   // Đăng ký tài khoản
-  async register(req, res) {
+  register = async (req, res) => {
     const { email, password, full_name, role = "GENERAL_USER" } = req.body;
+
+    // Validate dữ liệu
+    await this.validateUserData({ email, password, full_name });
 
     // Kiểm tra email đã tồn tại
     if (await User.isEmailTaken(email)) {
       throw new ApiError(400, "Email đã được sử dụng");
     }
-    // Mã hóa mật khẩu
-    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Mã hóa mật khẩu với salt
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     // Tạo verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 giờ
@@ -33,12 +39,49 @@ class AuthController {
     // Gửi email xác thực
     await emailService.sendVerificationEmail(email, verificationToken);
 
+    // Loại bỏ thông tin nhạy cảm
+    delete user.password;
+    delete user.verification_token;
+    delete user.verification_expires;
+
     res.status(201).json({
       status: "success",
       message:
         "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.",
+      data: user,
     });
-  }
+  };
+
+  validateUserData = async (data) => {
+    const errors = [];
+
+    // Validate email
+    if (!data.email) {
+      errors.push("Email là bắt buộc");
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+      errors.push("Email không hợp lệ");
+    }
+
+    // Validate mật khẩu
+    if (!data.password) {
+      errors.push("Mật khẩu là bắt buộc");
+    } else if (data.password.length < 6) {
+      errors.push("Mật khẩu phải có ít nhất 6 ký tự");
+    } else if (!/[A-Z]/.test(data.password)) {
+      errors.push("Mật khẩu phải chứa ít nhất 1 chữ hoa");
+    } else if (!/[0-9]/.test(data.password)) {
+      errors.push("Mật khẩu phải chứa ít nhất 1 số");
+    }
+
+    // Validate họ tên
+    if (!data.full_name || data.full_name.trim().length < 2) {
+      errors.push("Họ tên phải có ít nhất 2 ký tự");
+    }
+
+    if (errors.length > 0) {
+      throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
+    }
+  };
 
   // Đăng nhập
   async login(req, res) {
@@ -47,11 +90,11 @@ class AuthController {
     // Kiểm tra user tồn tại
     const user = await User.findByEmail(email);
     if (!user) {
-      throw new ApiError(401, "Email không tồn tại");
+      throw new ApiError(401, "Email hoặc mật khẩu không đúng");
     }
 
     // Kiểm tra mật khẩu
-    const isPasswordMatch = await user.isPasswordMatch(password);
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
     if (!isPasswordMatch) {
       throw new ApiError(401, "Email hoặc mật khẩu không đúng");
     }
@@ -70,7 +113,7 @@ class AuthController {
       ) {
         // Tạo verification token mới
         const verificationToken = crypto.randomBytes(32).toString("hex");
-        const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 giờ
+        const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
         // Cập nhật token mới
         await User.update(user.id, {
@@ -93,17 +136,18 @@ class AuthController {
       );
     }
 
+    // Tạo token và loại bỏ thông tin nhạy cảm
     const token = user.generateAuthToken();
+    delete user.password;
+    delete user.verification_token;
+    delete user.verification_expires;
+    delete user.reset_password_token;
+    delete user.reset_password_expires;
 
     res.json({
       status: "success",
       data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          full_name: user.full_name,
-          role: user.role,
-        },
+        user,
         token,
       },
     });

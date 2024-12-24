@@ -19,16 +19,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Passport middleware
-// sử dụng phía fe
-//<a href="/api/auth/google" class="google-login-btn">
-//   Đăng nhập bằng Google
-// </a>
 app.use(passport.initialize());
 
-// API routes - đặt routes TRƯỚC middleware xử lý lỗi 404
+// API routes
 app.use("/api", routes);
 
-// handle 404 error - đặt SAU routes
+// handle 404 error
 app.use((req, res, next) => {
   next(new ApiError(404, "Not found"));
 });

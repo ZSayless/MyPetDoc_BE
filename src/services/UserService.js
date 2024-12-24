@@ -47,11 +47,11 @@ class UserService {
 
   async toggleDelete(id) {
     const user = await this.getUserById(id);
-    
+
     const updateData = {
-      is_deleted: !user.is_deleted
+      is_deleted: !user.is_deleted,
     };
-    
+
     return User.update(id, updateData);
   }
 
@@ -71,6 +71,25 @@ class UserService {
     }
 
     return User.update(id, updateData);
+  }
+
+  async validateUserData(data) {
+    const errors = [];
+
+    // Validate mật khẩu
+    if (!data.password) {
+      errors.push("Mật khẩu là bắt buộc");
+    } else if (data.password.length < 6) {
+      errors.push("Mật khẩu phải có ít nhất 6 ký tự");
+    } else if (!/[A-Z]/.test(data.password)) {
+      errors.push("Mật khẩu phải chứa ít nhất 1 chữ hoa");
+    } else if (!/[0-9]/.test(data.password)) {
+      errors.push("Mật khẩu phải chứa ít nhất 1 số");
+    }
+
+    if (errors.length > 0) {
+      throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
+    }
   }
 }
 

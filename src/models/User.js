@@ -34,10 +34,6 @@ class User extends BaseModel {
 
   static async create(data) {
     try {
-      if (data.password) {
-        const salt = await bcrypt.genSalt(10);
-        data.password = await bcrypt.hash(data.password, salt);
-      }
       const userData = await super.create(data);
       return new User(userData);
     } catch (error) {
