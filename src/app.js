@@ -5,6 +5,7 @@ const routes = require("./routes");
 const cors = require("cors");
 const morgan = require("morgan");
 const passport = require("./config/passport");
+const path = require("path");
 
 const app = express();
 
@@ -12,11 +13,12 @@ const app = express();
 app.use(morgan("combined"));
 app.use(cors());
 
-// Parse json request body
-app.use(express.json());
+// Tăng giới hạn kích thước request
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Parse urlencoded request body
-app.use(express.urlencoded({ extended: true }));
+// Serve static files from uploads directory
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Passport middleware
 app.use(passport.initialize());

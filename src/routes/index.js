@@ -7,11 +7,12 @@ const contactMessageRoutes = require("./contactMessageRoutes");
 const aboutUsRoutes = require("./aboutUsRoutes");
 const termsConditionsRoutes = require("./termsConditionsRoutes");
 const contactInformationRoutes = require("./contactInformationRoutes");
-
+const reviewRoutes = require("./reviewRoutes");
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
 router.use("/hospitals", hospitalRoutes);
 router.use("/contact-messages", contactMessageRoutes);
+router.use("/reviews", reviewRoutes);
 router.use("/about-us", aboutUsRoutes);
 router.use("/terms", termsConditionsRoutes);
 router.use("/contact-info", contactInformationRoutes);

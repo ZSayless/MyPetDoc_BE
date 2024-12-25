@@ -55,7 +55,6 @@ const runMigrations = async () => {
     await createReviews(connection);
     await createReportReasons(connection);
     await createFavorites(connection);
-    await createPhotos(connection);
     await createContactMessages(connection);
     // 4. Tạo các bảng độc lập không có khóa ngoại
     await createContactInformation(connection);
