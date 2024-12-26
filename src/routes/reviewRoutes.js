@@ -9,7 +9,7 @@ router.get("/:id", ReviewController.getReviewById);
 router.get("/hospital/:hospitalId/stats", ReviewController.getHospitalStats);
 
 // Routes cần auth
-router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN"]));
+router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));
 // Kiểm tra có thể review
 router.get("/hospital/:hospitalId/can-review", ReviewController.canUserReview);
 // Tạo review mới
@@ -21,11 +21,7 @@ router.put("/:id", ReviewController.updateReview);
 // Toggle xóa mềm (user hoặc admin)
 router.patch("/:id/toggle-delete", ReviewController.toggleSoftDelete);
 // Xóa vĩnh viễn (chỉ admin)
-router.delete(
-  "/:id",
-  validateAuth(["HOSPITAL_ADMIN"]),
-  ReviewController.hardDelete
-);
+router.delete("/:id", validateAuth(["ADMIN"]), ReviewController.hardDelete);
 // Lấy danh sách review theo hospital
 router.get("/hospital/:hospitalId", ReviewController.getHospitalReviews);
 

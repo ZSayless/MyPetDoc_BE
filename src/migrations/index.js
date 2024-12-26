@@ -10,6 +10,7 @@ const createFaqs = require("./create_faqs");
 const createAboutUs = require("./create_about_us");
 const createBlogPosts = require("./create_blog_posts");
 const createPrivacyPolicy = require("./create_privacy_policy");
+const createHospitalImages = require("./create_hospital_images");
 const createTermsAndConditions = require("./create_terms_conditions");
 const createReviews = require("./create_reviews");
 const createContactInformation = require("./create_contact_information");
@@ -17,6 +18,7 @@ const createContactMessages = require("./create_contact_messages");
 const createBanners = require("./create_banners");
 const createCtaContents = require("./create_cta_contents");
 const createPhotos = require("./create_photos");
+const addForeignKeys = require("./add_foreign_keys");
 
 const runMigrations = async () => {
   let connection;
@@ -42,28 +44,35 @@ const runMigrations = async () => {
     await connection.query(`USE ${process.env.DB_NAME}`);
 
     console.log("Creating tables...");
-    // 1. Tạo bảng users và fields liên quan trước
-    await createUsers(connection);
-    // 2. Tạo các bảng có khóa ngoại tham chiếu đến users
+    // 1. Tạo các bảng cơ bản trước (không có foreign key)
     await createHospitals(connection);
+    await createUsers(connection);
+
+    // 2. Thêm foreign keys sau
+    await addForeignKeys(connection);
+
+    // 3. Tạo các bảng phụ thuộc
+    await createHospitalImages(connection);
     await createBanners(connection);
     await createAboutUs(connection);
     await createPrivacyPolicy(connection);
     await createTermsAndConditions(connection);
     await createBlogPosts(connection);
-    // 3. Tạo các bảng có khóa ngoại tham chiếu đến hospitals hoặc users
     await createReviews(connection);
     await createReportReasons(connection);
     await createFavorites(connection);
     await createContactMessages(connection);
-    // 4. Tạo các bảng độc lập không có khóa ngoại
     await createContactInformation(connection);
     await createFaqs(connection);
     await createCtaContents(connection);
+
     console.log("Migrations completed successfully.");
     await connection.end();
   } catch (error) {
     console.error("Error running migrations:", error);
+    if (connection) {
+      await connection.end();
+    }
     process.exit(1);
   }
 };

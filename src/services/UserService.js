@@ -91,6 +91,17 @@ class UserService {
       throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
     }
   }
+
+  async updateProfile(userId, updateData) {
+    const user = await this.getUserById(userId);
+
+    // Validate dữ liệu cập nhật
+    if (updateData.full_name && updateData.full_name.trim().length < 2) {
+      throw new ApiError(400, "Họ tên phải có ít nhất 2 ký tự");
+    }
+
+    return User.update(userId, updateData);
+  }
 }
 
 module.exports = new UserService();

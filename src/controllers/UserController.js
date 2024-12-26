@@ -53,6 +53,21 @@ class UserController {
     const user = await UserService.toggleUserStatus(req.params.id, "activate");
     res.json(user);
   });
+
+  updateProfile = asyncHandler(async (req, res) => {
+    const allowedFields = ["full_name", "avatar"];
+    const updateData = {};
+
+    // Chỉ cho phép cập nhật các trường được chỉ định
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    });
+    const user = await UserService.updateProfile(req.user.id, updateData);
+
+    res.json(user);
+  });
 }
 
 module.exports = new UserController();

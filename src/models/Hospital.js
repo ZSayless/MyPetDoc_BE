@@ -122,15 +122,44 @@ class Hospital extends BaseModel {
     return new Hospital(hospitalData);
   }
   static async findById(id) {
-    const hospitalData = await super.findById(id);
-    if (!hospitalData) return null;
-    return new Hospital(hospitalData);
+    const sql = `
+      SELECT * FROM ${this.tableName}
+      WHERE id = ?
+    `;
+    const [result] = await this.query(sql, [id]);
+    return result ? new Hospital(result) : null;
   }
+
   static async create(data) {
-    const hospitalData = await super.create(data);
-    return new Hospital(hospitalData);
+    const sql = `
+      INSERT INTO ${this.tableName} 
+      (name, address, department, contact, operating_hours, specialties, 
+       staff_description, staff_credentials, map_location, description, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const params = [
+      data.name,
+      data.address,
+      data.department,
+      data.contact,
+      data.operating_hours,
+      data.specialties,
+      data.staff_description,
+      data.staff_credentials,
+      data.map_location,
+      data.description,
+      data.created_by,
+    ];
+
+    const result = await this.query(sql, params);
+    return result; // Trả về kết quả insert để lấy insertId
   }
   static async update(id, data) {
+    // Chuyển đổi boolean thành bit trước khi update
+    if (data.is_deleted !== undefined) {
+      data.is_deleted = data.is_deleted ? 1 : 0;
+    }
     const hospitalData = await super.update(id, data);
     return new Hospital(hospitalData);
   }

@@ -9,7 +9,7 @@ router.get("/current", TermsConditionsController.getCurrentTerms);
 router.get("/effective", TermsConditionsController.getEffectiveTerms);
 
 // Routes yêu cầu quyền admin
-router.use(validateAuth(["HOSPITAL_ADMIN"]));
+router.use(validateAuth(["ADMIN"]));
 router.get("/version/:version", TermsConditionsController.getVersion);
 router.get("/history", TermsConditionsController.getVersionHistory);
 router.get("/compare", TermsConditionsController.compareVersions);

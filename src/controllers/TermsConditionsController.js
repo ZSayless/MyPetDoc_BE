@@ -11,11 +11,6 @@ class TermsConditionsController {
 
   // Tạo phiên bản mới
   createNewVersion = asyncHandler(async (req, res) => {
-    // Kiểm tra quyền admin
-    if (req.user.role !== "HOSPITAL_ADMIN") {
-      throw new ApiError(403, "Bạn không có quyền thực hiện hành động này");
-    }
-
     const terms = await TermsConditionsService.createNewVersion(
       req.body,
       req.user.id

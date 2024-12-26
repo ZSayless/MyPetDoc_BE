@@ -8,7 +8,7 @@ const router = express.Router();
 router.get("/current", AboutUsController.getCurrentAboutUs);
 
 // Routes yêu cầu quyền admin
-router.use(validateAuth(["HOSPITAL_ADMIN"]));
+router.use(validateAuth(["ADMIN"]));
 router.get("/version/:version", AboutUsController.getVersion);
 router.get("/history", AboutUsController.getVersionHistory);
 router.get("/compare", AboutUsController.compareVersions);

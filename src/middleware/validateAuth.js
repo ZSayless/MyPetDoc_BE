@@ -8,7 +8,7 @@ const validateRegister = (req, res, next) => {
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
     full_name: Joi.string().required(),
-    role: Joi.string().valid("GENERAL_USER", "HOSPITAL_ADMIN"),
+    role: Joi.string().valid("GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"),
   });
 
   const { error } = schema.validate(req.body);

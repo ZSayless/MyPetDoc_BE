@@ -4,8 +4,11 @@ const { validateAuth } = require("../middleware/validateAuth");
 
 const router = express.Router();
 
-// Middleware xác thực cho tất cả các routes
-router.use(validateAuth(["HOSPITAL_ADMIN"]));
+// Thêm middleware validateAuth() để yêu cầu đăng nhập (không cần role cụ thể)
+router.put("/profile/update", validateAuth(), UserController.updateProfile);
+
+// Các routes yêu cầu quyền ADMIN
+router.use(validateAuth(["ADMIN"]));
 
 router.get("/", UserController.getUsers);
 router.get("/:id", UserController.getUserById);

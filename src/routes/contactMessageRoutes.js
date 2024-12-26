@@ -16,7 +16,7 @@ router.use(validateAuth());
 router.get("/my-messages", ContactMessageController.getMyMessages);
 
 // Routes yêu cầu quyền admin
-router.use(validateAuth(["HOSPITAL_ADMIN"]));
+router.use(validateAuth(["ADMIN"]));
 router.get("/", ContactMessageController.getMessages);
 router.get("/stats", ContactMessageController.getMessageStats);
 router.get("/:id", ContactMessageController.getMessageById);

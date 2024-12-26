@@ -1,23 +1,64 @@
 const ApiError = require("../exceptions/ApiError");
 const Hospital = require("../models/Hospital");
+const hospitalImageService = require("./HospitalImageService");
 
 class HospitalService {
-  async createHospital(hospitalData, userId) {
+  async createHospital(hospitalData, userId, files = []) {
     try {
+      console.log("Creating hospital with data:", hospitalData);
+      console.log("User ID:", userId);
+
       // Kiểm tra tên bệnh viện đã tồn tại chưa
       if (await Hospital.isNameTaken(hospitalData.name)) {
         throw new ApiError(400, "Tên bệnh viện đã tồn tại");
       }
 
       // Thêm thông tin người tạo
-      const dataToCreate = {
-        ...hospitalData,
-        created_by: userId,
-      };
+      hospitalData.created_by = userId;
 
-      const hospital = await Hospital.create(dataToCreate);
-      return hospital;
+      console.log("Data to create:", hospitalData);
+
+      // Tạo bệnh viện
+      const result = await Hospital.create(hospitalData);
+      console.log("Hospital creation result:", result);
+
+      // Lấy ID của bệnh viện vừa tạo
+      const hospitalId = result.insertId;
+      console.log("New hospital ID:", hospitalId);
+
+      if (!hospitalId) {
+        throw new ApiError(500, "Không thể tạo bệnh viện");
+      }
+
+      // Xử lý images nếu có
+      let images = [];
+      if (files && files.length > 0) {
+        console.log("Processing images for hospital ID:", hospitalId);
+        try {
+          images = await hospitalImageService.addImages(
+            hospitalId,
+            files,
+            userId
+          );
+          console.log("Images added:", images);
+        } catch (imageError) {
+          console.error("Error adding images:", imageError);
+          // Nếu lỗi khi thêm ảnh, vẫn trả về bệnh viện nhưng không có ảnh
+        }
+      }
+
+      // Lấy thông tin bệnh viện kèm ảnh
+      const hospitalWithImages = await Hospital.findById(hospitalId);
+      if (!hospitalWithImages) {
+        throw new ApiError(404, "Không tìm thấy bệnh viện sau khi tạo");
+      }
+
+      return {
+        ...hospitalWithImages,
+        images: images || [],
+      };
     } catch (error) {
+      console.error("Error in createHospital:", error);
       throw error;
     }
   }
@@ -60,8 +101,21 @@ class HospitalService {
         ...otherFilters,
       });
 
+      // Lấy ảnh cho từng bệnh viện
+      const hospitalsWithImages = await Promise.all(
+        hospitals.data.map(async (hospital) => {
+          const images = await hospitalImageService.getHospitalImages(
+            hospital.id
+          );
+          return {
+            ...hospital,
+            images: images || [],
+          };
+        })
+      );
+
       return {
-        hospitals,
+        hospitals: hospitalsWithImages,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -80,7 +134,13 @@ class HospitalService {
       if (!hospital) {
         throw new ApiError(404, "Không tìm thấy bệnh viện");
       }
-      return hospital;
+
+      // Lấy ảnh của bệnh viện
+      const images = await hospitalImageService.getHospitalImages(id);
+      return {
+        ...hospital,
+        images: images || [],
+      };
     } catch (error) {
       throw error;
     }
@@ -97,6 +157,7 @@ class HospitalService {
         }
       }
 
+      // Cập nhật thông tin bệnh viện
       const updatedHospital = await Hospital.update(id, updateData);
       return updatedHospital;
     } catch (error) {
@@ -107,10 +168,20 @@ class HospitalService {
   async toggleDelete(id) {
     try {
       const hospital = await this.getHospitalById(id);
+      if (!hospital) {
+        throw new ApiError(404, "Không tìm thấy bệnh viện");
+      }
+
+      // Đơn giản hóa logic chuyển đổi
       const updateData = {
         is_deleted: !hospital.is_deleted,
       };
-      return await Hospital.update(id, updateData);
+
+      // Cập nhật trạng thái is_deleted
+      await Hospital.update(id, updateData);
+
+      // Lấy và trả về thông tin mới nhất của bệnh viện
+      return await this.getHospitalById(id);
     } catch (error) {
       throw error;
     }
@@ -140,8 +211,21 @@ class HospitalService {
       // Đếm tổng số kết quả
       const total = await Hospital.countSearch(searchParams);
 
+      // Lấy ảnh cho từng bệnh viện
+      const hospitalsWithImages = await Promise.all(
+        hospitals.data.map(async (hospital) => {
+          const images = await hospitalImageService.getHospitalImages(
+            hospital.id
+          );
+          return {
+            ...hospital,
+            images: images || [],
+          };
+        })
+      );
+
       return {
-        hospitals,
+        hospitals: hospitalsWithImages,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
