@@ -1,11 +1,24 @@
 const ReviewService = require("../services/ReviewService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
+const HospitalService = require("../services/HospitalService");
 
 class ReviewController {
   // Tạo review mới
   createReview = asyncHandler(async (req, res) => {
-    const review = await ReviewService.createReview(req.body, req.user.id);
+    // kiểm tra bệnh viện có tồn tại không
+    const hospital = await HospitalService.getHospitalById(
+      req.body.hospital_id
+    );
+    if (!hospital) {
+      throw new ApiError(404, "Bệnh viện không tồn tại");
+    }
+
+    const review = await ReviewService.createReview(
+      req.body,
+      req.user.id,
+      req.file
+    );
     res.status(201).json({
       status: "success",
       message: "Đã tạo đánh giá thành công",
@@ -67,9 +80,6 @@ class ReviewController {
 
       res.json({
         status: "success",
-        message: `Review đã được ${
-          review.is_deleted ? "xóa" : "khôi phục"
-        } thành công`,
         data: review,
       });
     } catch (error) {
@@ -82,28 +92,15 @@ class ReviewController {
     const review = await ReviewService.updateReview(
       req.params.id,
       req.body,
-      req.user.id
+      req.user.id,
+      req.file
     );
     res.json({
       status: "success",
+      message: "Đã cập nhật đánh giá thành công",
       data: review,
     });
   });
-
-  // Xóa cứng review
-  async hardDelete(req, res, next) {
-    try {
-      const { id } = req.params;
-      await ReviewService.hardDelete(id, req.user.id, req.user.role);
-
-      res.json({
-        status: "success",
-        message: "Review đã được xóa thành công",
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
 
   // Kiểm tra có thể review không
   canUserReview = asyncHandler(async (req, res) => {
@@ -137,6 +134,35 @@ class ReviewController {
       next(error);
     }
   }
+
+  getUserReviews = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 10 } = req.query;
+    const reviews = await ReviewService.getUserReviews(
+      req.user.id,
+      parseInt(page),
+      parseInt(limit)
+    );
+
+    res.json({
+      status: "success",
+      data: reviews,
+    });
+  });
+
+  deleteReview = asyncHandler(async (req, res) => {
+    const result = await ReviewService.deleteReview(
+      req.params.id,
+      req.user.id,
+      req.user.role === "ADMIN"
+    );
+
+    res.json(result);
+  });
+
+  hardDeleteReview = asyncHandler(async (req, res) => {
+    const result = await ReviewService.hardDelete(req.params.id);
+    res.json(result);
+  });
 }
 
 module.exports = new ReviewController();

@@ -17,7 +17,6 @@ const createContactInformation = require("./create_contact_information");
 const createContactMessages = require("./create_contact_messages");
 const createBanners = require("./create_banners");
 const createCtaContents = require("./create_cta_contents");
-const createPhotos = require("./create_photos");
 const addForeignKeys = require("./add_foreign_keys");
 
 const runMigrations = async () => {

@@ -8,6 +8,8 @@ const aboutUsRoutes = require("./aboutUsRoutes");
 const termsConditionsRoutes = require("./termsConditionsRoutes");
 const contactInformationRoutes = require("./contactInformationRoutes");
 const reviewRoutes = require("./reviewRoutes");
+const bannerRoutes = require("./bannerRoutes");
+
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
 router.use("/hospitals", hospitalRoutes);
@@ -16,5 +18,6 @@ router.use("/reviews", reviewRoutes);
 router.use("/about-us", aboutUsRoutes);
 router.use("/terms", termsConditionsRoutes);
 router.use("/contact-info", contactInformationRoutes);
+router.use("/banners", bannerRoutes);
 
 module.exports = router;

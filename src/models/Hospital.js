@@ -133,16 +133,17 @@ class Hospital extends BaseModel {
   static async create(data) {
     const sql = `
       INSERT INTO ${this.tableName} 
-      (name, address, department, contact, operating_hours, specialties, 
-       staff_description, staff_credentials, map_location, description, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (name, address, department ,phone ,email ,slug, operating_hours, specialties, staff_description, staff_credentials, map_location, description, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
       data.name,
       data.address,
       data.department,
-      data.contact,
+      data.phone,
+      data.email,
+      data.slug,
       data.operating_hours,
       data.specialties,
       data.staff_description,

@@ -1,6 +1,7 @@
 const BaseModel = require("./BaseModel");
 const convertBitToBoolean = require("../utils/convertBitToBoolean");
 const ApiError = require("../exceptions/ApiError");
+const ReportReason = require("./ReportReason");
 
 class Review extends BaseModel {
   static tableName = "reviews";
@@ -35,8 +36,11 @@ class Review extends BaseModel {
         false, // is_deleted
       ];
 
+      console.log("SQL:", sql);
+      console.log("Params:", params);
+
       const result = await this.query(sql, params);
-      return await this.findById(result.insertId);
+      return result;
     } catch (error) {
       console.error("Error in create method:", error);
       throw error;
@@ -167,45 +171,25 @@ class Review extends BaseModel {
   // Cập nhật review
   static async update(id, data) {
     try {
-      // Kiểm tra review tồn tại
-      const review = await this.findById(id);
-      if (!review) {
-        throw new ApiError(404, "Không tìm thấy review");
-      }
-
-      // Chuẩn bị dữ liệu cập nhật
-      const updateData = {
-        rating: data.rating,
-        comment: data.comment,
-        image_url: data.image_url,
-        image_description: data.image_description,
-        updated_at: new Date(),
-      };
-
-      // Lọc bỏ các trường undefined/null
-      Object.keys(updateData).forEach(
-        (key) => updateData[key] === undefined && delete updateData[key]
-      );
-
-      if (Object.keys(updateData).length === 0) {
-        throw new ApiError(400, "Không có dữ liệu để cập nhật");
-      }
-
-      // Tạo câu query UPDATE
-      const setClause = Object.keys(updateData)
-        .map((key) => `${key} = ?`)
-        .join(", ");
-
       const sql = `
         UPDATE ${this.tableName}
-        SET ${setClause}
+        SET rating = ?,
+            comment = ?,
+            image_url = ?,
+            image_description = ?,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
 
-      // Thực hiện cập nhật
-      await this.query(sql, [...Object.values(updateData), id]);
+      const params = [
+        data.rating,
+        data.comment,
+        data.image_url,
+        data.image_description,
+        id,
+      ];
 
-      // Trả về review đã cập nhật
+      await this.query(sql, params);
       return await this.findById(id);
     } catch (error) {
       console.error("Error in update method:", error);
@@ -232,22 +216,23 @@ class Review extends BaseModel {
 
   // Báo cáo review
   static async report(reviewId, reportData) {
+    let connection;
     try {
-      // Cập nhật trạng thái báo cáo của review
-      await this.update(reviewId, { is_reported: true });
+      // Thêm báo cáo vào bảng report_reasons
+      await ReportReason.create({
+        review_id: reportData.review_id,
+        reported_by: reportData.reported_by,
+        reason: reportData.reason,
+      });
 
-      // Thêm lý do báo cáo
-      const sql = `
-        INSERT INTO report_reasons (reason, reported_by, review_id)
-        VALUES (?, ?, ?)
+      // Cập nhật trạng thái is_reported của review
+      const updateReviewSql = `
+        UPDATE ${this.tableName}
+        SET is_reported = 1
+        WHERE id = ?
       `;
 
-      await this.query(sql, [
-        reportData.reason,
-        reportData.reported_by,
-        reviewId,
-      ]);
-
+      // Trả về review đã cập nhật
       return await this.findById(reviewId);
     } catch (error) {
       throw error;
@@ -277,15 +262,9 @@ class Review extends BaseModel {
     }
   }
 
-  // Kiểm tra user đã báo cáo review này chưa
+  // Kiểm tra user đã báo cáo review chưa
   static async hasUserReported(userId, reviewId) {
-    const sql = `
-      SELECT COUNT(*) as count
-      FROM report_reasons
-      WHERE reported_by = ? AND review_id = ?
-    `;
-    const [result] = await this.query(sql, [userId, reviewId]);
-    return result.count > 0;
+    return await ReportReason.hasUserReported(userId, reviewId);
   }
 
   // Kiểm tra user đã review bệnh viện chưa

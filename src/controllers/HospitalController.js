@@ -28,20 +28,17 @@ class HospitalController {
     try {
       // Validate dữ liệu đầu vào
       await HospitalService.validateHospitalData(req.body);
-      console.log("Creating hospital...");
-      console.log("Request body:", req.body);
-      console.log("Request files:", req.files);
-      console.log("User:", req.user);
 
+      // Chuẩn bị dữ liệu hospital
       const hospitalData = {
         ...req.body,
+        is_active: req.user.role === "ADMIN", // true nếu là ADMIN, false nếu không
       };
-      const userId = req.user.id;
 
       // Tạo bệnh viện và xử lý ảnh trong một lần gọi
       const result = await HospitalService.createHospital(
         hospitalData,
-        userId,
+        req.user.id,
         req.files || [] // Truyền files vào service
       );
 
@@ -56,7 +53,12 @@ class HospitalController {
       if (req.files) {
         req.files.forEach((file) => {
           if (fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
+            try {
+              fs.unlinkSync(file.path);
+              console.log(`Đã xóa file ${file.path}`);
+            } catch (unlinkError) {
+              console.error(`Lỗi khi xóa file ${file.path}:`, unlinkError);
+            }
           }
         });
       }
