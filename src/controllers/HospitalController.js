@@ -72,42 +72,37 @@ class HospitalController {
       // Validate dữ liệu cập nhật
       await HospitalService.validateHospitalData(req.body, true);
 
-      // Tách riêng dữ liệu cập nhật và files
-      const { images, ...updateData } = req.body;
-
-      // Cập nhật thông tin bệnh viện (không bao gồm images)
-      const hospital = await HospitalService.updateHospital(
-        req.params.id,
-        updateData
-      );
-
-      // Xử lý images nếu có
-      if (req.files && req.files.length > 0) {
-        await HospitalImageService.addImages(
-          req.params.id,
-          req.files,
-          req.user.id
-        );
+      // Parse imageIdsToDelete từ string JSON thành array
+      let imageIdsToDelete = [];
+      if (req.body.imageIdsToDelete) {
+        try {
+          imageIdsToDelete = JSON.parse(req.body.imageIdsToDelete);
+        } catch (error) {
+          console.error("Error parsing imageIdsToDelete:", error);
+          throw new ApiError(
+            400,
+            "Định dạng danh sách ảnh cần xóa không hợp lệ"
+          );
+        }
       }
 
-      // Lấy thông tin bệnh viện đã cập nhật kèm ảnh
-      const updatedHospital = await HospitalService.getHospitalById(
-        req.params.id
-      );
-      const images_id = await HospitalImageService.getHospitalImages(
-        req.params.id
+      // Loại bỏ imageIdsToDelete khỏi dữ liệu cập nhật
+      const { imageIdsToDelete: removed, ...updateData } = req.body;
+
+      // Cập nhật thông tin bệnh viện
+      const updatedHospital = await HospitalService.updateHospital(
+        req.params.id,
+        updateData,
+        req.files || [], // Ảnh mới
+        imageIdsToDelete // Mảng đã được parse từ JSON string
       );
 
       res.json({
         status: "success",
         message: "Cập nhật bệnh viện thành công",
-        data: {
-          ...updatedHospital,
-          images_id,
-        },
+        data: updatedHospital,
       });
     } catch (error) {
-      // Xóa các file đã upload nếu có lỗi
       if (req.files) {
         req.files.forEach((file) => {
           if (fs.existsSync(file.path)) {

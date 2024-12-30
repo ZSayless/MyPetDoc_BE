@@ -146,7 +146,7 @@ class HospitalService {
     }
   }
 
-  async updateHospital(id, updateData) {
+  async updateHospital(id, updateData, files = [], imagesToDelete = []) {
     try {
       const hospital = await this.getHospitalById(id);
 
@@ -157,10 +157,44 @@ class HospitalService {
         }
       }
 
+      // Xóa các ảnh cũ nếu có yêu cầu
+      if (imagesToDelete && imagesToDelete.length > 0) {
+        console.log("Deleting old images:", imagesToDelete);
+        for (const imageId of imagesToDelete) {
+          try {
+            await hospitalImageService.deleteImage(imageId);
+            console.log(`Deleted image ${imageId} successfully`);
+          } catch (error) {
+            console.error(`Error deleting image ${imageId}:`, error);
+          }
+        }
+      }
+
+      // Xử lý thêm ảnh mới nếu có
+      let newImages = [];
+      if (files && files.length > 0) {
+        try {
+          console.log("Adding new images for hospital:", id);
+          newImages = await hospitalImageService.addImages(
+            id,
+            files,
+            updateData.updated_by
+          );
+          console.log("New images added:", newImages);
+        } catch (imageError) {
+          console.error("Error adding new images:", imageError);
+          // Nếu có lỗi khi thêm ảnh mới, vẫn tiếp tục cập nhật thông tin bệnh viện
+        }
+      }
+
       // Cập nhật thông tin bệnh viện
       const updatedHospital = await Hospital.update(id, updateData);
-      return updatedHospital;
+
+      // Lấy thông tin mới nhất kèm ảnh
+      const hospitalWithImages = await this.getHospitalById(id);
+      return hospitalWithImages;
     } catch (error) {
+      console.error("Error in updateHospital:", error);
       throw error;
     }
   }
@@ -190,6 +224,18 @@ class HospitalService {
   async hardDelete(id) {
     try {
       const hospital = await this.getHospitalById(id);
+
+      // Xóa tất cả ảnh của bệnh viện
+      const images = await hospitalImageService.getHospitalImages(id);
+      for (const image of images) {
+        try {
+          await hospitalImageService.deleteImage(image.id);
+        } catch (error) {
+          console.error(`Error deleting image ${image.id}:`, error);
+        }
+      }
+
+      // Xóa bệnh viện
       await Hospital.hardDelete(id);
     } catch (error) {
       throw error;

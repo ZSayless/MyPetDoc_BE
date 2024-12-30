@@ -63,6 +63,22 @@ class HospitalImage extends BaseModel {
     await this.query(sql, [id]);
     return true;
   }
+
+  static async findOne(conditions) {
+    const whereClause = Object.entries(conditions)
+      .map(([key, value]) => `${key} = ?`)
+      .join(" AND ");
+
+    const sql = `
+      SELECT * FROM ${this.tableName}
+      WHERE ${whereClause}
+      LIMIT 1
+    `;
+
+    const params = Object.values(conditions);
+    const [result] = await this.query(sql, params);
+    return result || null;
+  }
 }
 
 module.exports = HospitalImage;

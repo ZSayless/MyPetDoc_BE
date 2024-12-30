@@ -42,24 +42,59 @@ class HospitalImageService {
     }
   }
 
-  async deleteImage(imageId, userId) {
-    const image = await HospitalImage.findById(imageId);
-    if (!image) {
-      throw new ApiError(404, "Không tìm thấy ảnh");
-    }
+  async deleteImage(imageId) {
+    try {
+      // Nếu imageId là string (tên file), tìm bằng image_url
+      let image;
+      if (typeof imageId === "string") {
+        image = await HospitalImage.findOne({ image_url: imageId });
+      } else {
+        // Nếu là số, tìm bằng id
+        image = await HospitalImage.findById(imageId);
+      }
 
-    // Xóa file
-    if (fs.existsSync(image.image_url)) {
-      fs.unlinkSync(image.image_url);
-    }
+      if (!image) {
+        throw new ApiError(404, "Không tìm thấy ảnh");
+      }
 
-    // Xóa record trong database
-    await HospitalImage.delete(imageId);
-    return true;
+      // Tạo đường dẫn đầy đủ đến file ảnh
+      const imagePath = path.join(
+        __dirname,
+        "../../uploads/hospitals",
+        image.image_url
+      );
+      console.log("Deleting image at path:", imagePath);
+
+      // Kiểm tra và xóa file
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+        console.log("Đã xóa file ảnh thành công");
+      } else {
+        console.log("File ảnh không tồn tại:", imagePath);
+      }
+
+      // Xóa record trong database
+      await HospitalImage.delete(image.id);
+      return true;
+    } catch (error) {
+      console.error("Lỗi khi xóa ảnh:", error);
+      throw error;
+    }
   }
 
   async getHospitalImages(hospitalId) {
-    return await HospitalImage.findByHospitalId(hospitalId);
+    try {
+      const images = await HospitalImage.findByHospitalId(hospitalId);
+      return images.map((image) => ({
+        id: image.id,
+        url: image.image_url,
+        fullUrl: `/uploads/hospitals/${image.image_url}`, // URL đầy đủ để hiển thị ảnh
+        createdAt: image.created_at,
+      }));
+    } catch (error) {
+      console.error("Error getting hospital images:", error);
+      throw error;
+    }
   }
 }
 
