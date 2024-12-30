@@ -11,7 +11,7 @@ module.exports = async (connection) => {
         address VARCHAR(255),
         phone VARCHAR(255),
         email VARCHAR(255),
-        slug VARCHAR(255),
+        link_website VARCHAR(255),
         map_location VARCHAR(255),
         description TEXT,
         name VARCHAR(150) NOT NULL,

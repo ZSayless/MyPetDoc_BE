@@ -9,6 +9,7 @@ const termsConditionsRoutes = require("./termsConditionsRoutes");
 const contactInformationRoutes = require("./contactInformationRoutes");
 const reviewRoutes = require("./reviewRoutes");
 const bannerRoutes = require("./bannerRoutes");
+const faqRoutes = require("./faqRoutes");
 
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
@@ -19,5 +20,6 @@ router.use("/about-us", aboutUsRoutes);
 router.use("/terms", termsConditionsRoutes);
 router.use("/contact-info", contactInformationRoutes);
 router.use("/banners", bannerRoutes);
+router.use("/faqs", faqRoutes);
 
 module.exports = router;

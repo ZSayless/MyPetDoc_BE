@@ -133,7 +133,7 @@ class Hospital extends BaseModel {
   static async create(data) {
     const sql = `
       INSERT INTO ${this.tableName} 
-      (name, address, department ,phone ,email ,slug, operating_hours, specialties, staff_description, staff_credentials, map_location, description, created_by)
+      (name, address, department ,phone ,email ,link_website, operating_hours, specialties, staff_description, staff_credentials, map_location, description, created_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
@@ -143,7 +143,7 @@ class Hospital extends BaseModel {
       data.department,
       data.phone,
       data.email,
-      data.slug,
+      data.link_website,
       data.operating_hours,
       data.specialties,
       data.staff_description,
