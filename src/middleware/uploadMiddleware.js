@@ -21,6 +21,12 @@ if (!fs.existsSync(uploadHospitalDir)) {
   fs.mkdirSync(uploadHospitalDir, { recursive: true });
 }
 
+// Tạo thư mục upload cho pet gallery
+const uploadPetGalleryDir = path.join(__dirname, "../../uploads/petgallery");
+if (!fs.existsSync(uploadPetGalleryDir)) {
+  fs.mkdirSync(uploadPetGalleryDir, { recursive: true });
+}
+
 // Storage cho banner images
 const bannerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -58,6 +64,19 @@ const hospitalStorage = multer.diskStorage({
       Math.random() * 1e9
     )}${path.extname(file.originalname)}`;
     console.log("Generated filename:", uniqueName);
+    cb(null, uniqueName);
+  },
+});
+
+// Thêm storage cho pet gallery images
+const petGalleryStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadPetGalleryDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueName = `pet-gallery-${Date.now()}-${Math.round(
+      Math.random() * 1e9
+    )}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
   },
 });
@@ -158,8 +177,42 @@ const handleUploadHospitalImages = (req, res, next) => {
   });
 };
 
+// Thêm middleware xử lý upload hình ảnh pet gallery
+const handleUploadPetGalleryImages = (req, res, next) => {
+  const upload = multer({
+    storage: petGalleryStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+      if (!file) {
+        cb(null, true);
+        return;
+      }
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new ApiError(400, "Chỉ chấp nhận file ảnh (jpg, png, gif)"));
+      }
+    },
+  }).array("images", 10); // Cho phép upload tối đa 10 ảnh
+
+  upload(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === "LIMIT_UNEXPECTED_FILE") {
+        return next(new ApiError(400, "Chỉ được phép upload tối đa 10 ảnh"));
+      }
+      return next(new ApiError(400, `Lỗi upload: ${err.message}`));
+    }
+    if (err) {
+      return next(new ApiError(400, err.message));
+    }
+    next();
+  });
+};
+
 module.exports = {
   handleUploadReviewImages,
   handleUploadHospitalImages,
   handleUploadBannerImages,
+  handleUploadPetGalleryImages,
 };
