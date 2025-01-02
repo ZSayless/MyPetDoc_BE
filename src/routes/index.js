@@ -11,6 +11,7 @@ const reviewRoutes = require("./reviewRoutes");
 const bannerRoutes = require("./bannerRoutes");
 const faqRoutes = require("./faqRoutes");
 const petGalleryRoutes = require("./petGalleryRoutes");
+const petPostRoutes = require("./petPostRoutes");
 
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
@@ -23,5 +24,6 @@ router.use("/contact-info", contactInformationRoutes);
 router.use("/banners", bannerRoutes);
 router.use("/faqs", faqRoutes);
 router.use("/community", petGalleryRoutes);
+router.use("/posts", petPostRoutes);
 
 module.exports = router;

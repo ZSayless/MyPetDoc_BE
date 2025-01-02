@@ -112,7 +112,14 @@ class BaseModel {
           continue;
 
         if (validFields.includes(key)) {
-          filteredData[key] = data[key];
+          // Xử lý các giá trị đặc biệt
+          if (data[key] === undefined) {
+            filteredData[key] = null;
+          } else if (typeof data[key] === "boolean") {
+            filteredData[key] = data[key] ? 1 : 0;
+          } else {
+            filteredData[key] = data[key];
+          }
         }
       }
 
@@ -136,8 +143,8 @@ class BaseModel {
       const result = await this.query(sql, values);
 
       // Trả về dữ liệu vừa tạo
-      if (result && result[0] && result[0].insertId) {
-        return await this.findById(result[0].insertId);
+      if (result && result.insertId) {
+        return await this.findById(result.insertId);
       }
       return null;
     } catch (error) {

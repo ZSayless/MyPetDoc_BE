@@ -26,7 +26,7 @@ router.post(
 router.get(
   "/google",
   passport.authenticate("google", {
-    scope: ["profile", "email"]
+    scope: ["profile", "email"],
   })
 );
 
@@ -34,9 +34,14 @@ router.get(
   "/google/callback",
   passport.authenticate("google", {
     session: false,
-    failureRedirect: "/login-failed"
+    failureRedirect: "/login-failed",
   }),
   asyncHandler(authController.googleCallback)
+);
+
+router.post(
+  "/complete-google-signup",
+  asyncHandler(authController.completeGoogleSignup)
 );
 
 module.exports = router;

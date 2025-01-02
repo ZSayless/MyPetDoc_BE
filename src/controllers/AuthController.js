@@ -235,21 +235,31 @@ class AuthController {
 
   async googleCallback(req, res) {
     try {
-      const user = req.user;
-      const isNewUser = user.created_at === user.updated_at; // Kiểm tra user mới
+      const userData = req.user;
 
-      const token = user.generateAuthToken();
+      if (userData.isNewUser) {
+        // Nếu là user mới, trả về trạng thái chờ chọn role
+        res.json({
+          status: "pending_role",
+          message: "Vui lòng chọn loại tài khoản",
+          data: {
+            profile: userData.profile,
+          },
+        });
+        return;
+      }
 
+      const token = userData.generateAuthToken();
       res.json({
         status: "success",
-        message: isNewUser ? "Đăng ký thành công" : "Đăng nhập thành công",
+        message: "Đăng nhập thành công",
         data: {
           user: {
-            id: user.id,
-            email: user.email,
-            full_name: user.full_name,
-            role: user.role,
-            avatar: user.avatar,
+            id: userData.id,
+            email: userData.email,
+            full_name: userData.full_name,
+            role: userData.role,
+            avatar: userData.avatar,
           },
           token,
         },
@@ -261,6 +271,78 @@ class AuthController {
         message: error.message || "Xác thực thất bại",
       });
     }
+  }
+
+  // Thêm method mới để hoàn tất đăng ký Google
+  async completeGoogleSignup(req, res) {
+    const { email, full_name, google_id, avatar, role } = req.body;
+
+    if (!["GENERAL_USER", "HOSPITAL_ADMIN"].includes(role)) {
+      throw new ApiError(400, "Role không hợp lệ");
+    }
+
+    // Kiểm tra email đã tồn tại
+    if (await User.isEmailTaken(email)) {
+      throw new ApiError(400, "Email đã được sử dụng");
+    }
+
+    const randomPassword = Math.random().toString(36).slice(-8);
+    const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+    console.log("User data before create:", {
+      email,
+      full_name,
+      google_id,
+      avatar,
+      role,
+      hashedPassword,
+    });
+
+    // Tạo user mới với các giá trị mặc định cho các trường bắt buộc
+    let user = await User.create({
+      email,
+      full_name,
+      google_id: google_id || null, // Cho phép null nếu không có
+      avatar: avatar || null, // Cho phép null nếu không có
+      role,
+      is_active: true,
+      is_locked: false,
+      password: hashedPassword,
+      verification_token: null, // Thêm các trường bắt buộc
+      verification_expires: null,
+      reset_password_token: null,
+      reset_password_expires: null,
+      hospital_id: null, // Nếu là HOSPITAL_ADMIN, có thể cập nhật sau
+    });
+
+    // Lấy thông tin user đầy đủ sau khi tạo
+    user = await User.findById(user.id);
+
+    if (!user) {
+      throw new ApiError(500, "Lỗi khi tạo tài khoản");
+    }
+
+    const token = user.generateAuthToken();
+
+    // Loại bỏ các thông tin nhạy cảm
+    const userResponse = {
+      id: user.id,
+      email: user.email,
+      full_name: user.full_name,
+      role: user.role,
+      avatar: user.avatar,
+      is_active: user.is_active,
+      created_at: user.created_at,
+    };
+
+    res.json({
+      status: "success",
+      message: "Đăng ký thành công",
+      data: {
+        user: userResponse,
+        token,
+      },
+    });
   }
 }
 

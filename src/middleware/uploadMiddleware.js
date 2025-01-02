@@ -15,6 +15,12 @@ if (!fs.existsSync(uploadBannerDir)) {
   fs.mkdirSync(uploadBannerDir, { recursive: true });
 }
 
+// Tạo thư mục upload cho pet posts
+const uploadPetPostDir = path.join(__dirname, "../../uploads/petposts");
+if (!fs.existsSync(uploadPetPostDir)) {
+  fs.mkdirSync(uploadPetPostDir, { recursive: true });
+}
+
 // Tạo thư mục upload cho hospitals
 const uploadHospitalDir = path.join(__dirname, "../../uploads/hospitals");
 if (!fs.existsSync(uploadHospitalDir)) {
@@ -47,6 +53,19 @@ const reviewStorage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueName = `review-${Date.now()}-${Math.round(
+      Math.random() * 1e9
+    )}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  },
+});
+
+// Storage cho pet post images
+const petPostStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadPetPostDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueName = `pet-post-${Date.now()}-${Math.round(
       Math.random() * 1e9
     )}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
@@ -110,6 +129,50 @@ const handleUploadReviewImages = (req, res, next) => {
     if (err) {
       return next(new ApiError(400, err.message));
     }
+    next();
+  });
+};
+
+// Middleware xử lý upload hình ảnh pet post
+const handleUploadPetPostImages = (req, res, next) => {
+  const upload = multer({
+    storage: petPostStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+      if (!file) {
+        cb(null, true);
+        return;
+      }
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new ApiError(400, "Chỉ chấp nhận file ảnh (jpg, png, gif)"));
+      }
+    },
+  }).fields([
+    { name: "featured_image", maxCount: 1 },
+    { name: "thumbnail_image", maxCount: 1 },
+  ]); // Sửa từ .array() thành .fields()
+
+  upload(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      return next(new ApiError(400, `Lỗi upload: ${err.message}`));
+    }
+    if (err) {
+      return next(new ApiError(400, err.message));
+    }
+
+    // Xử lý và gán đường dẫn file vào req.body
+    if (req.files) {
+      if (req.files.featured_image) {
+        req.body.featured_image = `/uploads/petposts/${req.files.featured_image[0].filename}`;
+      }
+      if (req.files.thumbnail_image) {
+        req.body.thumbnail_image = `/uploads/petposts/${req.files.thumbnail_image[0].filename}`;
+      }
+    }
+
     next();
   });
 };
@@ -215,4 +278,5 @@ module.exports = {
   handleUploadHospitalImages,
   handleUploadBannerImages,
   handleUploadPetGalleryImages,
+  handleUploadPetPostImages,
 };

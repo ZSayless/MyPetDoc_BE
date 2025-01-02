@@ -37,18 +37,14 @@ passport.use(
               avatar: profile.photos[0]?.value,
             });
           } else {
-            const randomPassword = Math.random().toString(36).slice(-8);
-            const hashedPassword = await bcrypt.hash(randomPassword, 10);
-
-            user = await User.create({
-              email: profile.emails[0].value,
-              full_name: profile.displayName,
-              google_id: profile.id,
-              avatar: profile.photos[0]?.value,
-              role: "GENERAL_USER",
-              is_active: true,
-              is_locked: false,
-              password: hashedPassword,
+            return done(null, {
+              isNewUser: true,
+              profile: {
+                email: profile.emails[0].value,
+                full_name: profile.displayName,
+                google_id: profile.id,
+                avatar: profile.photos[0]?.value,
+              },
             });
           }
         }
