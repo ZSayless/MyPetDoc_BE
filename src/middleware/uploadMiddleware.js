@@ -137,7 +137,7 @@ const handleUploadReviewImages = (req, res, next) => {
 const handleUploadPetPostImages = (req, res, next) => {
   const upload = multer({
     storage: petPostStorage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
       const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
       if (!file) {
@@ -150,27 +150,51 @@ const handleUploadPetPostImages = (req, res, next) => {
         cb(new ApiError(400, "Chỉ chấp nhận file ảnh (jpg, png, gif)"));
       }
     },
-  }).fields([
-    { name: "featured_image", maxCount: 1 },
-    { name: "thumbnail_image", maxCount: 1 },
-  ]); // Sửa từ .array() thành .fields()
+  }).array("images", 2);
 
   upload(req, res, (err) => {
-    if (err instanceof multer.MulterError) {
-      return next(new ApiError(400, `Lỗi upload: ${err.message}`));
-    }
     if (err) {
+      if (req.files) {
+        req.files.forEach((file) => {
+          const filePath = path.join(
+            process.cwd(),
+            "uploads",
+            "petposts",
+            file.filename
+          );
+          fs.unlink(filePath, (err) => {
+            if (err) console.error("Lỗi khi xóa file:", err);
+          });
+        });
+      }
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_UNEXPECTED_FILE") {
+          return next(new ApiError(400, "Chỉ được phép upload tối đa 2 ảnh"));
+        }
+        return next(new ApiError(400, `Lỗi upload: ${err.message}`));
+      }
       return next(new ApiError(400, err.message));
     }
 
     // Xử lý và gán đường dẫn file vào req.body
-    if (req.files) {
-      if (req.files.featured_image) {
-        req.body.featured_image = `/uploads/petposts/${req.files.featured_image[0].filename}`;
+    if (req.files && req.files.length > 0) {
+      // Đảm bảo req.body tồn tại
+      req.body = req.body || {};
+
+      // File đầu tiên là featured_image
+      if (req.files[0]) {
+        req.body.featured_image = req.files[0].filename;
       }
-      if (req.files.thumbnail_image) {
-        req.body.thumbnail_image = `/uploads/petposts/${req.files.thumbnail_image[0].filename}`;
+
+      // File thứ hai là thumbnail_image
+      if (req.files[1]) {
+        req.body.thumbnail_image = req.files[1].filename;
       }
+
+      console.log("Files uploaded:", {
+        files: req.files,
+        body: req.body,
+      });
     }
 
     next();

@@ -10,6 +10,7 @@ class PetPostService {
   // Tạo bài viết mới
   async createPost(data, userId) {
     try {
+      console.log(data);
       // Validate dữ liệu
       await this.validatePostData(data);
 
@@ -50,34 +51,6 @@ class PetPostService {
     }
   }
 
-  // Cập nhật bài viết
-  async updatePost(id, data, userId) {
-    try {
-      const post = await PetPost.getDetail(id);
-
-      if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài viết");
-      }
-
-      // Kiểm tra quyền sửa
-      if (!(await PetPost.isOwnedByUser(id, userId))) {
-        throw new ApiError(403, "Bạn không có quyền sửa bài viết này");
-      }
-
-      // Tự động cập nhật slug nếu tiêu đề thay đổi và không có slug mới
-      if (data.title && data.title !== post.title && !data.slug) {
-        data.slug = slugify(data.title);
-      }
-
-      // Validate và cập nhật
-      await this.validatePostData(data, true);
-      await PetPost.update(id, data);
-      return await PetPost.getDetail(id);
-    } catch (error) {
-      throw error;
-    }
-  }
-
   // Xóa bài viết
   async deletePost(id, userId, isAdmin = false) {
     try {
@@ -93,10 +66,12 @@ class PetPostService {
       }
 
       // Xóa ảnh
-      await this.deletePostImages(post);
+      if (post.thumbnail_image || post.featured_image) {
+        await this.deletePostImages(post);
+      }
 
-      // Xóa bài viết và các dữ liệu liên quan
-      await PetPost.delete(id);
+      // Soft delete bài viết thay vì xóa hoàn toàn
+      await PetPost.softDelete(id);
       return true;
     } catch (error) {
       throw error;
@@ -122,11 +97,15 @@ class PetPostService {
         }
       }
 
-      // Xóa ảnh của tất cả bài viết
-      await Promise.all(posts.map((post) => this.deletePostImages(post)));
+      // Xóa ảnh của tất cả bài viết có ảnh
+      await Promise.all(
+        posts
+          .filter((post) => post.thumbnail_image || post.featured_image)
+          .map((post) => this.deletePostImages(post))
+      );
 
-      // Xóa các bài viết và dữ liệu liên quan
-      await PetPost.deleteMany(ids);
+      // Soft delete tất cả bài viết
+      await PetPost.softDeleteMany(ids);
       return true;
     } catch (error) {
       throw error;
@@ -140,30 +119,36 @@ class PetPostService {
         Boolean
       );
 
-      await Promise.all(
-        imagesToDelete.map(async (imagePath) => {
-          try {
-            // Lấy đường dẫn đầy đủ từ root của project
-            const fullPath = path.join(process.cwd(), imagePath);
-            if (await this.fileExists(fullPath)) {
-              await fs.unlink(fullPath);
-              console.log(`Đã xóa file: ${fullPath}`);
-            }
-          } catch (err) {
-            console.error(`Lỗi khi xóa file ${imagePath}:`, err);
+      for (const imageName of imagesToDelete) {
+        try {
+          const fullPath = path.join(
+            process.cwd(),
+            "uploads",
+            "petposts",
+            imageName
+          );
+          if (
+            await fs
+              .access(fullPath)
+              .then(() => true)
+              .catch(() => false)
+          ) {
+            await fs.unlink(fullPath);
+            console.log(`Đã xóa file: ${fullPath}`);
           }
-        })
-      );
+        } catch (err) {
+          console.error(`Lỗi khi xóa file ${imageName}:`, err);
+        }
+      }
     } catch (error) {
       console.error("Delete post images error:", error);
-      // Không throw error để tiếp tục process
     }
   }
 
   // Helper method để kiểm tra file tồn tại
   async fileExists(filePath) {
     try {
-      await fs.access(filePath);
+      await fs.promises.access(filePath);
       return true;
     } catch {
       return false;
@@ -247,6 +232,7 @@ class PetPostService {
     }
   }
 
+  // Lấy danh sách bài viết
   async getPosts(options = {}) {
     try {
       const {
@@ -254,37 +240,41 @@ class PetPostService {
         limit = 10,
         category,
         tags,
-        postType,
+        post_type,
         status = "PUBLISHED",
-        authorId,
-        hospitalId,
-        sortBy = "created_at",
-        sortOrder = "DESC",
+        author_id,
+        hospital_id,
+        sort_by,
+        sort_order,
         search,
       } = options;
 
-      // Nếu có search term, sử dụng search method
+      let result;
+
+      // Nếu có search query thì dùng phương thức search
       if (search) {
-        return await PetPost.search(search, {
-          page,
-          limit,
+        result = await PetPost.search(search, {
+          page: parseInt(page),
+          limit: parseInt(limit),
           status,
+        });
+      } else {
+        // Ngược lại dùng findAll
+        result = await PetPost.findAll({
+          page: parseInt(page),
+          limit: parseInt(limit),
+          category,
+          tags,
+          postType: post_type,
+          status,
+          authorId: author_id,
+          hospitalId: hospital_id,
+          sortBy: sort_by,
+          sortOrder: sort_order,
         });
       }
 
-      // Nếu không có search, sử dụng findAll
-      return await PetPost.findAll({
-        page: parseInt(page),
-        limit: parseInt(limit),
-        category,
-        tags,
-        postType,
-        status,
-        authorId: authorId ? parseInt(authorId) : null,
-        hospitalId: hospitalId ? parseInt(hospitalId) : null,
-        sortBy,
-        sortOrder,
-      });
+      return result;
     } catch (error) {
       console.error("Get posts error:", error);
       throw error;
@@ -361,17 +351,7 @@ class PetPostService {
   // Xóa comment
   async deleteComment(commentId, userId, isAdmin = false) {
     try {
-      const comment = await PetPostComment.getDetail(commentId);
-      if (!comment) {
-        throw new ApiError(404, "Không tìm thấy bình luận");
-      }
-
-      // Kiểm tra quyền xóa
-      if (!isAdmin && comment.user_id !== userId) {
-        throw new ApiError(403, "Bạn không có quyền xóa bình luận này");
-      }
-
-      await PetPostComment.delete(commentId);
+      await PetPostComment.delete(commentId, userId, isAdmin);
       return true;
     } catch (error) {
       throw error;
@@ -401,6 +381,100 @@ class PetPostService {
       return await PetPost.getDetail(postId);
     } catch (error) {
       throw error;
+    }
+  }
+
+  // Cập nhật bài viết
+  async updatePost(id, data, userId, files = []) {
+    try {
+      // Kiểm tra bài viết tồn tại
+      const post = await PetPost.getDetail(id);
+      if (!post) {
+        // Xóa ảnh mới đã upload nếu có
+        await this.deleteUploadedFiles(files);
+        throw new ApiError(404, "Không tìm thấy bài viết");
+      }
+
+      // Kiểm tra quyền cập nhật
+      if (!(await PetPost.isOwnedByUser(id, userId))) {
+        await this.deleteUploadedFiles(files);
+        throw new ApiError(403, "Bạn không có quyền cập nhật bài viết này");
+      }
+
+      // Validate dữ liệu cập nhật
+      await this.validatePostData(data, true);
+
+      // Xử lý ảnh mới
+      const updatedData = { ...data };
+      if (files && files.length > 0) {
+        // Cập nhật featured_image nếu có
+        if (files[0]) {
+          updatedData.featured_image = files[0].filename;
+          await this.deleteImage(post.featured_image);
+        }
+
+        // Cập nhật thumbnail_image nếu có
+        if (files[1]) {
+          updatedData.thumbnail_image = files[1].filename;
+          await this.deleteImage(post.thumbnail_image);
+        }
+      }
+
+      // Tự động cập nhật slug nếu title thay đổi
+      if (data.title && data.title !== post.title) {
+        updatedData.slug = slugify(data.title);
+      }
+
+      // Cập nhật thời gian published_at nếu status chuyển sang PUBLISHED
+      if (data.status === "PUBLISHED" && post.status !== "PUBLISHED") {
+        updatedData.published_at = new Date();
+      }
+
+      // Cập nhật bài viết
+      const updatedPost = await PetPost.update(id, updatedData);
+      return await PetPost.getDetail(id);
+    } catch (error) {
+      // Xóa files đã upload nếu có lỗi
+      await this.deleteUploadedFiles(files);
+      throw error;
+    }
+  }
+
+  // Helper method để xóa các files đã upload
+  async deleteUploadedFiles(files) {
+    if (!files || files.length === 0) return;
+
+    for (const file of files) {
+      try {
+        const filePath = path.join(
+          process.cwd(),
+          "uploads",
+          "petposts",
+          file.filename
+        );
+        await fs.unlink(filePath);
+      } catch (err) {
+        console.error(`Lỗi khi xóa file ${file.filename}:`, err);
+      }
+    }
+  }
+
+  // Helper method để xóa ảnh cũ
+  async deleteImage(filename) {
+    if (!filename) return;
+
+    try {
+      const filePath = path.join(
+        process.cwd(),
+        "uploads",
+        "petposts",
+        filename
+      );
+      await fs.unlink(filePath);
+    } catch (err) {
+      if (err.code !== "ENOENT") {
+        console.error(`Lỗi khi xóa ảnh ${filename}:`, err);
+      }
     }
   }
 }

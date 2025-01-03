@@ -19,33 +19,82 @@ class PetPostComment extends BaseModel {
       const { page = 1, limit = 10 } = options;
       const offset = (page - 1) * limit;
 
+      console.log("Getting comments for postId:", postId);
+      console.log("Pagination:", { page, limit, offset });
+
+      // Query chính
       const sql = `
-        SELECT c.*, 
-               u.full_name as user_name,
-               u.avatar as user_avatar,
-               (SELECT COUNT(*) FROM ${this.tableName} WHERE parent_id = c.id) as replies_count
+        SELECT 
+          c.*, 
+          u.full_name as user_name,
+          u.avatar as user_avatar,
+          (
+            SELECT COUNT(*) 
+            FROM ${this.tableName} r 
+            WHERE r.parent_id = c.id AND r.is_deleted = 0
+          ) as replies_count
         FROM ${this.tableName} c
         LEFT JOIN users u ON c.user_id = u.id
-        WHERE c.post_id = ? 
-        AND c.parent_id IS NULL
+        WHERE c.post_id = ${postId}
+        AND c.parent_id IS NULL 
+        AND c.is_deleted = 0
         ORDER BY c.created_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
 
+      console.log("Main SQL:", sql);
+      console.log("SQL params:", [postId, limit, offset]);
+
       const countSql = `
         SELECT COUNT(*) as total
         FROM ${this.tableName}
-        WHERE post_id = ? 
+        WHERE post_id = ${postId}
         AND parent_id IS NULL
+        AND is_deleted = 0
       `;
 
       const [comments, [countResult]] = await Promise.all([
-        this.query(sql, [postId]),
-        this.query(countSql, [postId]),
+        this.query(sql),
+        this.query(countSql),
       ]);
 
-      return {
-        comments: comments.map((comment) => new PetPostComment(comment)),
+      console.log("Raw comments:", comments);
+      console.log("Count result:", countResult);
+
+      // Lấy replies cho mỗi comment
+      const commentsWithReplies = await Promise.all(
+        comments.map(async (comment) => {
+          const repliesSql = `
+            SELECT 
+              r.*,
+              u.full_name as user_name,
+              u.avatar as user_avatar
+            FROM ${this.tableName} r
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE r.parent_id = ${comment.id}
+            AND r.is_deleted = 0
+            ORDER BY r.created_at ASC
+          `;
+
+          console.log("Getting replies for comment:", comment.id);
+          const replies = await this.query(repliesSql);
+          console.log("Replies found:", replies.length);
+
+          return {
+            ...comment,
+            is_deleted: Boolean(comment.is_deleted),
+            replies: replies.map((reply) => ({
+              ...reply,
+              is_deleted: Boolean(reply.is_deleted),
+            })),
+          };
+        })
+      );
+
+      console.log("Final comments with replies:", commentsWithReplies);
+
+      const result = {
+        comments: commentsWithReplies,
         pagination: {
           page: Number(page),
           limit: Number(limit),
@@ -53,8 +102,12 @@ class PetPostComment extends BaseModel {
           totalPages: Math.ceil(countResult.total / limit),
         },
       };
+
+      console.log("Final result:", result);
+      return result;
     } catch (error) {
       console.error("Get post comments error:", error);
+      console.error("Error stack:", error.stack);
       throw error;
     }
   }
@@ -115,7 +168,7 @@ class PetPostComment extends BaseModel {
     }
   }
 
-  static async delete(commentId, userId) {
+  static async delete(commentId, userId, isAdmin = false) {
     try {
       const [comment] = await this.query(
         `SELECT user_id, post_id FROM ${this.tableName} WHERE id = ?`,
@@ -126,7 +179,8 @@ class PetPostComment extends BaseModel {
         throw new Error("Không tìm thấy bình luận");
       }
 
-      if (comment.user_id !== userId) {
+      // Cho phép admin hoặc chủ bình luận xóa
+      if (!isAdmin && comment.user_id !== userId) {
         throw new Error("Không có quyền xóa bình luận này");
       }
 

@@ -47,38 +47,12 @@ class PetPostController {
 
   // Lấy danh sách bài viết
   getPosts = asyncHandler(async (req, res) => {
-    const {
-      page = 1,
-      limit = 10,
-      category,
-      tags,
-      post_type,
-      status,
-      author_id,
-      hospital_id,
-      sort_by,
-      sort_order,
-      search,
-    } = req.query;
-
-    const posts = await PetPostService.getPosts({
-      page: parseInt(page),
-      limit: parseInt(limit),
-      category,
-      tags,
-      postType: post_type,
-      status,
-      authorId: author_id,
-      hospitalId: hospital_id,
-      sortBy: sort_by,
-      sortOrder: sort_order,
-      search,
-    });
+    const result = await PetPostService.getPosts(req.query);
 
     res.json({
       success: true,
       message: "Lấy danh sách bài viết thành công",
-      data: posts,
+      data: result,
     });
   });
 
@@ -222,10 +196,6 @@ class PetPostController {
     const commentId = req.params.commentId;
     const userId = req.user.id;
     const isAdmin = req.user.role === "ADMIN";
-
-    if (req.baseUrl.includes("/admin") && !isAdmin) {
-      throw new ApiError(403, "Không có quyền truy cập");
-    }
 
     await PetPostService.deleteComment(commentId, userId, isAdmin);
 

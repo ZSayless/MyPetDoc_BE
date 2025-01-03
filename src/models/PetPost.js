@@ -314,63 +314,103 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Tìm kiếm bài viết
-  static async search(keyword, options = {}) {
+  // Tìm kiếm bài viết theo tiêu đề
+  static async search(searchQuery, options = {}) {
     try {
-      const { page = 1, limit = 10, status = "PUBLISHED" } = options;
+      const {
+        page = 1,
+        limit = 10,
+        status = "PUBLISHED"
+      } = options;
 
       const offset = (page - 1) * limit;
-      const searchPattern = `%${keyword}%`;
+      let conditions = ["p.is_deleted = 0"];
+      let params = [];
+
+      // Tìm kiếm theo tiêu đề
+      if (searchQuery) {
+        conditions.push("p.title LIKE ?");
+        params.push(`%${searchQuery}%`);
+      }
+
+      // Lọc theo trạng thái
+      if (status) {
+        conditions.push("p.status = ?");
+        params.push(status);
+      }
 
       const sql = `
-        SELECT p.*, 
-               u.full_name as author_name,
-               u.avatar as author_avatar,
-               h.name as hospital_name
+        SELECT 
+          p.*,
+          u.full_name as author_name,
+          u.avatar as author_avatar,
+          h.name as hospital_name
         FROM ${this.tableName} p
         LEFT JOIN users u ON p.author_id = u.id
         LEFT JOIN hospitals h ON p.hospital_id = h.id
-        WHERE (p.title LIKE ? OR p.content LIKE ? OR p.tags LIKE ?)
-        AND p.status = ?
+        WHERE ${conditions.join(" AND ")}
         ORDER BY p.created_at DESC
         LIMIT ? OFFSET ?
       `;
 
       const countSql = `
         SELECT COUNT(*) as total
-        FROM ${this.tableName}
-        WHERE (title LIKE ? OR content LIKE ? OR tags LIKE ?)
-        AND status = ?
+        FROM ${this.tableName} p
+        WHERE ${conditions.join(" AND ")}
       `;
 
       const [posts, [countResult]] = await Promise.all([
-        this.query(sql, [
-          searchPattern,
-          searchPattern,
-          searchPattern,
-          status,
-          limit,
-          offset,
-        ]),
-        this.query(countSql, [
-          searchPattern,
-          searchPattern,
-          searchPattern,
-          status,
-        ]),
+        this.query(sql, [...params, limit, offset]),
+        this.query(countSql, params)
       ]);
 
       return {
-        posts: posts.map((post) => new PetPost(post)),
+        posts: posts.map(post => new this(post)),
         pagination: {
           page: Number(page),
           limit: Number(limit),
           total: countResult.total,
-          totalPages: Math.ceil(countResult.total / limit),
-        },
+          totalPages: Math.ceil(countResult.total / limit)
+        }
       };
     } catch (error) {
       console.error("Search posts error:", error);
+      throw error;
+    }
+  }
+
+  // Thêm phương thức soft delete
+  static async softDelete(id) {
+    try {
+      const sql = `
+        UPDATE ${this.tableName}
+        SET is_deleted = 1, 
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `;
+
+      await this.query(sql, [id]);
+      return true;
+    } catch (error) {
+      console.error("Soft delete post error:", error);
+      throw error;
+    }
+  }
+
+  // Thêm phương thức soft delete nhiều bài viết
+  static async softDeleteMany(ids) {
+    try {
+      const sql = `
+        UPDATE ${this.tableName}
+        SET is_deleted = 1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id IN (?)
+      `;
+
+      await this.query(sql, [ids]);
+      return true;
+    } catch (error) {
+      console.error("Soft delete many posts error:", error);
       throw error;
     }
   }
