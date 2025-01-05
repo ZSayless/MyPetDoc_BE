@@ -6,6 +6,7 @@ class PetPostController {
   // Tạo bài viết mới
   createPost = asyncHandler(async (req, res) => {
     const userId = req.user.id;
+    const files = req.files || [];
 
     // Validate dữ liệu
     if (!req.body.title || !req.body.content) {

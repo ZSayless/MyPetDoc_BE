@@ -53,12 +53,12 @@ class PetPostLike extends BaseModel {
       const offset = (page - 1) * limit;
 
       const sql = `
-        SELECT u.id, u.full_name, u.avatar_url, l.created_at as liked_at
+        SELECT u.id, u.full_name, u.avatar, l.created_at AS liked_at
         FROM ${this.tableName} l
         JOIN users u ON l.user_id = u.id
-        WHERE l.post_id = ?
+        WHERE l.post_id = ${postId}
         ORDER BY l.created_at DESC
-        LIMIT ? OFFSET ?
+        LIMIT ${limit} OFFSET ${offset}
       `;
 
       const countSql = `

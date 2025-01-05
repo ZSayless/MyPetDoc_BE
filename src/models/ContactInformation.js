@@ -122,8 +122,8 @@ class ContactInformation extends BaseModel {
       if (!currentData) {
         throw new Error("Record not found");
       }
-
-      const newStatus = !currentData.is_deleted;
+      const currentIsDeleted = currentData.is_deleted[0] === 1;
+      const newStatus = !currentIsDeleted;
       const contactData = await super.update(id, { is_deleted: newStatus });
       return new ContactInformation(contactData);
     } catch (error) {

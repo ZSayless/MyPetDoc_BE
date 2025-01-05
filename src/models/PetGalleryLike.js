@@ -56,7 +56,7 @@ class PetGalleryLike extends BaseModel {
       const offset = (page - 1) * limit;
 
       const sql = `
-        SELECT u.id, u.full_name, u.avatar_url, l.created_at as liked_at
+        SELECT u.id, u.full_name, u.avatar, l.created_at as liked_at
         FROM ${this.tableName} l
         JOIN users u ON l.user_id = u.id
         WHERE l.gallery_id = ?

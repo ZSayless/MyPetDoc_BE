@@ -1,7 +1,7 @@
 const UserService = require("../services/UserService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
-const passport = require("passport");
+const bcrypt = require("bcrypt");
 
 class UserController {
   getUsers = asyncHandler(async (req, res) => {
@@ -20,14 +20,15 @@ class UserController {
   });
 
   createUser = asyncHandler(async (req, res) => {
+    const salt = await bcrypt.genSalt(10);
     const userData = {
       ...req.body,
-      password: passport.hash(req.body.password),
+      password: await bcrypt.hash(req.body.password, salt),
     };
     const user = await UserService.createUser(userData);
-    delete userData.password;
+    delete user.password;
     res.status(201).json(user);
-  });
+});
 
   updateUser = asyncHandler(async (req, res) => {
     const user = await UserService.updateUser(req.params.id, req.body);

@@ -52,22 +52,26 @@ class BannerController {
 
   // Cập nhật banner
   updateBanner = asyncHandler(async (req, res) => {
-    try {
-      const { id } = req.params;
-      const banner = await BannerService.updateBanner(
-        parseInt(id),
-        req.body,
-        req.file || null
-      );
+    const { id } = req.params;
+    
+    // Log để debug
+    // console.log('Update banner request:', {
+    //   id,
+    //   body: req.body,
+    //   file: req.file
+    // });
 
-      res.json({
-        status: "success",
-        message: "Cập nhật banner thành công",
-        data: banner,
-      });
-    } catch (error) {
-      throw new ApiError(500, "Lỗi khi cập nhật banner");
-    }
+    const banner = await BannerService.updateBanner(
+      parseInt(id),
+      req.body,
+      req.file || null
+    );
+
+    res.json({
+      status: "success",
+      message: "Cập nhật banner thành công",
+      data: banner,
+    });
   });
 
   // Toggle trạng thái active

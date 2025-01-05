@@ -54,12 +54,13 @@ class ContactInformationController {
   // Xóa mềm/khôi phục
   toggleSoftDelete = asyncHandler(async (req, res) => {
     // Kiểm tra quyền admin
-    if (req.user.role !== "HOSPITAL_ADMIN") {
+    if (req.user.role !== "ADMIN") {
       throw new ApiError(403, "Bạn không có quyền thực hiện hành động này");
     }
+    const { id } = req.params;
 
     const contact = await ContactInformationService.toggleSoftDelete(
-      req.params.id
+      parseInt(id)
     );
     res.json(contact);
   });
@@ -67,7 +68,7 @@ class ContactInformationController {
   // Xóa vĩnh viễn
   hardDelete = asyncHandler(async (req, res) => {
     // Kiểm tra quyền admin
-    if (req.user.role !== "HOSPITAL_ADMIN") {
+    if (req.user.role !== "ADMIN") {
       throw new ApiError(403, "Bạn không có quyền thực hiện hành động này");
     }
 

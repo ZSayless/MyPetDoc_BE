@@ -7,10 +7,10 @@ const path = require("path");
 
 class PetGalleryService {
   // Tạo bài đăng mới
-  async createPost(data, userId, files = []) {
+  async createPost(data, userId, file = null) {
     try {
       // Validate dữ liệu
-      await this.validatePostData(data, files);
+      await this.validatePostData(data, file);
 
       // Chuẩn bị dữ liệu bài đăng
       const postData = {
@@ -19,7 +19,7 @@ class PetGalleryService {
         description: data.description,
         pet_type: data.pet_type,
         tags: data.tags,
-        image_url: files[0]?.filename || null, // Lấy ảnh đầu tiên làm ảnh chính
+        image_url: file?.filename || null,
         likes_count: 0,
         comments_count: 0,
       };
@@ -28,13 +28,9 @@ class PetGalleryService {
       const post = await PetGallery.create(postData);
       return post;
     } catch (error) {
-      // Xóa files nếu có lỗi
-      if (files && files.length > 0) {
-        files.forEach((file) => {
-          if (fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
-          }
-        });
+      // Xóa file nếu có lỗi
+      if (file && fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
       }
       throw error;
     }
@@ -83,7 +79,7 @@ class PetGalleryService {
   }
 
   // Cập nhật bài đăng
-  async updatePost(id, data, userId, files = []) {
+  async updatePost(id, data, userId, file = null) {
     try {
       const post = await PetGallery.getDetail(id);
 
@@ -96,16 +92,14 @@ class PetGalleryService {
         throw new ApiError(403, "Bạn không có quyền sửa bài đăng này");
       }
 
-      // Chỉ lấy những trường được gửi lên
       const updateData = {};
-
       if (data.caption) updateData.caption = data.caption;
       if (data.description) updateData.description = data.description;
       if (data.pet_type) updateData.pet_type = data.pet_type;
       if (data.tags) updateData.tags = data.tags;
 
       // Nếu có upload ảnh mới
-      if (files && files.length > 0) {
+      if (file) {
         // Xóa ảnh cũ nếu có
         if (post.image_url) {
           const oldImagePath = path.join(
@@ -118,27 +112,19 @@ class PetGalleryService {
             fs.unlinkSync(oldImagePath);
           }
         }
-
-        // Cập nhật ảnh mới
-        updateData.image_url = files[0].filename;
+        updateData.image_url = file.filename;
       }
 
-      // Validate dữ liệu nếu có
-      if (Object.keys(updateData).length > 0) {
-        await this.validatePostData(updateData, files, true);
-      }
+      // Validate dữ liệu
+      await this.validatePostData(updateData, file, true);
 
       // Cập nhật bài đăng
       const updatedPost = await PetGallery.update(id, updateData);
       return updatedPost;
     } catch (error) {
-      // Xóa files nếu có lỗi
-      if (files && files.length > 0) {
-        files.forEach((file) => {
-          if (fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
-          }
-        });
+      // Xóa file nếu có lỗi
+      if (file && fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
       }
       throw error;
     }
@@ -277,29 +263,53 @@ class PetGalleryService {
   }
 
   // Validate dữ liệu bài đăng
-  async validatePostData(data, files, isUpdate = false) {
+  async validatePostData(data, file = null, isUpdate = false) {
     const errors = [];
 
-    if (!isUpdate) {
-      if (!data.caption) {
-        errors.push("Tiêu đề bài đăng là bắt buộc");
-      }
-
-      if (!data.pet_type) {
-        errors.push("Loại thú cưng là bắt buộc");
-      }
-
-      if (!files || files.length === 0) {
-        errors.push("Ảnh là bắt buộc");
-      }
+    // Validate ảnh khi tạo mới
+    if (!isUpdate && !file) {
+      errors.push("Ảnh là bắt buộc");
     }
 
-    if (data.caption && data.caption.trim().length < 5) {
+    // Validate caption
+    if (!isUpdate && !data.caption) {
+      errors.push("Tiêu đề là bắt buộc");
+    } else if (data.caption && data.caption.trim().length < 5) {
       errors.push("Tiêu đề phải có ít nhất 5 ký tự");
     }
 
+    // Validate description nếu có
     if (data.description && data.description.trim().length < 10) {
-      errors.push("Nội dung chi tiết phải có ít nhất 10 ký tự");
+      errors.push("Mô tả phải có ít nhất 10 ký tự");
+    }
+
+    // Validate pet_type
+    if (!isUpdate && !data.pet_type) {
+      errors.push("Loại thú cưng là bắt buộc");
+    } else if (data.pet_type && !["DOG", "CAT", "OTHER"].includes(data.pet_type)) {
+      errors.push("Loại thú cưng không hợp lệ (DOG, CAT, OTHER)");
+    }
+
+    // Validate tags nếu có
+    if (data.tags) {
+      const tags = data.tags.split(",").map(tag => tag.trim());
+      if (tags.some(tag => tag.length < 2)) {
+        errors.push("Mỗi tag phải có ít nhất 2 ký tự");
+      }
+      if (tags.length > 5) {
+        errors.push("Tối đa 5 tags cho mỗi bài đăng");
+      }
+    }
+
+    // Validate file type và size nếu có file
+    if (file) {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      if (!allowedTypes.includes(file.mimetype)) {
+        errors.push("Chỉ chấp nhận file ảnh (jpg, png, gif)");
+      }
+      if (file.size > 5 * 1024 * 1024) { // 5MB
+        errors.push("Kích thước ảnh không được vượt quá 5MB");
+      }
     }
 
     if (errors.length > 0) {

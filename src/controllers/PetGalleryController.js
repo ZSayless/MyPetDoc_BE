@@ -4,10 +4,21 @@ const asyncHandler = require("../utils/asyncHandler");
 
 class PetGalleryController {
   // Tạo bài đăng mới
-  createPost = asyncHandler(async (req, res, next) => {
+  createPost = asyncHandler(async (req, res) => {
     const userId = req.user.id;
-    const files = req.files || [];
-    const post = await PetGalleryService.createPost(req.body, userId, files);
+    const file = req.file;
+    
+    // Log để debug
+    console.log('Request body:', req.body);
+    console.log('File:', file);
+    console.log('Content-Type:', req.headers['content-type']);
+
+    // Kiểm tra file
+    if (!file) {
+      throw new ApiError(400, "Vui lòng tải lên ảnh cho bài đăng");
+    }
+
+    const post = await PetGalleryService.createPost(req.body, userId, file);
 
     res.status(201).json({
       success: true,
@@ -58,16 +69,16 @@ class PetGalleryController {
   });
 
   // Cập nhật bài đăng
-  updatePost = asyncHandler(async (req, res, next) => {
+  updatePost = asyncHandler(async (req, res) => {
     const postId = req.params.id;
     const userId = req.user.id;
-    const files = req.files || [];
+    const file = req.file;
 
     const post = await PetGalleryService.updatePost(
       postId,
       req.body,
       userId,
-      files
+      file
     );
 
     res.json({

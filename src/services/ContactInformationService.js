@@ -55,10 +55,10 @@ class ContactInformationService {
   async toggleSoftDelete(id) {
     try {
       // Kiểm tra xem có phải phiên bản hiện tại không
-      const currentContact = await ContactInformation.getCurrentContact();
-      if (currentContact && currentContact.id === parseInt(id)) {
-        throw new ApiError(400, "Không thể xóa phiên bản đang sử dụng");
-      }
+      // const currentContact = await ContactInformation.getCurrentContact();
+      // if (currentContact && currentContact.id === parseInt(id)) {
+      //   throw new ApiError(400, "Không thể xóa phiên bản đang sử dụng");
+      // }
 
       return await ContactInformation.toggleSoftDelete(id);
     } catch (error) {
@@ -70,10 +70,10 @@ class ContactInformationService {
   async hardDelete(id) {
     try {
       // Kiểm tra xem có phải phiên bản hiện tại không
-      const currentContact = await ContactInformation.getCurrentContact();
-      if (currentContact && currentContact.id === parseInt(id)) {
-        throw new ApiError(400, "Không thể xóa phiên bản đang sử dụng");
-      }
+      // const currentContact = await ContactInformation.getCurrentContact();
+      // if (currentContact && currentContact.id === parseInt(id)) {
+      //   throw new ApiError(400, "Không thể xóa phiên bản đang sử dụng");
+      // }
 
       return await ContactInformation.hardDelete(id);
     } catch (error) {

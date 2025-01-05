@@ -86,12 +86,6 @@ class TermsConditionsService {
   // Xóa mềm/khôi phục
   async toggleSoftDelete(id) {
     try {
-      // Kiểm tra xem có phải phiên bản hiện tại không
-      const currentTerms = await TermsConditions.getCurrentTerms();
-      if (currentTerms && currentTerms.id === parseInt(id)) {
-        throw new ApiError(400, "Không thể xóa phiên bản đang có hiệu lực");
-      }
-
       return await TermsConditions.toggleSoftDelete(id);
     } catch (error) {
       throw error;

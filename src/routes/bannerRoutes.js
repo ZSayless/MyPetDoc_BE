@@ -6,7 +6,6 @@ const { handleUploadBannerImages } = require("../middleware/uploadMiddleware");
 
 // Routes công khai
 router.get("/active", BannerController.getActiveBanners);
-
 router.get("/:id", BannerController.getBannerById);
 
 // Routes yêu cầu xác thực ADMIN

@@ -251,8 +251,8 @@ const handleUploadHospitalImages = (req, res, next) => {
   }).array("images", 5); // Cho phép tối đa 5 ảnh, field name là "images"
 
   upload(req, res, function (err) {
-    console.log("Upload completed");
-    console.log("Files:", req.files);
+    // console.log("Upload completed");
+    // console.log("Files:", req.files);
 
     if (err instanceof multer.MulterError) {
       return next(new ApiError(400, `Lỗi upload: ${err.message}`));
@@ -281,12 +281,12 @@ const handleUploadPetGalleryImages = (req, res, next) => {
         cb(new ApiError(400, "Chỉ chấp nhận file ảnh (jpg, png, gif)"));
       }
     },
-  }).array("images", 10); // Cho phép upload tối đa 10 ảnh
+  }).single("image", 1);
 
   upload(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === "LIMIT_UNEXPECTED_FILE") {
-        return next(new ApiError(400, "Chỉ được phép upload tối đa 10 ảnh"));
+        return next(new ApiError(400, "Chỉ được phép upload tối đa 1 ảnh"));
       }
       return next(new ApiError(400, `Lỗi upload: ${err.message}`));
     }

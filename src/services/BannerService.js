@@ -78,6 +78,10 @@ class BannerService {
         throw new ApiError(404, "Không tìm thấy banner");
       }
 
+      // console.log('Current banner:', banner);
+      // console.log('Update data:', data);
+      // console.log('Update file:', file);
+
       // Validate dữ liệu
       await this.validateBannerData(data, file, true);
 
@@ -89,21 +93,35 @@ class BannerService {
           "banners",
           banner.image_url
         );
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
+        try {
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+            // console.log('Old image deleted:', oldImagePath);
+          }
+        } catch (error) {
+          console.error('Error deleting old image:', error);
         }
       }
 
       // Chuẩn bị dữ liệu cập nhật
       const updateData = {
-        description: data.description || banner.description,
-        image_url: file ? file.filename : banner.image_url,
+        description: data.description !== undefined ? data.description : banner.description
       };
+
+      // Chỉ cập nhật image_url nếu có file mới
+      if (file) {
+        updateData.image_url = file.filename;
+      }
+
+      // console.log('Update data prepared:', updateData);
 
       // Cập nhật banner
       const updatedBanner = await Banner.update(id, updateData);
+      console.log('Updated banner:', updatedBanner);
+
       return updatedBanner;
     } catch (error) {
+      console.error("Update banner error:", error);
       // Xóa file mới nếu có lỗi
       if (file && fs.existsSync(file.path)) {
         fs.unlinkSync(file.path);

@@ -27,8 +27,8 @@ class HospitalImage extends BaseModel {
         data.created_by || null, // Nếu không có created_by thì dùng null
       ];
 
-      console.log("SQL:", sql);
-      console.log("Params:", params);
+      // console.log("SQL:", sql);
+      // console.log("Params:", params);
 
       const result = await this.query(sql, params);
       console.log("Insert result:", result);

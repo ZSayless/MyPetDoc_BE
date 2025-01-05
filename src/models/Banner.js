@@ -97,8 +97,8 @@ class Banner extends BaseModel {
   // Cập nhật banner
   static async update(id, data) {
     try {
-      const bannerData = await super.update(id, data);
-      return new Banner(bannerData);
+      const updateData = await super.update(id, data);
+      return new Banner(updateData);
     } catch (error) {
       console.error("Update banner error:", error);
       throw error;
