@@ -4,6 +4,11 @@ const jwt = require("jsonwebtoken");
 const ApiError = require("../exceptions/ApiError");
 
 const validateRegister = (req, res, next) => {
+
+  if(!req.body){
+    throw new ApiError(400, "No data provided");
+  }
+
   const schema = Joi.object({
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),

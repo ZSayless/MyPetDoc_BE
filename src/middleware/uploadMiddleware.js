@@ -2,11 +2,18 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const ApiError = require("../exceptions/ApiError");
+const fsPromises = require('fs').promises;
 
 // Tạo thư mục upload cho reviews
 const uploadReviewDir = path.join(__dirname, "../../uploads/reviews");
 if (!fs.existsSync(uploadReviewDir)) {
   fs.mkdirSync(uploadReviewDir, { recursive: true });
+}
+
+// Tạo thư mục upload cho avatars
+const uploadAvatarDir = path.join(__dirname, "../../uploads/avatars");
+if (!fs.existsSync(uploadAvatarDir)) {
+  fs.mkdirSync(uploadAvatarDir, { recursive: true });
 }
 
 // Tạo thư mục upload cho banners
@@ -42,6 +49,17 @@ const bannerStorage = multer.diskStorage({
     const uniqueName = `banner-${Date.now()}-${Math.round(
       Math.random() * 1e9
     )}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  },
+});
+
+// Storage cho avatar
+const avatarStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadAvatarDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueName = `avatar-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
   },
 });
@@ -132,6 +150,53 @@ const handleUploadReviewImages = (req, res, next) => {
     next();
   });
 };
+
+// Middleware xử lý upload avatar
+const handleUploadAvatar = (req, res, next) => {
+  const upload = multer({
+    storage: avatarStorage,
+    limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+      if (!file) {
+        cb(null, true);
+        return;
+      }
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new ApiError(400, "Chỉ chấp nhận file ảnh (jpg, png, gif)"));
+      }
+    },
+  }).fields([
+    { name: 'avatar', maxCount: 1 },
+    { name: 'email', maxCount: 1 },
+    { name: 'password', maxCount: 1 },
+    { name: 'full_name', maxCount: 1 },
+    { name: 'role', maxCount: 1 }
+  ]);
+
+  upload(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      return next(new ApiError(400, `Lỗi upload: ${err.message}`));
+    }
+    if (err) {
+      return next(new ApiError(400, err.message));
+    }
+
+    // Chuyển đổi các trường từ fields sang body
+    req.body = {
+      ...req.body,
+      email: req.body.email,
+      password: req.body.password,
+      full_name: req.body.full_name,
+      role: req.body.role || 'GENERAL_USER'
+    };
+
+    next();
+  });
+};
+
 
 // Middleware xử lý upload hình ảnh pet post
 const handleUploadPetPostImages = (req, res, next) => {
@@ -297,10 +362,25 @@ const handleUploadPetGalleryImages = (req, res, next) => {
   });
 };
 
+// Thêm hàm helper để xóa file
+const deleteUploadedFile = async (filename) => {
+  if (!filename) return;
+  
+  try {
+    const filePath = path.join(__dirname, '../../uploads/avatars', filename);
+    await fsPromises.unlink(filePath);
+    console.log('Đã xóa file:', filename);
+  } catch (error) {
+    console.error('Lỗi khi xóa file:', error);
+  }
+};
+
 module.exports = {
   handleUploadReviewImages,
   handleUploadHospitalImages,
   handleUploadBannerImages,
   handleUploadPetGalleryImages,
   handleUploadPetPostImages,
+  handleUploadAvatar,
+  deleteUploadedFile,
 };

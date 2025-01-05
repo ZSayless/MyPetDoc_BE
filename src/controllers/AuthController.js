@@ -3,53 +3,82 @@ const ApiError = require("../exceptions/ApiError");
 const emailService = require("../services/emailService");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
+const { deleteUploadedFile } = require("../middleware/uploadMiddleware");
 
 class AuthController {
   // Đăng ký tài khoản
   register = async (req, res) => {
-    const { email, password, full_name, role = "GENERAL_USER" } = req.body;
+    let uploadedFileName = null;
+    
+    try {
+      const { email, password, full_name, role = "GENERAL_USER" } = req.body;
 
-    // Validate dữ liệu
-    await this.validateUserData({ email, password, full_name });
+      // Lưu tên file đã upload (nếu có)
+      if (req.file) {
+        uploadedFileName = req.file.filename;
+      } else if (req.files && req.files.avatar && req.files.avatar[0]) {
+        uploadedFileName = req.files.avatar[0].filename;
+      }
 
-    // Kiểm tra email đã tồn tại
-    if (await User.isEmailTaken(email)) {
-      throw new ApiError(400, "Email đã được sử dụng");
+      // Validate dữ liệu
+      await this.validateUserData({ email, password, full_name });
+
+      // Kiểm tra email đã tồn tại
+      if (await User.isEmailTaken(email)) {
+        throw new ApiError(400, "Email đã được sử dụng");
+      }
+
+      // Mã hóa mật khẩu với salt
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      // Tạo verification token
+      const verificationToken = crypto.randomBytes(32).toString("hex");
+      const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      // Xử lý avatar
+      const defaultAvatar = "/uploads/avatars/default-avatar.png";
+      let userAvatar = defaultAvatar;
+      
+      if (uploadedFileName) {
+        userAvatar = uploadedFileName;
+      }
+
+      // Tạo user mới
+      const user = await User.create({
+        email,
+        password: hashedPassword,
+        full_name,
+        role,
+        is_active: false,
+        verification_token: verificationToken,
+        verification_expires: verificationExpires,
+        avatar: userAvatar,
+      });
+
+      // Gửi email xác thực
+      await emailService.sendVerificationEmail(email, verificationToken);
+
+      // Loại bỏ thông tin nhạy cảm
+      delete user.password;
+      delete user.verification_token;
+      delete user.verification_expires;
+
+      res.status(201).json({
+        status: "success",
+        message: "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.",
+        data: user,
+      });
+      
+    } catch (error) {
+      // Nếu có lỗi và đã upload file, xóa file đã upload
+      if (uploadedFileName) {
+        await deleteUploadedFile(uploadedFileName);
+      }
+      
+      // Ném lại lỗi để middleware xử lý lỗi có thể bắt được
+      throw error;
     }
-
-    // Mã hóa mật khẩu với salt
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Tạo verification token
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 giờ
-
-    // Tạo user mới
-    const user = await User.create({
-      email,
-      password: hashedPassword,
-      full_name,
-      role,
-      is_active: false,
-      verification_token: verificationToken,
-      verification_expires: verificationExpires,
-    });
-
-    // Gửi email xác thực
-    await emailService.sendVerificationEmail(email, verificationToken);
-
-    // Loại bỏ thông tin nhạy cảm
-    delete user.password;
-    delete user.verification_token;
-    delete user.verification_expires;
-
-    res.status(201).json({
-      status: "success",
-      message:
-        "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.",
-      data: user,
-    });
   };
 
   validateUserData = async (data) => {

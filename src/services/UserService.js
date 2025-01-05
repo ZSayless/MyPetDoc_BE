@@ -1,11 +1,19 @@
 const ApiError = require("../exceptions/ApiError");
 const User = require("../models/User");
+const bcrypt = require("bcrypt");
 
 class UserService {
   async createUser(userData) {
     if (await User.isEmailTaken(userData.email)) {
       throw new ApiError(400, "Email đã được sử dụng");
     }
+
+    // Nếu có password, hash password
+    if (userData.password) {
+      const salt = await bcrypt.genSalt(10);
+      userData.password = await bcrypt.hash(userData.password, salt);
+    }
+
     return User.create(userData);
   }
 
@@ -36,10 +44,17 @@ class UserService {
   async updateUser(id, updateData) {
     const user = await this.getUserById(id);
 
+    // Kiểm tra email mới có bị trùng không
     if (updateData.email && updateData.email !== user.email) {
       if (await User.isEmailTaken(updateData.email, id)) {
         throw new ApiError(400, "Email đã được sử dụng");
       }
+    }
+
+    // Nếu có cập nhật password, hash password mới
+    if (updateData.password) {
+      const salt = await bcrypt.genSalt(10);
+      updateData.password = await bcrypt.hash(updateData.password, salt);
     }
 
     return User.update(id, updateData);

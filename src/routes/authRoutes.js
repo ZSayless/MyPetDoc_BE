@@ -1,16 +1,17 @@
 const express = require("express");
 const passport = require("passport");
-const authController = require("../controllers/authController");
+const authController = require("../controllers/AuthController");
 const asyncHandler = require("../utils/asyncHandler");
 const {
   validateRegister,
   validateLogin,
 } = require("../middleware/validateAuth");
-
+const { handleUploadAvatar } = require("../middleware/uploadMiddleware");
 const router = express.Router();
 
 router.post(
   "/register",
+  handleUploadAvatar,
   validateRegister,
   asyncHandler(authController.register)
 );
