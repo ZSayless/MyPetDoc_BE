@@ -286,14 +286,17 @@ class PetGalleryService {
     // Validate pet_type
     if (!isUpdate && !data.pet_type) {
       errors.push("Loại thú cưng là bắt buộc");
-    } else if (data.pet_type && !["DOG", "CAT", "OTHER"].includes(data.pet_type)) {
+    } else if (
+      data.pet_type &&
+      !["DOG", "CAT", "OTHER"].includes(data.pet_type)
+    ) {
       errors.push("Loại thú cưng không hợp lệ (DOG, CAT, OTHER)");
     }
 
     // Validate tags nếu có
     if (data.tags) {
-      const tags = data.tags.split(",").map(tag => tag.trim());
-      if (tags.some(tag => tag.length < 2)) {
+      const tags = data.tags.split(",").map((tag) => tag.trim());
+      if (tags.some((tag) => tag.length < 2)) {
         errors.push("Mỗi tag phải có ít nhất 2 ký tự");
       }
       if (tags.length > 5) {
@@ -303,11 +306,12 @@ class PetGalleryService {
 
     // Validate file type và size nếu có file
     if (file) {
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
       if (!allowedTypes.includes(file.mimetype)) {
         errors.push("Chỉ chấp nhận file ảnh (jpg, png, gif)");
       }
-      if (file.size > 5 * 1024 * 1024) { // 5MB
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB
         errors.push("Kích thước ảnh không được vượt quá 5MB");
       }
     }
@@ -410,56 +414,24 @@ class PetGalleryService {
   // Xóa comment
   async deleteComment(commentId, userId, isAdmin = false) {
     try {
-      // Kiểm tra comment tồn tại
-      const [comment] = await PetGalleryComment.query(
-        `SELECT c.*, p.user_id as post_owner_id 
-         FROM pet_gallery_comments c
-         LEFT JOIN pet_gallery p ON c.gallery_id = p.id
-         WHERE c.id = ?`,
-        [Number(commentId)]
+      const result = await PetGalleryComment.deleteWithReports(
+        commentId,
+        userId,
+        isAdmin
       );
 
-      if (!comment) {
-        throw new ApiError(404, "Không tìm thấy bình luận");
+      if (!result) {
+        throw new ApiError(500, "Không thể xóa bình luận");
       }
-
-      // Kiểm tra quyền xóa
-      const canDelete =
-        isAdmin || // Admin có thể xóa mọi comment
-        userId === comment.user_id || // Người viết comment
-        userId === comment.post_owner_id; // Chủ bài viết
-
-      if (!canDelete) {
-        throw new ApiError(403, "Bạn không có quyền xóa bình luận này");
-      }
-
-      // Nếu là comment gốc, xóa tất cả replies
-      if (!comment.parent_id) {
-        await PetGalleryComment.query(
-          `DELETE FROM pet_gallery_comments WHERE parent_id = ?`,
-          [Number(commentId)]
-        );
-      }
-
-      // Xóa comment
-      await PetGalleryComment.query(
-        `DELETE FROM pet_gallery_comments WHERE id = ?`,
-        [Number(commentId)]
-      );
-
-      // Cập nhật số lượng comments trong bài viết
-      await this.updatePostCommentCount(comment.gallery_id);
 
       return true;
     } catch (error) {
-      console.error("Delete comment error:", error);
-      console.error("Error details:", {
-        commentId,
-        userId,
-        isAdmin,
-        message: error.message,
-        stack: error.stack,
-      });
+      if (error.message === "Không tìm thấy bình luận") {
+        throw new ApiError(404, error.message);
+      }
+      if (error.message === "Không có quyền xóa bình luận này") {
+        throw new ApiError(403, error.message);
+      }
       throw error;
     }
   }
@@ -482,6 +454,48 @@ class PetGalleryService {
       return true;
     } catch (error) {
       console.error("Update post comment count error:", error);
+      throw error;
+    }
+  }
+
+  // Báo cáo comment
+  async reportComment(commentId, reportData, userId) {
+    try {
+      // Kiểm tra comment tồn tại
+      const [comment] = await PetGalleryComment.query(
+        "SELECT * FROM pet_gallery_comments WHERE id = ? AND is_deleted = 0",
+        [commentId]
+      );
+
+      if (!comment) {
+        throw new ApiError(404, "Không tìm thấy bình luận");
+      }
+
+      // Kiểm tra user đã báo cáo comment này chưa
+      const hasReported = await PetGalleryComment.hasUserReported(
+        userId,
+        commentId
+      );
+      if (hasReported) {
+        throw new ApiError(400, "Bạn đã báo cáo bình luận này rồi");
+      }
+
+      // Thêm thông tin người báo cáo
+      const reportWithUser = {
+        reported_by: userId,
+        reason: reportData.reason || "Không có lý do",
+      };
+
+      // Thực hiện báo cáo
+      const result = await PetGalleryComment.report(commentId, reportWithUser);
+
+      return {
+        success: true,
+        message: "Đã báo cáo bình luận thành công",
+        data: result,
+      };
+    } catch (error) {
+      console.error("Report comment error:", error);
       throw error;
     }
   }

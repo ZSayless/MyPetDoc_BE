@@ -1,5 +1,6 @@
 const BaseModel = require("./BaseModel");
 const convertBitToBoolean = require("../utils/convertBitToBoolean");
+const ReportReason = require("./ReportReason");
 
 class PetGalleryComment extends BaseModel {
   static tableName = "pet_gallery_comments";
@@ -154,6 +155,144 @@ class PetGalleryComment extends BaseModel {
       return comment;
     } catch (error) {
       console.error("Get comment detail error:", error);
+      throw error;
+    }
+  }
+
+  // Báo cáo comment
+  static async report(commentId, reportData) {
+    try {
+      // Kiểm tra dữ liệu đầu vào
+      if (!commentId || !reportData.reported_by || !reportData.reason) {
+        throw new Error("Thiếu thông tin báo cáo");
+      }
+
+      // Kiểm tra comment tồn tại
+      const [comment] = await this.query(
+        `SELECT * FROM ${this.tableName} WHERE id = ? AND is_deleted = 0`,
+        [commentId]
+      );
+
+      if (!comment) {
+        throw new ApiError(404, "Không tìm thấy bình luận");
+      }
+
+      // Thêm báo cáo vào bảng report_reasons
+      const reportResult = await ReportReason.create({
+        pet_gallery_comment_id: commentId,
+        reported_by: reportData.reported_by,
+        reason: reportData.reason,
+        review_id: null,
+        pet_post_comment_id: null,
+      });
+
+      // Cập nhật trạng thái is_reported của comment
+      await this.query(
+        `UPDATE ${this.tableName} SET is_reported = 1 WHERE id = ?`,
+        [commentId]
+      );
+
+      return {
+        comment_id: commentId,
+        report_id: reportResult,
+        reported_by: reportData.reported_by,
+        reason: reportData.reason,
+        created_at: new Date(),
+      };
+    } catch (error) {
+      console.error("Report comment error:", error);
+      throw error;
+    }
+  }
+
+  // Kiểm tra user đã báo cáo comment chưa
+  static async hasUserReported(userId, commentId) {
+    try {
+      return await ReportReason.hasUserReported(userId, null, commentId);
+    } catch (error) {
+      console.error("Check user reported error:", error);
+      throw error;
+    }
+  }
+
+  // Xóa comment và các báo cáo liên quan
+  static async deleteWithReports(commentId, userId = null, isAdmin = false) {
+    try {
+      // Lấy thông tin comment
+      const [comment] = await this.query(
+        `SELECT c.*, g.user_id as post_owner_id 
+         FROM ${this.tableName} c
+         LEFT JOIN pet_gallery g ON c.gallery_id = g.id
+         WHERE c.id = ?`,
+        [commentId]
+      );
+
+      if (!comment) {
+        throw new Error("Không tìm thấy bình luận");
+      }
+
+      // Kiểm tra quyền xóa nếu không phải admin
+      if (!isAdmin) {
+        const canDelete =
+          userId === comment.user_id || // Người viết comment
+          userId === comment.post_owner_id; // Chủ bài viết
+
+        if (!canDelete) {
+          throw new Error("Không có quyền xóa bình luận này");
+        }
+      }
+
+      // Xóa các báo cáo của comment này
+      await this.query(
+        `DELETE FROM report_reasons WHERE pet_gallery_comment_id = ?`,
+        [Number(commentId)]
+      );
+
+      // Nếu là comment gốc, xử lý replies
+      if (!comment.parent_id) {
+        // Lấy danh sách replies
+        const replies = await this.query(
+          `SELECT id FROM ${this.tableName} WHERE parent_id = ?`,
+          [Number(commentId)]
+        );
+
+        if (replies.length > 0) {
+          const replyIds = replies.map((reply) => reply.id);
+
+          // Xóa báo cáo của replies
+          await this.query(
+            `DELETE FROM report_reasons WHERE pet_gallery_comment_id IN (?)`,
+            [replyIds]
+          );
+
+          // Xóa replies
+          await this.query(
+            `DELETE FROM ${this.tableName} WHERE parent_id = ?`,
+            [Number(commentId)]
+          );
+        }
+      }
+
+      // Xóa comment
+      await this.query(`DELETE FROM ${this.tableName} WHERE id = ?`, [
+        Number(commentId),
+      ]);
+
+      // Cập nhật số lượng comments trong bài viết
+      await this.query(
+        `UPDATE pet_gallery g 
+         SET comments_count = (
+           SELECT COUNT(*) 
+           FROM ${this.tableName} 
+           WHERE gallery_id = g.id AND is_deleted = 0
+         )
+         WHERE id = ?`,
+        [comment.gallery_id]
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Delete comment error:", error);
       throw error;
     }
   }

@@ -7,11 +7,11 @@ class PetGalleryController {
   createPost = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const file = req.file;
-    
+
     // Log để debug
-    console.log('Request body:', req.body);
-    console.log('File:', file);
-    console.log('Content-Type:', req.headers['content-type']);
+    console.log("Request body:", req.body);
+    console.log("File:", file);
+    console.log("Content-Type:", req.headers["content-type"]);
 
     // Kiểm tra file
     if (!file) {
@@ -198,6 +198,21 @@ class PetGalleryController {
       success: true,
       message: "Xóa bình luận thành công",
     });
+  });
+
+  // Báo cáo comment
+  reportComment = asyncHandler(async (req, res) => {
+    const commentId = req.params.commentId;
+    const userId = req.user.id;
+    const reportData = req.body;
+
+    const result = await PetGalleryService.reportComment(
+      commentId,
+      reportData,
+      userId
+    );
+
+    res.json(result);
   });
 }
 

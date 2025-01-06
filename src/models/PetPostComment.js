@@ -1,5 +1,7 @@
 const BaseModel = require("./BaseModel");
 const convertBitToBoolean = require("../utils/convertBitToBoolean");
+const ReportReason = require("./ReportReason");
+const ApiError = require("../exceptions/ApiError");
 
 class PetPostComment extends BaseModel {
   static tableName = "pet_post_comments";
@@ -170,31 +172,37 @@ class PetPostComment extends BaseModel {
 
   static async delete(commentId, userId, isAdmin = false) {
     try {
-      const [comment] = await this.query(
-        `SELECT user_id, post_id FROM ${this.tableName} WHERE id = ?`,
-        [commentId]
-      );
-
+      // Lấy thông tin comment
+      const comment = await this.getDetail(commentId);
       if (!comment) {
-        throw new Error("Không tìm thấy bình luận");
+        throw new ApiError(404, "Không tìm thấy bình luận");
       }
 
-      // Cho phép admin hoặc chủ bình luận xóa
-      if (!isAdmin && comment.user_id !== userId) {
-        throw new Error("Không có quyền xóa bình luận này");
+      // Kiểm tra quyền xóa nếu không phải admin
+      if (!isAdmin && userId) {
+        const canDelete = await this.checkDeletePermission(comment, userId);
+        if (!canDelete) {
+          throw new ApiError(403, "Không có quyền xóa bình luận này");
+        }
       }
 
-      const sql = `
-        DELETE FROM ${this.tableName}
-        WHERE id = ? OR parent_id = ?
-      `;
+      // Xóa các báo cáo của comment này
+      await this.deleteReportReasons(commentId);
 
-      await this.query(sql, [commentId, commentId]);
-
-      if (comment.post_id) {
-        const PetPost = require("./PetPost");
-        await PetPost.updateCounts(comment.post_id);
+      // Nếu là comment gốc, xử lý các replies
+      if (!comment.parent_id) {
+        const replies = await this.getReplies(commentId);
+        if (replies.length > 0) {
+          const replyIds = replies.map((reply) => reply.id);
+          await this.deleteRepliesReportReasons(replyIds);
+          await this.deleteReplies(commentId);
+        }
       }
+
+      // Xóa comment
+      await this.query(`DELETE FROM ${this.tableName} WHERE id = ?`, [
+        Number(commentId),
+      ]);
 
       return true;
     } catch (error) {
@@ -283,6 +291,61 @@ class PetPostComment extends BaseModel {
     }
   }
 
+  // Báo cáo comment
+  static async report(commentId, reportData) {
+    try {
+      // Kiểm tra dữ liệu đầu vào
+      if (!commentId || !reportData.reported_by || !reportData.reason) {
+        throw new Error("Thiếu thông tin báo cáo");
+      }
+      // kiểm tra comment tồn tại
+      const [comment] = await this.query(
+        `SELECT * FROM ${this.tableName} WHERE id = ? AND is_deleted = 0`,
+        [commentId]
+      );
+
+      if (!comment) {
+        throw new ApiError(404, "Không tìm thấy bình luận");
+      }
+
+      // Cập nhật trạng thái is_reported của comment
+      await this.query(
+        `UPDATE ${this.tableName} SET is_reported = 1 WHERE id = ?`,
+        [commentId]
+      );
+
+      // Thêm lý do báo cáo
+      const reportResult = await ReportReason.create({
+        pet_post_comment_id: commentId,
+        reported_by: reportData.reported_by,
+        reason: reportData.reason,
+        review_id: null,
+        pet_gallery_comment_id: null,
+      });
+
+      return {
+        comment_id: commentId,
+        report_id: reportResult,
+        reported_by: reportData.reported_by,
+        reason: reportData.reason,
+        created_at: new Date(),
+      };
+    } catch (error) {
+      console.error("Report comment error:", error);
+      throw error;
+    }
+  }
+
+  // Kiểm tra user đã báo cáo comment chưa
+  static async hasUserReported(userId, commentId) {
+    try {
+      return await ReportReason.hasUserReported(userId, null, commentId);
+    } catch (error) {
+      console.error("Check user reported error:", error);
+      throw error;
+    }
+  }
+
   static async getPostCommentsCount(postId) {
     try {
       const sql = `
@@ -297,6 +360,112 @@ class PetPostComment extends BaseModel {
       console.error("Get post comments count error:", error);
       throw error;
     }
+  }
+
+  // Xóa các báo cáo của một comment
+  static async deleteReportReasons(commentId) {
+    await this.query(
+      `DELETE FROM report_reasons WHERE pet_post_comment_id = ?`,
+      [Number(commentId)]
+    );
+  }
+
+  // Xóa các báo cáo của nhiều replies
+  static async deleteRepliesReportReasons(replyIds) {
+    await this.query(
+      `DELETE FROM report_reasons WHERE pet_post_comment_id IN (?)`,
+      [replyIds]
+    );
+  }
+
+  // Lấy danh sách replies của một comment
+  static async getReplies(commentId) {
+    return await this.query(
+      `SELECT id FROM ${this.tableName} WHERE parent_id = ?`,
+      [Number(commentId)]
+    );
+  }
+
+  // Xóa các replies của một comment
+  static async deleteReplies(commentId) {
+    await this.query(`DELETE FROM ${this.tableName} WHERE parent_id = ?`, [
+      Number(commentId),
+    ]);
+  }
+
+  // Xóa comment và các báo cáo liên quan
+  static async deleteWithReports(commentId, userId = null, isAdmin = false) {
+    try {
+      const comment = await this.getDetail(commentId);
+      if (!comment) {
+        throw new Error("Không tìm thấy bình luận");
+      }
+
+      // Kiểm tra quyền xóa nếu không phải admin
+      if (!isAdmin) {
+        const canDelete = await this.checkDeletePermission(userId, comment);
+        if (!canDelete) {
+          throw new Error("Không có quyền xóa bình luận này");
+        }
+      }
+
+      // Xóa các báo cáo của comment này
+      await this.query(
+        `DELETE FROM report_reasons WHERE pet_post_comment_id = ?`,
+        [Number(commentId)]
+      );
+
+      // Nếu là comment gốc, xử lý replies
+      if (!comment.parent_id) {
+        await this.deleteRepliesWithReports(commentId);
+      }
+
+      // Xóa comment
+      await this.query(`DELETE FROM ${this.tableName} WHERE id = ?`, [
+        Number(commentId),
+      ]);
+
+      return true;
+    } catch (error) {
+      console.error("Delete comment error:", error);
+      throw error;
+    }
+  }
+
+  // Xóa replies và báo cáo của chúng
+  static async deleteRepliesWithReports(parentId) {
+    const replies = await this.query(
+      `SELECT id FROM ${this.tableName} WHERE parent_id = ?`,
+      [Number(parentId)]
+    );
+
+    if (replies.length > 0) {
+      const replyIds = replies.map((reply) => reply.id);
+
+      // Xóa báo cáo của replies
+      await this.query(
+        `DELETE FROM report_reasons WHERE pet_post_comment_id IN (?)`,
+        [replyIds]
+      );
+
+      // Xóa replies
+      await this.query(`DELETE FROM ${this.tableName} WHERE parent_id = ?`, [
+        Number(parentId),
+      ]);
+    }
+  }
+
+  // Kiểm tra quyền xóa comment
+  static async checkDeletePermission(userId, comment) {
+    const [post] = await this.query(
+      `SELECT author_id as post_owner_id FROM pet_posts WHERE id = ?`,
+      [comment.post_id]
+    );
+
+    return (
+      userId === comment.user_id || // Người viết comment
+      (post && userId === post.post_owner_id)
+    ); // Chủ bài viết
   }
 }
 

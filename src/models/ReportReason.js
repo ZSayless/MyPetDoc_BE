@@ -17,11 +17,17 @@ class ReportReason extends BaseModel {
     try {
       const sql = `
         INSERT INTO ${this.tableName} 
-        (review_id, reported_by, reason)
-        VALUES (?, ?, ?)
+        (review_id, reported_by, reason, pet_gallery_comment_id, pet_post_comment_id)
+        VALUES (?, ?, ?, ?, ?)
       `;
 
-      const params = [data.review_id, data.reported_by, data.reason];
+      const params = [
+        data.review_id,
+        data.reported_by,
+        data.reason,
+        data.pet_gallery_comment_id,
+        data.pet_post_comment_id,
+      ];
 
       const result = await this.query(sql, params);
       return result.insertId;
@@ -42,14 +48,36 @@ class ReportReason extends BaseModel {
     return await this.query(sql, [reviewId]);
   }
 
-  static async hasUserReported(userId, reviewId) {
-    const sql = `
-      SELECT COUNT(*) as count
-      FROM ${this.tableName}
-      WHERE reported_by = ? AND review_id = ?
-    `;
-    const [result] = await this.query(sql, [userId, reviewId]);
-    return result.count > 0;
+  static async hasUserReported(userId, reviewId, commentId) {
+    try {
+      const sql = `
+        SELECT COUNT(*) as count
+        FROM ${this.tableName}
+        WHERE reported_by = ? 
+        AND (
+          (review_id = ? AND ? IS NULL)
+          OR 
+          (pet_gallery_comment_id = ? AND ? IS NULL)
+          OR
+          (pet_post_comment_id = ? AND ? IS NULL)
+        )
+      `;
+
+      const [result] = await this.query(sql, [
+        userId,
+        reviewId,
+        commentId, // Cho review
+        commentId,
+        reviewId, // Cho comment
+        commentId,
+        reviewId, // Cho post comment
+      ]);
+
+      return result.count > 0;
+    } catch (error) {
+      console.error("Check user reported error:", error);
+      throw error;
+    }
   }
 
   static async resolve(id) {

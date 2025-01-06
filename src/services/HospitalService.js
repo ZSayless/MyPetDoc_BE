@@ -5,8 +5,8 @@ const hospitalImageService = require("./HospitalImageService");
 class HospitalService {
   async createHospital(hospitalData, userId, files = []) {
     try {
-      console.log("Creating hospital with data:", hospitalData);
-      console.log("User ID:", userId);
+      // console.log("Creating hospital with data:", hospitalData);
+      // console.log("User ID:", userId);
 
       // Kiểm tra tên bệnh viện đã tồn tại chưa
       if (await Hospital.isNameTaken(hospitalData.name)) {
@@ -16,15 +16,15 @@ class HospitalService {
       // Thêm thông tin người tạo
       hospitalData.created_by = userId;
 
-      console.log("Data to create:", hospitalData);
+      // console.log("Data to create:", hospitalData);
 
       // Tạo bệnh viện
       const result = await Hospital.create(hospitalData);
-      console.log("Hospital creation result:", result);
+      // console.log("Hospital creation result:", result);
 
       // Lấy ID của bệnh viện vừa tạo
       const hospitalId = result.insertId;
-      console.log("New hospital ID:", hospitalId);
+      // console.log("New hospital ID:", hospitalId);
 
       if (!hospitalId) {
         throw new ApiError(500, "Không thể tạo bệnh viện");

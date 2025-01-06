@@ -89,7 +89,7 @@ class ReviewService {
         throw new ApiError(400, "Bạn đã báo cáo đánh giá này rồi");
       }
 
-      // Thêm thông tin người báo cáo
+      // Chuẩn bị dữ liệu báo cáo
       const reportWithUser = {
         review_id: reviewId,
         reported_by: userId,
@@ -106,6 +106,7 @@ class ReviewService {
         data: result,
       };
     } catch (error) {
+      console.error("Report review error:", error);
       throw error;
     }
   }

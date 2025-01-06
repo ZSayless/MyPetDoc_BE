@@ -216,13 +216,19 @@ class Review extends BaseModel {
 
   // Báo cáo review
   static async report(reviewId, reportData) {
-    let connection;
     try {
+      // Kiểm tra dữ liệu đầu vào
+      if (!reviewId || !reportData.reported_by || !reportData.reason) {
+        throw new Error("Thiếu thông tin báo cáo");
+      }
+
       // Thêm báo cáo vào bảng report_reasons
       await ReportReason.create({
         review_id: reportData.review_id,
         reported_by: reportData.reported_by,
         reason: reportData.reason,
+        pet_gallery_comment_id: null,
+        pet_post_comment_id: null,
       });
 
       // Cập nhật trạng thái is_reported của review
@@ -231,10 +237,12 @@ class Review extends BaseModel {
         SET is_reported = 1
         WHERE id = ?
       `;
+      await this.query(updateReviewSql, [reviewId]);
 
       // Trả về review đã cập nhật
       return await this.findById(reviewId);
     } catch (error) {
+      console.error("Report review error:", error);
       throw error;
     }
   }
@@ -264,7 +272,12 @@ class Review extends BaseModel {
 
   // Kiểm tra user đã báo cáo review chưa
   static async hasUserReported(userId, reviewId) {
-    return await ReportReason.hasUserReported(userId, reviewId);
+    try {
+      return await ReportReason.hasUserReported(userId, reviewId, null);
+    } catch (error) {
+      console.error("Check user reported error:", error);
+      throw error;
+    }
   }
 
   // Kiểm tra user đã review bệnh viện chưa

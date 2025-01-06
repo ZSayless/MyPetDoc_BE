@@ -22,6 +22,8 @@ router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));
 // Tương tác cơ bản - cho tất cả user đã đăng nhập
 router.post("/posts/:id/like", PetGalleryController.toggleLike);
 router.post("/posts/:id/comments", PetGalleryController.addComment);
+// Thêm route báo cáo comment
+router.post("/comments/:commentId/report", PetGalleryController.reportComment);
 
 // Quản lý bài đăng của chính mình - cho tất cả user đã đăng nhập
 router.post(
@@ -40,17 +42,8 @@ router.put(
 
 router.delete("/posts/:id", PetGalleryController.deletePost);
 
-// Chỉ cho phép user xóa comment của chính mình
+// Chỉ cho phép user xóa comment của chính mình và admin có quyên xóa
 // (Controller sẽ kiểm tra user_id)
 router.delete("/comments/:commentId", PetGalleryController.deleteComment);
-
-// Routes đặc biệt cho ADMIN
-router.use("/admin", validateAuth(["ADMIN"]));
-
-// Admin có thể xóa bất kỳ bài đăng nào
-router.delete("/admin/posts/:id", PetGalleryController.deletePost);
-
-// Admin có thể xóa bất kỳ comment nào
-router.delete("/admin/comments/:commentId", PetGalleryController.deleteComment);
 
 module.exports = router;

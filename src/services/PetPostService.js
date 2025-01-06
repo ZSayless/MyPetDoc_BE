@@ -351,9 +351,24 @@ class PetPostService {
   // Xóa comment
   async deleteComment(commentId, userId, isAdmin = false) {
     try {
-      await PetPostComment.delete(commentId, userId, isAdmin);
+      const result = await PetPostComment.deleteWithReports(
+        commentId,
+        userId,
+        isAdmin
+      );
+
+      if (!result) {
+        throw new ApiError(500, "Không thể xóa bình luận");
+      }
+
       return true;
     } catch (error) {
+      if (error.message === "Không tìm thấy bình luận") {
+        throw new ApiError(404, error.message);
+      }
+      if (error.message === "Không có quyền xóa bình luận này") {
+        throw new ApiError(403, error.message);
+      }
       throw error;
     }
   }
@@ -475,6 +490,44 @@ class PetPostService {
       if (err.code !== "ENOENT") {
         console.error(`Lỗi khi xóa ảnh ${filename}:`, err);
       }
+    }
+  }
+
+  // Báo cáo comment
+  async reportComment(commentId, reportData, userId) {
+    try {
+      // Kiểm tra comment tồn tại
+      const comment = await PetPostComment.getDetail(commentId);
+      if (!comment) {
+        throw new ApiError(404, "Không tìm thấy bình luận");
+      }
+
+      // Kiểm tra user đã báo cáo comment này chưa
+      const hasReported = await PetPostComment.hasUserReported(
+        userId,
+        commentId
+      );
+      if (hasReported) {
+        throw new ApiError(400, "Bạn đã báo cáo bình luận này rồi");
+      }
+
+      // Thêm thông tin người báo cáo
+      const reportWithUser = {
+        reported_by: userId,
+        reason: reportData.reason || "Không có lý do",
+      };
+
+      // Thực hiện báo cáo
+      const result = await PetPostComment.report(commentId, reportWithUser);
+
+      return {
+        success: true,
+        message: "Đã báo cáo bình luận thành công",
+        data: result,
+      };
+    } catch (error) {
+      console.error("Report comment error:", error);
+      throw error;
     }
   }
 }

@@ -20,6 +20,13 @@ router.post("/:id/like", PetPostController.toggleLike);
 router.post("/:id/comments", PetPostController.addComment);
 router.delete("/comments/:commentId", PetPostController.deleteComment);
 
+// Thêm route báo cáo comment
+router.post(
+  "/comments/:commentId/report",
+  validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]),
+  PetPostController.reportComment
+);
+
 // Tạo router riêng cho admin routes
 const adminRouter = express.Router();
 

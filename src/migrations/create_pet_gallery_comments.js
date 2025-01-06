@@ -8,6 +8,7 @@ module.exports = async (connection) => {
         is_deleted BIT(1) DEFAULT 0,
         content TEXT NOT NULL,
         user_id BIGINT NOT NULL,
+        is_reported BIT(1) DEFAULT 0,
         gallery_id BIGINT NOT NULL,
         parent_id BIGINT DEFAULT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id),

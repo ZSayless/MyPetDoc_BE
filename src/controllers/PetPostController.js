@@ -226,6 +226,21 @@ class PetPostController {
       data: post,
     });
   });
+
+  // Báo cáo comment
+  reportComment = asyncHandler(async (req, res) => {
+    const commentId = req.params.commentId;
+    const userId = req.user.id;
+    const reportData = req.body;
+
+    const result = await PetPostService.reportComment(
+      commentId,
+      reportData,
+      userId
+    );
+
+    res.json(result);
+  });
 }
 
 module.exports = new PetPostController();

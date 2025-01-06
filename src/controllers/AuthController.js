@@ -9,7 +9,7 @@ class AuthController {
   // Đăng ký tài khoản
   register = async (req, res) => {
     let uploadedFileName = null;
-    
+
     try {
       const { email, password, full_name, role = "GENERAL_USER" } = req.body;
 
@@ -37,9 +37,9 @@ class AuthController {
       const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       // Xử lý avatar
-      const defaultAvatar = "/uploads/avatars/default-avatar.png";
+      const defaultAvatar = "default-avatar.png";
       let userAvatar = defaultAvatar;
-      
+
       if (uploadedFileName) {
         userAvatar = uploadedFileName;
       }
@@ -66,16 +66,16 @@ class AuthController {
 
       res.status(201).json({
         status: "success",
-        message: "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.",
+        message:
+          "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.",
         data: user,
       });
-      
     } catch (error) {
       // Nếu có lỗi và đã upload file, xóa file đã upload
       if (uploadedFileName) {
         await deleteUploadedFile(uploadedFileName);
       }
-      
+
       // Ném lại lỗi để middleware xử lý lỗi có thể bắt được
       throw error;
     }

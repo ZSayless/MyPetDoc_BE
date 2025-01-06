@@ -61,6 +61,7 @@ module.exports = async (connection) => {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         is_deleted BIT(1) DEFAULT 0,
         content TEXT NOT NULL,
+        is_reported BIT(1) DEFAULT 0,
         user_id BIGINT NOT NULL,
         post_id BIGINT NOT NULL,
         parent_id BIGINT DEFAULT NULL,
