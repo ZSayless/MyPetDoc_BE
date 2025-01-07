@@ -12,56 +12,41 @@ class FavoriteService {
         throw new ApiError(404, "Không tìm thấy bệnh viện");
       }
 
-      // Kiểm tra bệnh viện có bị xóa hoặc không active
-      if (hospital.is_deleted || !hospital.is_active) {
-        throw new ApiError(400, "Bệnh viện này không khả dụng");
-      }
-
-      // Toggle favorite và lấy trạng thái mới
-      const hasFavorited = await Favorite.toggleFavorite(userId, hospitalId);
+      // Thực hiện toggle favorite
+      const isFavorited = await Favorite.toggleFavorite(userId, hospitalId);
 
       return {
         success: true,
-        message: hasFavorited
+        message: isFavorited
           ? "Đã thêm vào danh sách yêu thích"
           : "Đã xóa khỏi danh sách yêu thích",
-        data: {
-          hasFavorited,
-        },
+        isFavorited,
       };
     } catch (error) {
-      console.error("Toggle favorite error:", error);
       throw error;
     }
   }
 
   // Lấy danh sách bệnh viện yêu thích của user
-  async getUserFavorites(userId, options = {}) {
+  async getUserFavorites(userId, page = 1, limit = 10) {
     try {
-      const result = await Favorite.getUserFavorites(userId, options);
-
-      // Thêm trường hasFavorited = true cho tất cả kết quả
-      const favoritesWithStatus = result.favorites.map((hospital) => ({
-        ...hospital,
-        hasFavorited: true,
-      }));
+      const result = await Favorite.getUserFavorites(userId, { page, limit });
 
       return {
-        success: true,
-        message: "Lấy danh sách yêu thích thành công",
-        data: {
-          favorites: favoritesWithStatus,
-          pagination: result.pagination,
+        ...result,
+        pagination: {
+          ...result.pagination,
+          page: Number(page),
+          limit: Number(limit),
         },
       };
     } catch (error) {
-      console.error("Get user favorites error:", error);
       throw error;
     }
   }
 
   // Lấy danh sách user đã favorite một bệnh viện
-  async getHospitalFavorites(hospitalId, options = {}) {
+  async getHospitalFavorites(hospitalId, page = 1, limit = 10) {
     try {
       // Kiểm tra bệnh viện tồn tại
       const hospital = await Hospital.findById(hospitalId);
@@ -69,18 +54,20 @@ class FavoriteService {
         throw new ApiError(404, "Không tìm thấy bệnh viện");
       }
 
-      const result = await Favorite.getHospitalFavorites(hospitalId, options);
+      const result = await Favorite.getHospitalFavorites(hospitalId, {
+        page,
+        limit,
+      });
 
       return {
-        success: true,
-        message: "Lấy danh sách người dùng yêu thích thành công",
-        data: {
-          users: result.users,
-          pagination: result.pagination,
+        ...result,
+        pagination: {
+          ...result.pagination,
+          page: Number(page),
+          limit: Number(limit),
         },
       };
     } catch (error) {
-      console.error("Get hospital favorites error:", error);
       throw error;
     }
   }
@@ -88,79 +75,47 @@ class FavoriteService {
   // Kiểm tra user đã favorite bệnh viện chưa
   async checkUserFavorite(userId, hospitalId) {
     try {
-      const hasFavorited = await Favorite.hasUserFavorited(userId, hospitalId);
-
+      const isFavorited = await Favorite.hasUserFavorited(userId, hospitalId);
       return {
-        success: true,
-        data: {
-          hasFavorited,
-        },
+        isFavorited,
       };
     } catch (error) {
-      console.error("Check user favorite error:", error);
       throw error;
     }
   }
 
-  // Lấy số lượng favorite của bệnh viện
+  // Lấy số lượng favorite của một bệnh viện
   async getHospitalFavoriteCount(hospitalId) {
     try {
-      // Kiểm tra bệnh viện tồn tại
-      const hospital = await Hospital.findById(hospitalId);
-      if (!hospital) {
-        throw new ApiError(404, "Không tìm thấy bệnh viện");
-      }
-
       const count = await Favorite.countHospitalFavorites(hospitalId);
-
       return {
-        success: true,
-        data: {
-          count,
-        },
+        count,
       };
     } catch (error) {
-      console.error("Get hospital favorite count error:", error);
       throw error;
     }
   }
 
-  // Xóa tất cả favorite của một user (dùng khi xóa tài khoản)
-  async removeAllUserFavorites(userId) {
+  // Lấy số lượng favorite của một user
+  async getUserFavoriteCount(userId) {
     try {
-      await Favorite.query(
-        `UPDATE ${Favorite.tableName} 
-         SET is_deleted = 1 
-         WHERE user_id = ?`,
-        [userId]
-      );
-
+      const count = await Favorite.countUserFavorites(userId);
       return {
-        success: true,
-        message: "Đã xóa tất cả favorite của user",
+        count,
       };
     } catch (error) {
-      console.error("Remove all user favorites error:", error);
       throw error;
     }
   }
 
-  // Xóa tất cả favorite của một bệnh viện (dùng khi xóa bệnh viện)
-  async removeAllHospitalFavorites(hospitalId) {
+  // Lấy danh sách favorite mới nhất
+  async getLatestFavorites(limit = 10) {
     try {
-      await Favorite.query(
-        `UPDATE ${Favorite.tableName} 
-         SET is_deleted = 1 
-         WHERE hospital_id = ?`,
-        [hospitalId]
-      );
-
+      const favorites = await Favorite.getLatestFavorites(limit);
       return {
-        success: true,
-        message: "Đã xóa tất cả favorite của bệnh viện",
+        favorites,
       };
     } catch (error) {
-      console.error("Remove all hospital favorites error:", error);
       throw error;
     }
   }

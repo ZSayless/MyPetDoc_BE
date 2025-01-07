@@ -6,9 +6,9 @@ const path = require("path");
 class HospitalImageService {
   async addImages(hospitalId, files, userId) {
     try {
-      console.log("Adding images for hospital:", hospitalId);
-      console.log("Files:", files);
-      console.log("User ID:", userId);
+      // console.log("Adding images for hospital:", hospitalId);
+      // console.log("Files:", files);
+      // console.log("User ID:", userId);
 
       if (!hospitalId) {
         throw new ApiError(400, "hospital_id is required");
@@ -24,9 +24,9 @@ class HospitalImageService {
           created_by: userId || null,
         };
 
-        console.log("Creating image with data:", imageData);
+        // console.log("Creating image with data:", imageData);
         const image = await HospitalImage.create(imageData);
-        console.log("Image created:", image);
+        // console.log("Image created:", image);
         images.push(image);
       }
       return images;
@@ -42,19 +42,26 @@ class HospitalImageService {
     }
   }
 
-  async deleteImage(imageId) {
+  async deleteImage(imageId, hospitalId) {
     try {
-      // Nếu imageId là string (tên file), tìm bằng image_url
+      // Tìm ảnh theo id
       let image;
       if (typeof imageId === "string") {
         image = await HospitalImage.findOne({ image_url: imageId });
       } else {
-        // Nếu là số, tìm bằng id
         image = await HospitalImage.findById(imageId);
       }
 
       if (!image) {
         throw new ApiError(404, "Không tìm thấy ảnh");
+      }
+
+      // Kiểm tra ảnh có thuộc về bệnh viện được chỉ định không
+      if (image.hospital_id !== hospitalId) {
+        throw new ApiError(
+          403,
+          "Không thể xóa ảnh không thuộc về bệnh viện này"
+        );
       }
 
       // Tạo đường dẫn đầy đủ đến file ảnh
@@ -63,14 +70,10 @@ class HospitalImageService {
         "../../uploads/hospitals",
         image.image_url
       );
-      console.log("Deleting image at path:", imagePath);
 
       // Kiểm tra và xóa file
       if (fs.existsSync(imagePath)) {
         fs.unlinkSync(imagePath);
-        console.log("Đã xóa file ảnh thành công");
-      } else {
-        console.log("File ảnh không tồn tại:", imagePath);
       }
 
       // Xóa record trong database

@@ -12,6 +12,7 @@ const bannerRoutes = require("./bannerRoutes");
 const faqRoutes = require("./faqRoutes");
 const petGalleryRoutes = require("./petGalleryRoutes");
 const petPostRoutes = require("./petPostRoutes");
+const favoriteRoutes = require("./favoriteRoutes");
 
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
@@ -25,5 +26,6 @@ router.use("/banners", bannerRoutes);
 router.use("/faqs", faqRoutes);
 router.use("/community", petGalleryRoutes);
 router.use("/posts", petPostRoutes);
+router.use("/favorites", favoriteRoutes);
 
 module.exports = router;

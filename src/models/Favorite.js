@@ -83,13 +83,25 @@ class Favorite extends BaseModel {
       const { page = 1, limit = 10 } = options;
       const offset = (page - 1) * limit;
 
+      // // Log để debug
+      // console.log("Getting favorites for user:", userId);
+      // console.log("Page:", page, "Limit:", limit, "Offset:", offset);
+
       const sql = `
         SELECT 
-          h.*,
+          h.id,
+          h.name,
+          h.address,
+          h.phone,
+          h.email,
+          h.description,
+          h.operating_hours,
+          h.specialties,
+          h.is_active,
           f.created_at as favorited_at,
-          (SELECT image_url 
-           FROM hospital_images 
-           WHERE hospital_id = h.id 
+          (SELECT hi.image_url 
+           FROM hospital_images hi 
+           WHERE hi.hospital_id = h.id 
            LIMIT 1) as thumbnail
         FROM ${this.tableName} f
         JOIN hospitals h ON f.hospital_id = h.id
@@ -97,7 +109,7 @@ class Favorite extends BaseModel {
         AND f.is_deleted = 0
         AND h.is_deleted = 0
         ORDER BY f.created_at DESC
-        LIMIT ? OFFSET ?
+        LIMIT ${limit} OFFSET ${offset}
       `;
 
       const countSql = `
@@ -109,16 +121,29 @@ class Favorite extends BaseModel {
         AND h.is_deleted = 0
       `;
 
+      // // Log câu query để debug
+      // console.log("SQL Query:", sql);
+      // console.log("Count SQL Query:", countSql);
+      // console.log("Parameters:", [userId]);
+
       const [favorites, [countResult]] = await Promise.all([
-        this.query(sql, [userId, limit, offset]),
+        this.query(sql, [userId]),
         this.query(countSql, [userId]),
       ]);
 
+      // // Log kết quả để debug
+      // console.log("Found favorites:", favorites);
+      // console.log("Count result:", countResult);
+
+      // Convert bit to boolean for is_active
+      const formattedFavorites = favorites.map((hospital) => ({
+        ...hospital,
+        is_active: hospital.is_active === 1,
+      }));
+
       return {
-        favorites,
+        favorites: formattedFavorites,
         pagination: {
-          page: Number(page),
-          limit: Number(limit),
           total: countResult.total,
           totalPages: Math.ceil(countResult.total / limit),
         },
@@ -147,7 +172,7 @@ class Favorite extends BaseModel {
         AND f.is_deleted = 0
         AND u.is_deleted = 0
         ORDER BY f.created_at DESC
-        LIMIT ? OFFSET ?
+        LIMIT ${limit} OFFSET ${offset}
       `;
 
       const countSql = `
@@ -159,16 +184,23 @@ class Favorite extends BaseModel {
         AND u.is_deleted = 0
       `;
 
+      // // Log để debug
+      // console.log("SQL Query:", sql);
+      // console.log("Count SQL Query:", countSql);
+      // console.log("Parameters:", [hospitalId]);
+
       const [users, [countResult]] = await Promise.all([
-        this.query(sql, [hospitalId, limit, offset]),
+        this.query(sql, [hospitalId]),
         this.query(countSql, [hospitalId]),
       ]);
+
+      // Log kết quả
+      // console.log("Found users:", users);
+      // console.log("Count result:", countResult);
 
       return {
         users,
         pagination: {
-          page: Number(page),
-          limit: Number(limit),
           total: countResult.total,
           totalPages: Math.ceil(countResult.total / limit),
         },
@@ -192,6 +224,51 @@ class Favorite extends BaseModel {
       return result.total;
     } catch (error) {
       console.error("Count hospital favorites error:", error);
+      throw error;
+    }
+  }
+
+  // Lấy số lượng favorite của một user
+  static async countUserFavorites(userId) {
+    try {
+      const sql = `
+        SELECT COUNT(*) as total
+        FROM ${this.tableName} f
+        JOIN hospitals h ON f.hospital_id = h.id
+        WHERE f.user_id = ? 
+        AND f.is_deleted = 0
+        AND h.is_deleted = 0
+      `;
+
+      const [result] = await this.query(sql, [userId]);
+      return result.total;
+    } catch (error) {
+      console.error("Count user favorites error:", error);
+      throw error;
+    }
+  }
+
+  // Lấy danh sách favorite mới nhất
+  static async getLatestFavorites(limit = 10) {
+    try {
+      const sql = `
+        SELECT 
+          h.name as hospital_name,
+          u.full_name as user_name,
+          f.created_at as favorited_at
+        FROM ${this.tableName} f
+        JOIN hospitals h ON f.hospital_id = h.id
+        JOIN users u ON f.user_id = u.id
+        WHERE f.is_deleted = 0
+        AND h.is_deleted = 0
+        AND u.is_deleted = 0
+        ORDER BY f.created_at DESC
+        LIMIT ${limit}
+      `;
+
+      return await this.query(sql, [limit]);
+    } catch (error) {
+      console.error("Get latest favorites error:", error);
       throw error;
     }
   }

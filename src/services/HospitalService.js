@@ -1,6 +1,9 @@
 const ApiError = require("../exceptions/ApiError");
 const Hospital = require("../models/Hospital");
 const hospitalImageService = require("./HospitalImageService");
+const HospitalImage = require("../models/HospitalImage");
+const fs = require("fs");
+const path = require("path");
 
 class HospitalService {
   async createHospital(hospitalData, userId, files = []) {
@@ -146,7 +149,13 @@ class HospitalService {
     }
   }
 
-  async updateHospital(id, updateData, files = [], imagesToDelete = []) {
+  async updateHospital(
+    id,
+    updateData,
+    files = [],
+    imagesToDelete = [],
+    userId
+  ) {
     try {
       const hospital = await this.getHospitalById(id);
 
@@ -162,7 +171,7 @@ class HospitalService {
         console.log("Deleting old images:", imagesToDelete);
         for (const imageId of imagesToDelete) {
           try {
-            await hospitalImageService.deleteImage(imageId);
+            await hospitalImageService.deleteImage(imageId, id);
             console.log(`Deleted image ${imageId} successfully`);
           } catch (error) {
             console.error(`Error deleting image ${imageId}:`, error);
@@ -175,11 +184,7 @@ class HospitalService {
       if (files && files.length > 0) {
         try {
           console.log("Adding new images for hospital:", id);
-          newImages = await hospitalImageService.addImages(
-            id,
-            files,
-            updateData.updated_by
-          );
+          newImages = await hospitalImageService.addImages(id, files, userId);
           console.log("New images added:", newImages);
         } catch (imageError) {
           console.error("Error adding new images:", imageError);
@@ -223,21 +228,33 @@ class HospitalService {
 
   async hardDelete(id) {
     try {
-      const hospital = await this.getHospitalById(id);
+      // Lấy danh sách ảnh của bệnh viện trước khi xóa
+      const images = await HospitalImage.findByHospitalId(id);
 
-      // Xóa tất cả ảnh của bệnh viện
-      const images = await hospitalImageService.getHospitalImages(id);
+      // Xóa các file ảnh vật lý
       for (const image of images) {
-        try {
-          await hospitalImageService.deleteImage(image.id);
-        } catch (error) {
-          console.error(`Error deleting image ${image.id}:`, error);
+        const imagePath = path.join(
+          __dirname,
+          "../../uploads/hospitals",
+          image.image_url
+        );
+
+        // Kiểm tra và xóa file
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+          console.log(`Deleted file: ${imagePath}`);
         }
       }
 
-      // Xóa bệnh viện
+      // Xóa bệnh viện (cascade sẽ tự động xóa các records trong hospital_images)
       await Hospital.hardDelete(id);
+
+      return {
+        status: "success",
+        message: "Đã xóa vĩnh viễn bệnh viện và các ảnh liên quan",
+      };
     } catch (error) {
+      console.error("Error in hardDelete hospital:", error);
       throw error;
     }
   }

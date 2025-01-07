@@ -89,12 +89,15 @@ class HospitalController {
       // Loại bỏ imageIdsToDelete khỏi dữ liệu cập nhật
       const { imageIdsToDelete: removed, ...updateData } = req.body;
 
+      updateData.created_by = req.user.id;
+
       // Cập nhật thông tin bệnh viện
       const updatedHospital = await HospitalService.updateHospital(
         req.params.id,
         updateData,
         req.files || [], // Ảnh mới
-        imageIdsToDelete // Mảng đã được parse từ JSON string
+        imageIdsToDelete,
+        req.user.id
       );
 
       res.json({
