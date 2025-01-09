@@ -3,28 +3,28 @@ const ApiError = require("../exceptions/ApiError");
 const emailService = require("../services/emailService");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
-const { deleteUploadedFile } = require("../middleware/uploadMiddleware");
+const cloudinary = require("cloudinary");
 
 class AuthController {
   // Đăng ký tài khoản
   register = async (req, res) => {
-    let uploadedFileName = null;
-
     try {
       const { email, password, full_name, role = "GENERAL_USER" } = req.body;
-
-      // Lưu tên file đã upload (nếu có)
-      if (req.file) {
-        uploadedFileName = req.file.filename;
-      } else if (req.files && req.files.avatar && req.files.avatar[0]) {
-        uploadedFileName = req.files.avatar[0].filename;
-      }
 
       // Validate dữ liệu
       await this.validateUserData({ email, password, full_name });
 
       // Kiểm tra email đã tồn tại
       if (await User.isEmailTaken(email)) {
+        // Nếu có file đã upload, xóa file trên Cloudinary
+        if (req.file) {
+          try {
+            const publicId = `avatars/${req.file.filename}`;
+            await cloudinary.uploader.destroy(publicId);
+          } catch (deleteError) {
+            console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+          }
+        }
         throw new ApiError(400, "Email đã được sử dụng");
       }
 
@@ -40,8 +40,8 @@ class AuthController {
       const defaultAvatar = "default-avatar.png";
       let userAvatar = defaultAvatar;
 
-      if (uploadedFileName) {
-        userAvatar = uploadedFileName;
+      if (req.file) {
+        userAvatar = req.file.path; // Cloudinary trả về URL trong file.path
       }
 
       // Tạo user mới
@@ -71,12 +71,15 @@ class AuthController {
         data: user,
       });
     } catch (error) {
-      // Nếu có lỗi và đã upload file, xóa file đã upload
-      if (uploadedFileName) {
-        await deleteUploadedFile(uploadedFileName);
+      // Nếu có lỗi và đã upload file, xóa file trên Cloudinary
+      if (req.file) {
+        try {
+          const publicId = `avatars/${req.file.filename}`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+        }
       }
-
-      // Ném lại lỗi để middleware xử lý lỗi có thể bắt được
       throw error;
     }
   };

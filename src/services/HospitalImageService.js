@@ -1,7 +1,6 @@
 const HospitalImage = require("../models/HospitalImage");
 const ApiError = require("../exceptions/ApiError");
-const fs = require("fs");
-const path = require("path");
+const cloudinary = require("../config/cloudinary");
 
 class HospitalImageService {
   async addImages(hospitalId, files, userId) {
@@ -20,7 +19,7 @@ class HospitalImageService {
 
         const imageData = {
           hospital_id: hospitalId,
-          image_url: path.basename(file.path),
+          image_url: file.path, // Cloudinary URL
           created_by: userId || null,
         };
 
@@ -31,13 +30,17 @@ class HospitalImageService {
       }
       return images;
     } catch (error) {
-      console.error("Error in addImages:", error);
-      // Xóa các file đã upload nếu có lỗi
-      files.forEach((file) => {
-        if (fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
+      // Nếu có lỗi, xóa các ảnh đã upload lên Cloudinary
+      for (const file of files) {
+        if (file.path) {
+          const publicId = `hospitals/${file.filename}`;
+          try {
+            await cloudinary.uploader.destroy(publicId);
+          } catch (deleteError) {
+            console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+          }
         }
-      });
+      }
       throw error;
     }
   }
@@ -56,24 +59,37 @@ class HospitalImageService {
         throw new ApiError(404, "Không tìm thấy ảnh");
       }
 
-      // Kiểm tra ảnh có thuộc về bệnh viện được chỉ định không
-      if (image.hospital_id !== hospitalId) {
+      // Chuyển đổi sang number để so sánh
+      const imageHospitalId = parseInt(image.hospital_id);
+      const targetHospitalId = parseInt(hospitalId);
+
+      // So sánh sau khi đã chuyển đổi kiểu dữ liệu
+      if (imageHospitalId !== targetHospitalId) {
+        console.log(
+          "Image hospital ID:",
+          imageHospitalId,
+          "Target hospital ID:",
+          targetHospitalId
+        );
         throw new ApiError(
           403,
-          "Không thể xóa ảnh không thuộc về bệnh viện này"
+          "Không th� xóa ảnh không thuộc về bệnh viện này"
         );
       }
 
-      // Tạo đường dẫn đầy đủ đến file ảnh
-      const imagePath = path.join(
-        __dirname,
-        "../../uploads/hospitals",
-        image.image_url
-      );
+      // Xóa ảnh trên Cloudinary
+      if (image.image_url) {
+        const urlParts = image.image_url.split("/");
+        const publicId = `hospitals/${
+          urlParts[urlParts.length - 1].split(".")[0]
+        }`;
 
-      // Kiểm tra và xóa file
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
+        try {
+          await cloudinary.uploader.destroy(publicId);
+          console.log(`Đã xóa ảnh: ${publicId}`);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+        }
       }
 
       // Xóa record trong database
@@ -90,8 +106,7 @@ class HospitalImageService {
       const images = await HospitalImage.findByHospitalId(hospitalId);
       return images.map((image) => ({
         id: image.id,
-        url: image.image_url,
-        fullUrl: `/uploads/hospitals/${image.image_url}`, // URL đầy đủ để hiển thị ảnh
+        url: image.image_url, // URL Cloudinary
         createdAt: image.created_at,
       }));
     } catch (error) {

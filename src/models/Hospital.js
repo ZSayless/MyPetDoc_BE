@@ -1,5 +1,7 @@
 const BaseModel = require("./BaseModel");
 const convertBitToBoolean = require("../utils/convertBitToBoolean");
+const cloudinary = require("../config/cloudinary");
+
 class Hospital extends BaseModel {
   static tableName = "hospitals";
   // Constructor để chuyển đổi dữ liệu
@@ -174,7 +176,50 @@ class Hospital extends BaseModel {
   }
   // Phương thức xóa cứng
   static async hardDelete(id) {
-    await super.hardDelete(id);
+    try {
+      // Lấy tất cả ảnh của bệnh viện trước khi xóa
+      const images = await this.query(
+        "SELECT image_url FROM hospital_images WHERE hospital_id = ?",
+        [id]
+      );
+
+      // Kiểm tra nếu có ảnh
+      if (images && images.length > 0) {
+        // Xóa từng ảnh trên Cloudinary
+        for (const image of images) {
+          if (image.image_url) {
+            try {
+              // Lấy public_id từ URL
+              const urlParts = image.image_url.split("/");
+              const filename = urlParts[urlParts.length - 1].split(".")[0];
+              const publicId = `hospitals/${filename}`;
+
+              await cloudinary.uploader.destroy(publicId);
+              console.log(`Đã xóa ảnh trên Cloudinary: ${publicId}`);
+            } catch (cloudinaryError) {
+              console.error(
+                "Lỗi khi xóa ảnh trên Cloudinary:",
+                cloudinaryError
+              );
+              // Tiếp tục xử lý các ảnh khác ngay cả khi có lỗi
+            }
+          }
+        }
+      }
+
+      // Xóa các bản ghi ảnh trong bảng hospital_images
+      await this.query("DELETE FROM hospital_images WHERE hospital_id = ?", [
+        id,
+      ]);
+
+      // Xóa bản ghi hospital trong database
+      await this.query("DELETE FROM hospitals WHERE id = ?", [id]);
+
+      return true;
+    } catch (error) {
+      console.error("Error in Hospital.hardDelete:", error);
+      throw error;
+    }
   }
 }
 

@@ -1,10 +1,24 @@
 const ApiError = require("../exceptions/ApiError");
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
+const cloudinary = require("../config/cloudinary");
+const Banner = require("../models/Banner");
 
 class UserService {
   async createUser(userData) {
     if (await User.isEmailTaken(userData.email)) {
+      // Nếu có file đã upload, xóa file trên Cloudinary
+      if (userData.avatar && !userData.avatar.includes("default-avatar")) {
+        try {
+          const urlParts = userData.avatar.split("/");
+          const publicId = `avatars/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+        }
+      }
       throw new ApiError(400, "Email đã được sử dụng");
     }
 
@@ -14,7 +28,32 @@ class UserService {
       userData.password = await bcrypt.hash(userData.password, salt);
     }
 
-    return User.create(userData);
+    // Xử lý avatar
+    const defaultAvatar = "default-avatar.png";
+    if (!userData.avatar) {
+      userData.avatar = defaultAvatar;
+    }
+
+    // Đảm bảo is_active = true
+    userData.is_active = true;
+
+    try {
+      return await User.create(userData);
+    } catch (error) {
+      // Nếu có lỗi và đã upload avatar, xóa ảnh trên Cloudinary
+      if (userData.avatar && !userData.avatar.includes("default-avatar")) {
+        try {
+          const urlParts = userData.avatar.split("/");
+          const publicId = `avatars/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+        }
+      }
+      throw error;
+    }
   }
 
   async getUsers(filters = {}, page = 1, limit = 10) {
@@ -51,6 +90,24 @@ class UserService {
       }
     }
 
+    // Xóa ảnh cũ trên Cloudinary nếu có ảnh mới
+    if (
+      updateData.avatar &&
+      user.avatar &&
+      !user.avatar.includes("default-avatar")
+    ) {
+      try {
+        const urlParts = user.avatar.split("/");
+        const publicId = `avatars/${
+          urlParts[urlParts.length - 1].split(".")[0]
+        }`;
+        await cloudinary.uploader.destroy(publicId);
+        console.log(`Đã xóa ảnh cũ: ${publicId}`);
+      } catch (deleteError) {
+        console.error("Lỗi khi xóa ảnh cũ:", deleteError);
+      }
+    }
+
     // Nếu có cập nhật password, hash password mới
     if (updateData.password) {
       const salt = await bcrypt.genSalt(10);
@@ -70,9 +127,49 @@ class UserService {
     return User.update(id, updateData);
   }
 
-  async apsoluteDelete(id) {
-    const user = await this.getUserById(id);
-    await User.hardDelete(id);
+  async apsoluteDelete(id, currentUser) {
+    try {
+      const userToDelete = await this.getUserById(id);
+
+      // Kiểm tra quyền xóa
+      if (userToDelete.role === "ADMIN") {
+        if (currentUser.id !== id) {
+          // Nếu không phải tự xóa chính mình
+          throw new ApiError(403, "Không thể xóa tài khoản ADMIN khác");
+        }
+      }
+
+      // 1. Cập nhật created_by thành null cho tất cả banner của user
+      const userBanners = await Banner.findByCreatedBy(id);
+      for (const banner of userBanners) {
+        await Banner.update(banner.id, { created_by: null });
+      }
+
+      // 2. Xóa ảnh avatar trên Cloudinary nếu có
+      if (
+        userToDelete.avatar &&
+        !userToDelete.avatar.includes("default-avatar")
+      ) {
+        try {
+          const urlParts = userToDelete.avatar.split("/");
+          const publicId = `avatars/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+          console.log(`Đã xóa ảnh avatar: ${publicId}`);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+        }
+      }
+
+      // 3. Xóa user
+      await User.hardDelete(id);
+    } catch (error) {
+      console.error("Delete user error:", error);
+      throw error instanceof ApiError
+        ? error
+        : new ApiError(500, "Lỗi khi xóa người dùng: " + error.message);
+    }
   }
 
   async toggleUserStatus(id, action) {
@@ -113,6 +210,24 @@ class UserService {
     // Validate dữ liệu cập nhật
     if (updateData.full_name && updateData.full_name.trim().length < 2) {
       throw new ApiError(400, "Họ tên phải có ít nhất 2 ký tự");
+    }
+
+    // Xóa ảnh cũ trên Cloudinary nếu có ảnh mới
+    if (
+      updateData.avatar &&
+      user.avatar &&
+      !user.avatar.includes("default-avatar")
+    ) {
+      try {
+        const urlParts = user.avatar.split("/");
+        const publicId = `avatars/${
+          urlParts[urlParts.length - 1].split(".")[0]
+        }`;
+        await cloudinary.uploader.destroy(publicId);
+        console.log(`Đã xóa ảnh cũ: ${publicId}`);
+      } catch (deleteError) {
+        console.error("Lỗi khi xóa ảnh cũ:", deleteError);
+      }
     }
 
     return User.update(userId, updateData);

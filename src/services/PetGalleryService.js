@@ -2,8 +2,7 @@ const ApiError = require("../exceptions/ApiError");
 const PetGallery = require("../models/PetGallery");
 const PetGalleryComment = require("../models/PetGalleryComment");
 const PetGalleryLike = require("../models/PetGalleryLike");
-const fs = require("fs");
-const path = require("path");
+const cloudinary = require("../config/cloudinary");
 
 class PetGalleryService {
   // Tạo bài đăng mới
@@ -19,7 +18,7 @@ class PetGalleryService {
         description: data.description,
         pet_type: data.pet_type,
         tags: data.tags,
-        image_url: file?.filename || null,
+        image_url: file ? file.path : null,
         likes_count: 0,
         comments_count: 0,
       };
@@ -28,9 +27,17 @@ class PetGalleryService {
       const post = await PetGallery.create(postData);
       return post;
     } catch (error) {
-      // Xóa file nếu có lỗi
-      if (file && fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
+      // Nếu có lỗi và đã upload ảnh, xóa ảnh trên Cloudinary
+      if (file && file.path) {
+        try {
+          const urlParts = file.path.split("/");
+          const publicId = `petgallerys/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+        }
       }
       throw error;
     }
@@ -81,8 +88,8 @@ class PetGalleryService {
   // Cập nhật bài đăng
   async updatePost(id, data, userId, file = null) {
     try {
+      // Kiểm tra bài đăng tồn tại
       const post = await PetGallery.getDetail(id);
-
       if (!post) {
         throw new ApiError(404, "Không tìm thấy bài đăng");
       }
@@ -100,19 +107,19 @@ class PetGalleryService {
 
       // Nếu có upload ảnh mới
       if (file) {
-        // Xóa ảnh cũ nếu có
+        // Xóa ảnh cũ trên Cloudinary nếu có
         if (post.image_url) {
-          const oldImagePath = path.join(
-            process.cwd(),
-            "uploads",
-            "petgallery",
-            post.image_url
-          );
-          if (fs.existsSync(oldImagePath)) {
-            fs.unlinkSync(oldImagePath);
+          try {
+            const urlParts = post.image_url.split("/");
+            const publicId = `petgallerys/${
+              urlParts[urlParts.length - 1].split(".")[0]
+            }`;
+            await cloudinary.uploader.destroy(publicId);
+          } catch (deleteError) {
+            console.error("Lỗi khi xóa ảnh cũ trên Cloudinary:", deleteError);
           }
         }
-        updateData.image_url = file.filename;
+        updateData.image_url = file.path;
       }
 
       // Validate dữ liệu
@@ -120,11 +127,25 @@ class PetGalleryService {
 
       // Cập nhật bài đăng
       const updatedPost = await PetGallery.update(id, updateData);
+
+      // Kiểm tra kết quả cập nhật
+      if (!updatedPost) {
+        throw new ApiError(500, "Không thể cập nhật bài đăng");
+      }
+
       return updatedPost;
     } catch (error) {
-      // Xóa file nếu có lỗi
-      if (file && fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
+      // Nếu có lỗi và đã upload ảnh mới, xóa ảnh mới trên Cloudinary
+      if (file && file.path) {
+        try {
+          const urlParts = file.path.split("/");
+          const publicId = `petgallerys/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh mới trên Cloudinary:", deleteError);
+        }
       }
       throw error;
     }
@@ -209,16 +230,16 @@ class PetGalleryService {
         throw new ApiError(403, "Bạn không có quyền xóa bài đăng này");
       }
 
-      // Xóa ảnh
+      // Xóa ảnh trên Cloudinary nếu có
       if (post.image_url) {
-        const imagePath = path.join(
-          process.cwd(),
-          "uploads",
-          "petgallery",
-          post.image_url
-        );
-        if (fs.existsSync(imagePath)) {
-          fs.unlinkSync(imagePath);
+        try {
+          const urlParts = post.image_url.split("/");
+          const publicId = `petgallerys/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
         }
       }
 

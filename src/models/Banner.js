@@ -160,6 +160,24 @@ class Banner extends BaseModel {
     const bannerData = await super.findById(id);
     return bannerData ? new Banner(bannerData) : null;
   }
+
+  //phương thức mới để lấy banner theo created_by
+  static async findByCreatedBy(userId) {
+    try {
+      const sql = `
+        SELECT b.*, u.full_name as created_by_name
+        FROM ${this.tableName} b
+        LEFT JOIN users u ON b.created_by = u.id
+        WHERE b.created_by = ?
+      `;
+
+      const banners = await this.query(sql, [userId]);
+      return banners.map((banner) => new Banner(banner));
+    } catch (error) {
+      console.error("Find banners by created_by error:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = Banner;

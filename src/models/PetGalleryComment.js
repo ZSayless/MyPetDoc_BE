@@ -260,10 +260,12 @@ class PetGalleryComment extends BaseModel {
           const replyIds = replies.map((reply) => reply.id);
 
           // Xóa báo cáo của replies
-          await this.query(
-            `DELETE FROM report_reasons WHERE pet_gallery_comment_id IN (?)`,
-            [replyIds]
-          );
+          for (const replyId of replyIds) {
+            await this.query(
+              `DELETE FROM report_reasons WHERE pet_gallery_comment_id = ?`,
+              [replyId]
+            );
+          }
 
           // Xóa replies
           await this.query(

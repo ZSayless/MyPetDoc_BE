@@ -6,6 +6,7 @@ const HospitalService = require("../services/HospitalService");
 class ReviewController {
   // Tạo review mới
   createReview = asyncHandler(async (req, res) => {
+    const file = req.file;
     // kiểm tra bệnh viện có tồn tại không
     const hospital = await HospitalService.getHospitalById(
       req.body.hospital_id
@@ -17,7 +18,7 @@ class ReviewController {
     const review = await ReviewService.createReview(
       req.body,
       req.user.id,
-      req.file
+      file
     );
     res.status(201).json({
       status: "success",
@@ -161,7 +162,7 @@ class ReviewController {
 
   hardDeleteReview = asyncHandler(async (req, res) => {
     const result = await ReviewService.hardDelete(req.params.id);
-    res.json(result);
+    res.status(200).json(result);
   });
 }
 

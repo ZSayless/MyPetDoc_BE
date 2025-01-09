@@ -154,7 +154,7 @@ class PetPost extends BaseModel {
         FROM ${this.tableName} p
         LEFT JOIN users u ON p.author_id = u.id
         LEFT JOIN hospitals h ON p.hospital_id = h.id
-        WHERE p.id = ? ${!includeDeleted ? "AND p.is_deleted = 0" : ""}
+        WHERE p.id = ? 
       `;
 
       const [post] = await this.query(sql, [id]);
@@ -317,11 +317,7 @@ class PetPost extends BaseModel {
   // Tìm kiếm bài viết theo tiêu đề
   static async search(searchQuery, options = {}) {
     try {
-      const {
-        page = 1,
-        limit = 10,
-        status = "PUBLISHED"
-      } = options;
+      const { page = 1, limit = 10, status = "PUBLISHED" } = options;
 
       const offset = (page - 1) * limit;
       let conditions = ["p.is_deleted = 0"];
@@ -361,17 +357,17 @@ class PetPost extends BaseModel {
 
       const [posts, [countResult]] = await Promise.all([
         this.query(sql, [...params, limit, offset]),
-        this.query(countSql, params)
+        this.query(countSql, params),
       ]);
 
       return {
-        posts: posts.map(post => new this(post)),
+        posts: posts.map((post) => new this(post)),
         pagination: {
           page: Number(page),
           limit: Number(limit),
           total: countResult.total,
-          totalPages: Math.ceil(countResult.total / limit)
-        }
+          totalPages: Math.ceil(countResult.total / limit),
+        },
       };
     } catch (error) {
       console.error("Search posts error:", error);
@@ -379,7 +375,7 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Thêm phương thức soft delete
+  // Soft delete - chỉ cập nhật trạng thái
   static async softDelete(id) {
     try {
       const sql = `
@@ -397,7 +393,34 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Thêm phương thức soft delete nhiều bài viết
+  // Hard delete - xóa hoàn toàn bài viết và dữ liệu liên quan
+  static async hardDelete(id) {
+    try {
+      // Xóa likes
+      await this.query(`DELETE FROM pet_post_likes WHERE post_id = ?`, [id]);
+
+      // Xóa báo cáo của comments
+      await this.query(
+        `DELETE rr FROM report_reasons rr
+         INNER JOIN pet_post_comments c ON rr.pet_post_comment_id = c.id
+         WHERE c.post_id = ?`,
+        [id]
+      );
+
+      // Xóa comments
+      await this.query(`DELETE FROM pet_post_comments WHERE post_id = ?`, [id]);
+
+      // Xóa bài viết
+      await this.query(`DELETE FROM ${this.tableName} WHERE id = ?`, [id]);
+
+      return true;
+    } catch (error) {
+      console.error("Hard delete post error:", error);
+      throw error;
+    }
+  }
+
+  // Soft delete nhiều bài viết
   static async softDeleteMany(ids) {
     try {
       const sql = `
@@ -411,6 +434,55 @@ class PetPost extends BaseModel {
       return true;
     } catch (error) {
       console.error("Soft delete many posts error:", error);
+      throw error;
+    }
+  }
+
+  // Hard delete nhiều bài viết
+  static async hardDeleteMany(ids) {
+    try {
+      // Xóa likes
+      await this.query(`DELETE FROM pet_post_likes WHERE post_id IN (?)`, [
+        ids,
+      ]);
+
+      // Xóa báo cáo của comments
+      await this.query(
+        `DELETE rr FROM report_reasons rr
+         INNER JOIN pet_post_comments c ON rr.pet_post_comment_id = c.id
+         WHERE c.post_id IN (?)`,
+        [ids]
+      );
+
+      // Xóa comments
+      await this.query(`DELETE FROM pet_post_comments WHERE post_id IN (?)`, [
+        ids,
+      ]);
+
+      // Xóa bài viết
+      await this.query(`DELETE FROM ${this.tableName} WHERE id IN (?)`, [ids]);
+
+      return true;
+    } catch (error) {
+      console.error("Hard delete many posts error:", error);
+      throw error;
+    }
+  }
+
+  // Toggle soft delete status
+  static async toggleSoftDelete(id) {
+    try {
+      const sql = `
+        UPDATE ${this.tableName}
+        SET is_deleted = NOT is_deleted,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `;
+
+      await this.query(sql, [id]);
+      return true;
+    } catch (error) {
+      console.error("Toggle soft delete error:", error);
       throw error;
     }
   }

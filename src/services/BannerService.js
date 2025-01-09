@@ -1,7 +1,6 @@
 const Banner = require("../models/Banner");
 const ApiError = require("../exceptions/ApiError");
-const fs = require("fs");
-const path = require("path");
+const cloudinary = require("../config/cloudinary");
 
 class BannerService {
   // Validate dữ liệu banner
@@ -52,7 +51,7 @@ class BannerService {
       // Chuẩn bị dữ liệu banner
       const bannerData = {
         description: data.description,
-        image_url: file.filename,
+        image_url: file.path,
         created_by: userId,
         is_active: true,
       };
@@ -61,9 +60,10 @@ class BannerService {
       const banner = await Banner.create(bannerData);
       return banner;
     } catch (error) {
-      // Xóa file nếu có lỗi
-      if (file && fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
+      // Nếu có lỗi, xóa ảnh trên Cloudinary nếu đã upload
+      if (file && file.path) {
+        const publicId = file.filename;
+        await cloudinary.uploader.destroy(publicId);
       }
       throw error;
     }
@@ -72,59 +72,55 @@ class BannerService {
   // Cập nhật banner
   async updateBanner(id, data, file = null) {
     try {
-      // Kiểm tra banner tồn tại
       const banner = await Banner.findById(id);
       if (!banner) {
         throw new ApiError(404, "Không tìm thấy banner");
       }
 
-      // console.log('Current banner:', banner);
-      // console.log('Update data:', data);
-      // console.log('Update file:', file);
-
-      // Validate dữ liệu
       await this.validateBannerData(data, file, true);
 
-      // Xóa ảnh cũ nếu có ảnh mới
+      // Xóa ảnh cũ trên Cloudinary nếu có ảnh mới
       if (file && banner.image_url) {
-        const oldImagePath = path.join(
-          process.cwd(),
-          "uploads",
-          "banners",
-          banner.image_url
-        );
+        // Trích xuất public_id từ URL Cloudinary
+        const urlParts = banner.image_url.split("/");
+        const publicId = `banners/${
+          urlParts[urlParts.length - 1].split(".")[0]
+        }`; // Thêm prefix 'banners/'
+
         try {
-          if (fs.existsSync(oldImagePath)) {
-            fs.unlinkSync(oldImagePath);
-            // console.log('Old image deleted:', oldImagePath);
-          }
-        } catch (error) {
-          console.error('Error deleting old image:', error);
+          await cloudinary.uploader.destroy(publicId);
+          console.log(`Đã xóa ảnh cũ: ${publicId}`);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh cũ:", deleteError);
+          // Có thể tiếp tục xử lý mặc dù xóa ảnh cũ thất bại
         }
       }
 
-      // Chuẩn bị dữ liệu cập nhật
       const updateData = {
-        description: data.description !== undefined ? data.description : banner.description
+        description:
+          data.description !== undefined
+            ? data.description
+            : banner.description,
       };
 
-      // Chỉ cập nhật image_url nếu có file mới
       if (file) {
-        updateData.image_url = file.filename;
+        updateData.image_url = file.path;
       }
 
-      // console.log('Update data prepared:', updateData);
-
-      // Cập nhật banner
       const updatedBanner = await Banner.update(id, updateData);
-      console.log('Updated banner:', updatedBanner);
-
       return updatedBanner;
     } catch (error) {
-      console.error("Update banner error:", error);
-      // Xóa file mới nếu có lỗi
-      if (file && fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
+      // Nếu có lỗi và đã upload ảnh mới, xóa ảnh mới
+      if (file && file.path) {
+        const urlParts = file.path.split("/");
+        const publicId = `banners/${
+          urlParts[urlParts.length - 1].split(".")[0]
+        }`;
+        try {
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh mới:", deleteError);
+        }
       }
       throw error;
     }
@@ -153,28 +149,29 @@ class BannerService {
   // Xóa vĩnh viễn banner
   async hardDelete(id) {
     try {
-      // Lấy thông tin banner trước khi xóa
       const banner = await Banner.findById(id);
       if (!banner) {
         throw new ApiError(404, "Không tìm thấy banner");
       }
 
-      // Xóa file ảnh
+      // Xóa ảnh trên Cloudinary
       if (banner.image_url) {
-        const imagePath = path.join(
-          process.cwd(),
-          "uploads",
-          "banners",
-          banner.image_url
-        );
-        if (fs.existsSync(imagePath)) {
-          fs.unlinkSync(imagePath);
+        // Trích xuất public_id từ URL Cloudinary
+        const urlParts = banner.image_url.split("/");
+        const publicId = `banners/${
+          urlParts[urlParts.length - 1].split(".")[0]
+        }`; // Thêm prefix 'banners/'
+
+        try {
+          await cloudinary.uploader.destroy(publicId);
+          console.log(`Đã xóa ảnh banner: ${publicId}`);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+          // Có thể tiếp tục xử lý mặc dù xóa ảnh thất bại
         }
       }
 
-      // Xóa banner trong database
       await Banner.hardDelete(id);
-
       return { message: "Đã xóa banner thành công" };
     } catch (error) {
       console.error("Hard delete banner error:", error);

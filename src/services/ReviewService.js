@@ -3,6 +3,7 @@ const Hospital = require("../models/Hospital");
 const ApiError = require("../exceptions/ApiError");
 const path = require("path");
 const fs = require("fs");
+const cloudinary = require("../config/cloudinary");
 
 class ReviewService {
   // Tạo review mới
@@ -26,7 +27,7 @@ class ReviewService {
         hospital_id: parseInt(data.hospital_id),
         rating: parseInt(data.rating) || 5,
         comment: data.comment || null,
-        image_url: file ? file.filename : null,
+        image_url: file ? file.path : null,
         image_description: data.image_description || null,
       };
 
@@ -43,9 +44,17 @@ class ReviewService {
 
       return review;
     } catch (error) {
-      // Xóa file nếu có lỗi
-      if (file && fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
+      // Nếu có lỗi và đã upload ảnh, xóa ảnh trên Cloudinary
+      if (file && file.path) {
+        try {
+          const urlParts = file.path.split("/");
+          const publicId = `reviews/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+        }
       }
       throw error;
     }
@@ -174,12 +183,19 @@ class ReviewService {
   // Toggle soft delete review (xóa mềm/khôi phục)
   async toggleSoftDelete(id, userId, userRole) {
     try {
-      const review = await this.getReviewById(id);
+      const review = await Review.findById(id);
+      if (!review) {
+        throw new ApiError(404, "Không tìm thấy review");
+      }
+
+      // Kiểm tra quyền xóa
+      if (userRole !== "ADMIN" && review.user_id !== userId) {
+        throw new ApiError(403, "Bạn không có quyền thực hiện hành động này");
+      }
 
       // Toggle trạng thái xóa
       const updatedReview = await Review.toggleSoftDelete(id);
 
-      // Trả về message tương ứng
       return {
         success: true,
         message: updatedReview.is_deleted
@@ -193,16 +209,29 @@ class ReviewService {
   }
 
   // Xóa vĩnh viễn review
-  async hardDelete(id, userId, userRole) {
+  async hardDelete(id) {
     try {
-      const review = await this.getReviewById(id);
+      // Lấy thông tin review trước khi xóa
+      const review = await Review.findById(id);
+      if (!review) {
+        throw new ApiError(404, "Không tìm thấy review");
+      }
 
-      // Kiểm tra review đã bị xóa mềm chưa
-      if (!review.is_deleted) {
-        throw new ApiError(
-          400,
-          "Chỉ có thể xóa vĩnh viễn những đánh giá đã bị xóa mềm"
-        );
+      // Xóa ảnh trên Cloudinary nếu có
+      if (review.photo.image_url) {
+        try {
+          const imageUrl = review.photo.image_url;
+
+          const urlParts = imageUrl.split("/");
+          const filename = urlParts[urlParts.length - 1].split(".")[0];
+          const publicId = `reviews/${filename}`;
+
+          await cloudinary.uploader.destroy(publicId);
+        } catch (cloudinaryError) {
+          console.error("Lỗi khi xóa ảnh trên Cloudinary:", cloudinaryError);
+        }
+      } else {
+        console.log("Không tìm thấy URL ảnh để xóa");
       }
 
       // Xóa các báo cáo liên quan
@@ -214,10 +243,11 @@ class ReviewService {
       await Review.hardDelete(id);
 
       return {
-        success: true,
+        status: "success",
         message: "Đã xóa vĩnh viễn đánh giá thành công",
       };
     } catch (error) {
+      console.error("Error in ReviewService.hardDelete:", error);
       throw error;
     }
   }
@@ -239,35 +269,26 @@ class ReviewService {
       // Validate dữ liệu mới (với isUpdate = true)
       await this.validateReviewData(data, file, true);
 
-      // Xóa ảnh cũ nếu có ảnh mới
+      // Nếu có ảnh mới và có ảnh cũ, xóa ảnh cũ trên Cloudinary
       if (file && existingReview.photo && existingReview.photo.image_url) {
-        // Sử dụng đường dẫn tuyệt đối đến thư mục uploads
-        const uploadDir = path.join(process.cwd(), "uploads", "reviews");
-        const oldImagePath = path.join(
-          uploadDir,
-          existingReview.photo.image_url
-        );
-
         try {
-          if (fs.existsSync(oldImagePath)) {
-            fs.unlinkSync(oldImagePath);
-            console.log("Đã xóa ảnh cũ thành công:", oldImagePath);
-          } else {
-            console.log("Không tìm thấy file ảnh cũ tại:", oldImagePath);
-          }
-        } catch (error) {
-          console.error("Lỗi khi xóa ảnh cũ:", error);
+          const urlParts = existingReview.photo.image_url.split("/");
+          const publicId = `reviews/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh cũ trên Cloudinary:", deleteError);
         }
       }
 
-      // Chuẩn bị dữ liệu cập nhật (chỉ cập nhật các trường được gửi lên)
+      // Chuẩn bị dữ liệu cập nhật
       const updateData = {
-        ...existingReview,
         rating: data.rating ? parseInt(data.rating) : existingReview.rating,
         comment:
           data.comment !== undefined ? data.comment : existingReview.comment,
         image_url: file
-          ? file.filename
+          ? file.path
           : existingReview.photo
           ? existingReview.photo.image_url
           : null,
@@ -280,21 +301,21 @@ class ReviewService {
       };
 
       // Cập nhật review
-      await Review.update(id, updateData);
-
-      // Trả về review đã cập nhật
-      const updatedReview = await Review.findById(id);
+      const updatedReview = await Review.update(id, updateData);
 
       console.log("Review đã được cập nhật:", updatedReview);
       return updatedReview;
     } catch (error) {
-      // Xóa file mới nếu có lỗi
-      if (file && fs.existsSync(file.path)) {
+      // Nếu có lỗi và đã upload ảnh mới, xóa ảnh mới trên Cloudinary
+      if (file && file.path) {
         try {
-          fs.unlinkSync(file.path);
-          console.log("Đã xóa file mới do lỗi:", file.path);
-        } catch (unlinkError) {
-          console.error("Lỗi khi xóa file mới:", unlinkError);
+          const urlParts = file.path.split("/");
+          const publicId = `reviews/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh mới trên Cloudinary:", deleteError);
         }
       }
       throw error;
@@ -367,26 +388,6 @@ class ReviewService {
         throw new ApiError(403, "Bạn không có quyền xóa review này");
       }
 
-      // Xóa ảnh nếu có
-      if (review.photo && review.photo.image_url) {
-        const uploadDir = path.join(process.cwd(), "uploads", "reviews");
-        const imagePath = path.join(uploadDir, review.photo.image_url);
-
-        console.log("Đường dẫn ảnh cần xóa:", imagePath);
-
-        try {
-          if (fs.existsSync(imagePath)) {
-            fs.unlinkSync(imagePath);
-            console.log("Đã xóa file ảnh thành công:", imagePath);
-          } else {
-            console.log("Không tìm thấy file ảnh tại:", imagePath);
-          }
-        } catch (error) {
-          console.error("Lỗi khi xóa file ảnh:", error);
-          // Tiếp tục xóa review ngay cả khi không xóa được ảnh
-        }
-      }
-
       // Xóa review trong database
       await Review.softDelete(id);
 
@@ -396,43 +397,6 @@ class ReviewService {
       };
     } catch (error) {
       console.error("Lỗi khi xóa review:", error);
-      throw error;
-    }
-  }
-
-  // Thêm phương thức xóa vĩnh viễn (hard delete) cho admin
-  async hardDelete(id) {
-    try {
-      // Lấy thông tin review trước khi xóa
-      const review = await Review.findById(id);
-      if (!review) {
-        throw new ApiError(404, "Không tìm thấy review");
-      }
-
-      // Xóa ảnh nếu có
-      if (review.photo && review.photo.image_url) {
-        const uploadDir = path.join(process.cwd(), "uploads", "reviews");
-        const imagePath = path.join(uploadDir, review.photo.image_url);
-
-        try {
-          if (fs.existsSync(imagePath)) {
-            fs.unlinkSync(imagePath);
-            console.log("Đã xóa file ảnh thành công:", imagePath);
-          }
-        } catch (error) {
-          console.error("Lỗi khi xóa file ảnh:", error);
-        }
-      }
-
-      // Xóa vĩnh viễn review
-      await Review.hardDelete(id);
-
-      return {
-        success: true,
-        message: "Đã xóa vĩnh viễn review thành công",
-      };
-    } catch (error) {
-      console.error("Lỗi khi xóa vĩnh viễn review:", error);
       throw error;
     }
   }

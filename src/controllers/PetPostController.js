@@ -89,24 +89,6 @@ class PetPostController {
     });
   });
 
-  // Xóa bài viết
-  deletePost = asyncHandler(async (req, res) => {
-    const postId = req.params.id;
-    const userId = req.user.id;
-    const isAdmin = req.user.role === "ADMIN";
-
-    if (req.baseUrl.includes("/admin") && !isAdmin) {
-      throw new ApiError(403, "Không có quyền truy cập");
-    }
-
-    await PetPostService.deletePost(postId, userId, isAdmin);
-
-    res.json({
-      success: true,
-      message: "Xóa bài viết thành công",
-    });
-  });
-
   // Like/Unlike bài viết
   toggleLike = asyncHandler(async (req, res) => {
     const postId = req.params.id;
@@ -240,6 +222,88 @@ class PetPostController {
     );
 
     res.json(result);
+  });
+
+  // Xóa mềm bài viết
+  softDeletePost = asyncHandler(async (req, res) => {
+    const postId = req.params.id;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === "ADMIN";
+
+    await PetPostService.softDeletePost(postId, userId, isAdmin);
+
+    res.json({
+      success: true,
+      message: "Xóa bài viết thành công",
+    });
+  });
+
+  // Xóa cứng bài viết
+  hardDeletePost = asyncHandler(async (req, res) => {
+    const postId = req.params.id;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === "ADMIN";
+
+    await PetPostService.hardDeletePost(postId, userId, isAdmin);
+
+    res.json({
+      success: true,
+      message: "Xóa vĩnh viễn bài viết thành công",
+    });
+  });
+
+  // Xóa mềm nhiều bài viết
+  softDeleteManyPosts = asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === "ADMIN";
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      throw new ApiError(400, "Danh sách ID bài viết không hợp lệ");
+    }
+
+    await PetPostService.softDeleteManyPosts(ids, userId, isAdmin);
+
+    res.json({
+      success: true,
+      message: "Xóa các bài viết thành công",
+    });
+  });
+
+  // Xóa cứng nhiều bài viết
+  hardDeleteManyPosts = asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === "ADMIN";
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      throw new ApiError(400, "Danh sách ID bài viết không hợp lệ");
+    }
+
+    await PetPostService.hardDeleteManyPosts(ids, userId, isAdmin);
+
+    res.json({
+      success: true,
+      message: "Xóa vĩnh viễn các bài viết thành công",
+    });
+  });
+
+  // Toggle soft delete
+  toggleSoftDelete = asyncHandler(async (req, res) => {
+    const postId = req.params.id;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === "ADMIN";
+
+    const result = await PetPostService.toggleSoftDelete(
+      postId,
+      userId,
+      isAdmin
+    );
+
+    res.json({
+      success: true,
+      ...result,
+    });
   });
 }
 

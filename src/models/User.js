@@ -117,6 +117,30 @@ class User extends BaseModel {
   async isPasswordMatch(password) {
     return await bcrypt.compare(password, this.password);
   }
+
+  static async findByHospitalId(hospitalId) {
+    try {
+      const sql = `
+        SELECT * FROM ${this.tableName}
+        WHERE hospital_id = ? AND is_deleted = 0
+      `;
+      const users = await this.query(sql, [hospitalId]);
+
+      // Chuyển đổi các trường bit thành boolean cho mỗi user
+      return users.map(
+        (userData) =>
+          new User({
+            ...userData,
+            is_active: convertBitToBoolean(userData.is_active),
+            is_locked: convertBitToBoolean(userData.is_locked),
+            is_deleted: convertBitToBoolean(userData.is_deleted),
+          })
+      );
+    } catch (error) {
+      console.error("FindByHospitalId error:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = User;

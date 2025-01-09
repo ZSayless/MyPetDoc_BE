@@ -32,7 +32,6 @@ class HospitalController {
       // Chuẩn bị dữ liệu hospital
       const hospitalData = {
         ...req.body,
-        is_active: req.user.role === "ADMIN", // true nếu là ADMIN, false nếu không
       };
 
       // Tạo bệnh viện và xử lý ảnh trong một lần gọi
@@ -119,8 +118,8 @@ class HospitalController {
 
   // Xóa vĩnh viễn bệnh viện
   hardDelete = asyncHandler(async (req, res, next) => {
-    await HospitalService.hardDelete(req.params.id);
-    res.status(204).send();
+    const result = await HospitalService.hardDelete(req.params.id);
+    res.status(200).json(result);
   });
 
   // Toggle xóa mềm bệnh viện

@@ -1,6 +1,7 @@
 const PetGalleryService = require("../services/PetGalleryService");
 const ApiError = require("../exceptions/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
+const cloudinary = require("cloudinary");
 
 class PetGalleryController {
   // Tạo bài đăng mới
@@ -72,8 +73,63 @@ class PetGalleryController {
   updatePost = asyncHandler(async (req, res) => {
     const postId = req.params.id;
     const userId = req.user.id;
-    const file = req.file;
+    const files = req.files;
 
+    // Kiểm tra số lượng file trước
+    if (files && Object.keys(files).length > 1) {
+      // Xóa tất cả file đã upload
+      for (const file of Object.values(files)) {
+        if (file.path) {
+          try {
+            const urlParts = file.path.split("/");
+            const publicId = `petgallery/${
+              urlParts[urlParts.length - 1].split(".")[0]
+            }`;
+            await cloudinary.uploader.destroy(publicId);
+          } catch (deleteError) {
+            console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+          }
+        }
+      }
+      throw new ApiError(400, "Chỉ được phép upload 1 ảnh");
+    }
+
+    // Kiểm tra bài đăng tồn tại
+    const existingPost = await PetGalleryService.getPostDetail(postId);
+    if (!existingPost) {
+      // Nếu có file đã upload, xóa file
+      if (req.file && req.file.path) {
+        try {
+          const urlParts = req.file.path.split("/");
+          const publicId = `petgallery/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+        }
+      }
+      throw new ApiError(404, "Không tìm thấy bài đăng");
+    }
+
+    // Kiểm tra quyền sửa
+    if (existingPost.user_id !== userId) {
+      // Xóa file nếu đã upload
+      if (req.file && req.file.path) {
+        try {
+          const urlParts = req.file.path.split("/");
+          const publicId = `petgallery/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+        }
+      }
+      throw new ApiError(403, "Bạn không có quyền sửa bài đăng này");
+    }
+
+    const file = req.file;
     const post = await PetGalleryService.updatePost(
       postId,
       req.body,
@@ -94,13 +150,6 @@ class PetGalleryController {
     const userId = req.user.id;
     const userRole = req.user.role;
     const isAdmin = userRole === "ADMIN";
-
-    // Nếu là route admin
-    if (req.baseUrl.includes("/admin")) {
-      if (!isAdmin) {
-        throw new ApiError(403, "Không có quyền truy cập");
-      }
-    }
 
     await PetGalleryService.deletePost(postId, userId, isAdmin);
 

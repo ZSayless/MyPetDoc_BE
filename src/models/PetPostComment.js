@@ -394,22 +394,19 @@ class PetPostComment extends BaseModel {
   }
 
   // Xóa comment và các báo cáo liên quan
-  static async deleteWithReports(commentId, userId = null, isAdmin = false) {
+  static async deleteWithReports(commentId, userId, isAdmin = false) {
     try {
-      const comment = await this.getDetail(commentId);
+      const comment = await this.findById(commentId);
       if (!comment) {
-        throw new Error("Không tìm thấy bình luận");
+        throw new Error("Không tìm thấy comment");
       }
 
       // Kiểm tra quyền xóa nếu không phải admin
-      if (!isAdmin) {
-        const canDelete = await this.checkDeletePermission(userId, comment);
-        if (!canDelete) {
-          throw new Error("Không có quyền xóa bình luận này");
-        }
+      if (!isAdmin && !(await this.checkDeletePermission(userId, comment))) {
+        throw new Error("Không có quyền xóa comment này");
       }
 
-      // Xóa các báo cáo của comment này
+      // Xóa báo cáo của comment hiện tại
       await this.query(
         `DELETE FROM report_reasons WHERE pet_post_comment_id = ?`,
         [Number(commentId)]
@@ -417,13 +414,45 @@ class PetPostComment extends BaseModel {
 
       // Nếu là comment gốc, xử lý replies
       if (!comment.parent_id) {
-        await this.deleteRepliesWithReports(commentId);
+        // Lấy danh sách replies
+        const replies = await this.query(
+          `SELECT id FROM ${this.tableName} WHERE parent_id = ?`,
+          [Number(commentId)]
+        );
+
+        if (replies.length > 0) {
+          // Xử lý từng reply một
+          for (const reply of replies) {
+            // Xóa báo cáo của reply
+            await this.query(
+              `DELETE FROM report_reasons WHERE pet_post_comment_id = ?`,
+              [reply.id]
+            );
+
+            // Xóa reply
+            await this.query(`DELETE FROM ${this.tableName} WHERE id = ?`, [
+              reply.id,
+            ]);
+          }
+        }
       }
 
-      // Xóa comment
+      // Xóa comment chính
       await this.query(`DELETE FROM ${this.tableName} WHERE id = ?`, [
         Number(commentId),
       ]);
+
+      // Cập nhật số lượng comments trong bài viết
+      await this.query(
+        `UPDATE pet_posts p 
+         SET comments_count = (
+           SELECT COUNT(*) 
+           FROM ${this.tableName} 
+           WHERE post_id = p.id AND is_deleted = 0
+         )
+         WHERE id = ?`,
+        [comment.post_id]
+      );
 
       return true;
     } catch (error) {

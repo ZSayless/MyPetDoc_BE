@@ -38,7 +38,17 @@ adminRouter.put(
   PetPostController.updatePost
 );
 adminRouter.patch("/:id/status", PetPostController.updateStatus);
-adminRouter.delete("/:id", PetPostController.deletePost);
+
+// Thêm routes xóa mềm
+adminRouter.delete("/:id", PetPostController.softDeletePost);
+adminRouter.delete("/batch/soft", PetPostController.softDeleteManyPosts);
+
+// Thêm routes xóa cứng (chỉ cho ADMIN)
+adminRouter.delete("/hard/:id", PetPostController.hardDeletePost);
+adminRouter.delete("/batch/hard", PetPostController.hardDeleteManyPosts);
+
+// Trong phần adminRouter
+adminRouter.patch("/:id/toggle-delete", PetPostController.toggleSoftDelete);
 
 // Áp dụng middleware admin và mount admin router
 router.use("/admin", validateAuth(["ADMIN"]), adminRouter);

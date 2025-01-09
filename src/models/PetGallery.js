@@ -180,7 +180,7 @@ class PetGallery extends BaseModel {
   static async update(id, data) {
     try {
       const updateData = { ...data };
-      delete updateData.id; // Đảm bảo không update id
+      delete updateData.id;
 
       // Lọc bỏ các trường undefined/null
       const filteredData = Object.fromEntries(
@@ -204,14 +204,17 @@ class PetGallery extends BaseModel {
         WHERE id = ?
       `;
 
-      // Tạo mảng params chỉ từ các trường có giá trị
       const params = [...Object.values(filteredData), id];
 
-      console.log("Update SQL:", sql);
-      console.log("Update params:", params);
+      const result = await this.query(sql, params);
 
-      await this.query(sql, params);
-      return this.getDetail(id);
+      // Kiểm tra kết quả cập nhật
+      if (result.affectedRows === 0) {
+        return null;
+      }
+
+      // Lấy và trả về bài đăng sau khi cập nhật
+      return await this.getDetail(id);
     } catch (error) {
       console.error("Update post error:", error);
       throw error;
