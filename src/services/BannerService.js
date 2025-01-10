@@ -23,8 +23,15 @@ class BannerService {
   }
 
   // Lấy danh sách banner có phân trang
-  async getBanners(page = 1, limit = 10, includeDeleted = false) {
+  async getBanners(page = 1, limit = 10, includeDeleted = true) {
     try {
+      // Log để debug
+      // console.log("Service getBanners params:", {
+      //   page,
+      //   limit,
+      //   includeDeleted,
+      // });
+
       return await Banner.findAll(page, limit, includeDeleted);
     } catch (error) {
       console.error("Get banners error:", error);

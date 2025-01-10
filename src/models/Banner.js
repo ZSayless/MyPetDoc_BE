@@ -7,10 +7,19 @@ class Banner extends BaseModel {
   constructor(data) {
     super();
     if (data) {
+      const is_deleted =
+        data.is_deleted !== undefined
+          ? convertBitToBoolean(data.is_deleted)
+          : false;
+      const is_active =
+        data.is_active !== undefined
+          ? convertBitToBoolean(data.is_active)
+          : true;
+
       Object.assign(this, {
         ...data,
-        is_deleted: convertBitToBoolean(data.is_deleted),
-        is_active: convertBitToBoolean(data.is_active),
+        is_deleted,
+        is_active,
       });
     }
   }
@@ -19,7 +28,11 @@ class Banner extends BaseModel {
   static async findActive() {
     try {
       const sql = `
-        SELECT b.*, u.full_name as created_by_name
+        SELECT 
+          b.*,
+          u.full_name as created_by_name,
+          CAST(b.is_deleted AS UNSIGNED) as is_deleted,
+          CAST(b.is_active AS UNSIGNED) as is_active
         FROM ${this.tableName} b
         LEFT JOIN users u ON b.created_by = u.id
         WHERE b.is_deleted = 0 AND b.is_active = 1
@@ -27,7 +40,15 @@ class Banner extends BaseModel {
       `;
 
       const banners = await this.query(sql);
-      return banners.map((banner) => new Banner(banner));
+      return banners.map((banner) => {
+        console.log("Banner data before conversion:", {
+          id: banner.id,
+          is_deleted: banner.is_deleted,
+          is_active: banner.is_active,
+        });
+
+        return new Banner(banner);
+      });
     } catch (error) {
       console.error("Find active banners error:", error);
       throw error;
@@ -35,19 +56,22 @@ class Banner extends BaseModel {
   }
 
   // Lấy danh sách banner có phân trang
-  static async findAll(page = 1, limit = 10, includeDeleted = false) {
+  static async findAll(page = 1, limit = 10, includeDeleted = true) {
     try {
       const pageNumber = parseInt(page);
       const limitNumber = parseInt(limit);
       const offset = (pageNumber - 1) * limitNumber;
 
       let sql = `
-        SELECT b.*, u.full_name as created_by_name
+        SELECT 
+          b.*,
+          u.full_name as created_by_name,
+          CAST(b.is_deleted AS UNSIGNED) as is_deleted,
+          CAST(b.is_active AS UNSIGNED) as is_active
         FROM ${this.tableName} b
         LEFT JOIN users u ON b.created_by = u.id
       `;
 
-      // Thêm điều kiện is_deleted nếu không includeDeleted
       if (!includeDeleted) {
         sql += " WHERE b.is_deleted = 0";
       }
@@ -67,6 +91,16 @@ class Banner extends BaseModel {
         this.query(sql),
         this.query(countSql),
       ]);
+
+      console.log("Query results:", {
+        includeDeleted,
+        totalBanners: banners.length,
+        banners: banners.map((b) => ({
+          id: b.id,
+          is_deleted: b.is_deleted,
+          is_active: b.is_active,
+        })),
+      });
 
       return {
         banners: banners.map((banner) => new Banner(banner)),

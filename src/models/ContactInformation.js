@@ -101,10 +101,9 @@ class ContactInformation extends BaseModel {
   static async getVersion(version) {
     try {
       const sql = `
-        SELECT ci.*, u.full_name as last_updated_by_name
+        SELECT ci.*
         FROM ${this.tableName} ci
-        LEFT JOIN users u ON ci.last_updated_by = u.id
-        WHERE ci.version = ? AND ci.is_deleted = 0
+        WHERE ci.id = ?
       `;
 
       const [contactData] = await this.query(sql, [version]);

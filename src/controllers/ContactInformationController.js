@@ -73,7 +73,10 @@ class ContactInformationController {
     }
 
     await ContactInformationService.hardDelete(req.params.id);
-    res.status(204).send();
+    res.status(200).json({
+      status: "success",
+      message: "Xóa vĩnh viễn phiên bản thành công",
+    });
   });
 }
 

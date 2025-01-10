@@ -13,6 +13,7 @@ const faqRoutes = require("./faqRoutes");
 const petGalleryRoutes = require("./petGalleryRoutes");
 const petPostRoutes = require("./petPostRoutes");
 const favoriteRoutes = require("./favoriteRoutes");
+const reportReasonRoutes = require("./reportReasonRoutes");
 
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
@@ -27,5 +28,6 @@ router.use("/faqs", faqRoutes);
 router.use("/community", petGalleryRoutes);
 router.use("/posts", petPostRoutes);
 router.use("/favorites", favoriteRoutes);
+router.use("/reports", reportReasonRoutes);
 
 module.exports = router;

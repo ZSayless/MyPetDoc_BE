@@ -69,7 +69,7 @@ const runMigrations = async () => {
     await createContactMessages(connection);
     await createContactInformation(connection);
     await createFaqs(connection);
-    await createCtaContents(connection);
+    // await createCtaContents(connection);
 
     console.log("Migrations completed successfully.");
     await connection.end();

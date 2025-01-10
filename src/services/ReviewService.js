@@ -1,8 +1,6 @@
 const Review = require("../models/Review");
 const Hospital = require("../models/Hospital");
 const ApiError = require("../exceptions/ApiError");
-const path = require("path");
-const fs = require("fs");
 const cloudinary = require("../config/cloudinary");
 
 class ReviewService {

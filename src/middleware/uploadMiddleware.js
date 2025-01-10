@@ -1,8 +1,5 @@
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
 const ApiError = require("../exceptions/ApiError");
-const fsPromises = require("fs").promises;
 const cloudinary = require("../config/cloudinary");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
@@ -25,10 +22,10 @@ const { CloudinaryStorage } = require("multer-storage-cloudinary");
 // }
 
 // Tạo thư mục upload cho pet posts
-const uploadPetPostDir = path.join(__dirname, "../../uploads/petposts");
-if (!fs.existsSync(uploadPetPostDir)) {
-  fs.mkdirSync(uploadPetPostDir, { recursive: true });
-}
+// const uploadPetPostDir = path.join(__dirname, "../../uploads/petposts");
+// if (!fs.existsSync(uploadPetPostDir)) {
+//   fs.mkdirSync(uploadPetPostDir, { recursive: true });
+// }
 
 // Tạo thư mục upload cho hospitals
 // const uploadHospitalDir = path.join(__dirname, "../../uploads/hospitals");
@@ -495,6 +492,9 @@ const handleUploadHospitalImages = (req, res, next) => {
 
   upload(req, res, (err) => {
     if (err instanceof multer.MulterError) {
+      if (err.code === "LIMIT_UNEXPECTED_FILE") {
+        return next(new ApiError(400, "Chỉ được phép upload tối đa 5 ảnh"));
+      }
       return next(new ApiError(400, `Lỗi upload: ${err.message}`));
     }
     if (err) {
@@ -543,19 +543,6 @@ const handleUploadPetGalleryImages = (req, res, next) => {
   });
 };
 
-// Thêm hàm helper để xóa file
-const deleteUploadedFile = async (filename) => {
-  if (!filename) return;
-
-  try {
-    const filePath = path.join(__dirname, "../../uploads/avatars", filename);
-    await fsPromises.unlink(filePath);
-    console.log("Đã xóa file:", filename);
-  } catch (error) {
-    console.error("Lỗi khi xóa file:", error);
-  }
-};
-
 module.exports = {
   handleUploadReviewImages,
   handleUploadHospitalImages,
@@ -563,5 +550,4 @@ module.exports = {
   handleUploadPetGalleryImages,
   handleUploadPetPostImages,
   handleUploadAvatar,
-  deleteUploadedFile,
 };

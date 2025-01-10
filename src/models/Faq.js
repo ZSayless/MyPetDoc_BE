@@ -15,7 +15,7 @@ class FAQ extends BaseModel {
   }
 
   // Lấy danh sách FAQ có phân trang
-  static async findAll(page = 1, limit = 10, includeDeleted = false) {
+  static async findAll(page = 1, limit = 10) {
     try {
       const pageNumber = parseInt(page);
       const limitNumber = parseInt(limit);
@@ -26,10 +26,6 @@ class FAQ extends BaseModel {
         FROM ${this.tableName} f
       `;
 
-      if (!includeDeleted) {
-        sql += " WHERE f.is_deleted = 0";
-      }
-
       sql += `
         ORDER BY f.created_at DESC
         LIMIT ${limitNumber} OFFSET ${offset}
@@ -38,7 +34,6 @@ class FAQ extends BaseModel {
       const countSql = `
         SELECT COUNT(*) as total
         FROM ${this.tableName}
-        ${!includeDeleted ? "WHERE is_deleted = 0" : ""}
       `;
 
       const [faqs, [countResult]] = await Promise.all([

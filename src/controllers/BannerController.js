@@ -5,11 +5,24 @@ const ApiError = require("../exceptions/ApiError");
 class BannerController {
   // Lấy danh sách banner có phân trang
   getBanners = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, includeDeleted = false } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      includeDeleted = true, // Mặc định true cho admin route
+    } = req.query;
+
+    // Log để debug
+    // console.log("Get banners params:", {
+    //   page,
+    //   limit,
+    //   includeDeleted,
+    //   role: req.user?.role,
+    // });
+
     const result = await BannerService.getBanners(
       parseInt(page),
       parseInt(limit),
-      includeDeleted === "true"
+      includeDeleted === "true" || includeDeleted === true // Đảm bảo xử lý đúng kiểu dữ liệu
     );
     res.json(result);
   });
@@ -53,7 +66,7 @@ class BannerController {
   // Cập nhật banner
   updateBanner = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    
+
     // Log để debug
     // console.log('Update banner request:', {
     //   id,

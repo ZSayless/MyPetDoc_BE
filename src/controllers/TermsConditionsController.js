@@ -70,7 +70,10 @@ class TermsConditionsController {
     }
 
     const terms = await TermsConditionsService.toggleSoftDelete(req.params.id);
-    res.json(terms);
+    res.status(204).json({
+      status: "success",
+      message: "Xóa phiên bản thành công",
+    });
   });
 
   // Xóa vĩnh viễn
@@ -81,7 +84,10 @@ class TermsConditionsController {
     }
 
     await TermsConditionsService.hardDelete(req.params.id);
-    res.status(204).send();
+    res.status(204).json({
+      status: "success",
+      message: "Xóa vĩnh viễn phiên bản thành công",
+    });
   });
 }
 

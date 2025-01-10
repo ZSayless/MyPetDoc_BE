@@ -39,14 +39,20 @@ class AboutUsController {
   toggleSoftDelete = asyncHandler(async (req, res) => {
     const { id } = req.params;
     await AboutUsService.toggleSoftDelete(parseInt(id));
-    res.status(204).send();
+    res.status(204).json({
+      status: "success",
+      message: "Xóa phiên bản thành công",
+    });
   });
 
   // Xóa vĩnh viễn
   hardDeleteVersion = asyncHandler(async (req, res) => {
     const { id } = req.params;
     await AboutUsService.hardDelete(parseInt(id));
-    res.status(204).send();
+    res.status(204).json({
+      status: "success",
+      message: "Xóa vĩnh viễn phiên bản thành công",
+    });
   });
 
   // So sánh hai phiên bản
