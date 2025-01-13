@@ -5,29 +5,29 @@ const { handleUploadPetPostImages } = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
-// Routes công khai - không cần đăng nhập
+// Public routes (no need to login)
 router.get("/", PetPostController.getPosts);
 router.get("/:id", PetPostController.getPostDetail);
 router.get("/:id/comments", PetPostController.getComments);
 router.get("/:id/likes", PetPostController.getLikedUsers);
 router.get("/comments/:commentId/replies", PetPostController.getCommentReplies);
 
-// Routes yêu cầu đăng nhập
+// Routes require login
 router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));
 
-// Tương tác cơ bản - cho tất cả user đã đăng nhập
+// Basic interactions - for all logged in users
 router.post("/:id/like", PetPostController.toggleLike);
 router.post("/:id/comments", PetPostController.addComment);
 router.delete("/comments/:commentId", PetPostController.deleteComment);
 
-// Thêm route báo cáo comment
+// Add report comment route
 router.post(
   "/comments/:commentId/report",
   validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]),
   PetPostController.reportComment
 );
 
-// Tạo router riêng cho admin routes
+// Create separate router for admin routes
 const adminRouter = express.Router();
 
 // Routes admin
@@ -39,18 +39,18 @@ adminRouter.put(
 );
 adminRouter.patch("/:id/status", PetPostController.updateStatus);
 
-// Thêm routes xóa mềm
+// Add soft delete routes
 adminRouter.delete("/:id", PetPostController.softDeletePost);
 adminRouter.delete("/batch/soft", PetPostController.softDeleteManyPosts);
 
-// Thêm routes xóa cứng (chỉ cho ADMIN)
+// Add hard delete routes (only for ADMIN)
 adminRouter.delete("/hard/:id", PetPostController.hardDeletePost);
 adminRouter.delete("/batch/hard", PetPostController.hardDeleteManyPosts);
 
-// Trong phần adminRouter
+// Add toggle soft delete route (only for ADMIN)
 adminRouter.patch("/:id/toggle-delete", PetPostController.toggleSoftDelete);
 
-// Áp dụng middleware admin và mount admin router
+// Apply admin middleware and mount admin router
 router.use("/admin", validateAuth(["ADMIN"]), adminRouter);
 
 module.exports = router;

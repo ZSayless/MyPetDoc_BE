@@ -4,11 +4,11 @@ const BannerController = require("../controllers/BannerController");
 const { validateAuth } = require("../middleware/validateAuth");
 const { handleUploadBannerImages } = require("../middleware/uploadMiddleware");
 
-// Routes công khai
+// Public routes
 router.get("/active", BannerController.getActiveBanners);
 router.get("/:id", BannerController.getBannerById);
 
-// Routes yêu cầu xác thực ADMIN
+// Routes require admin authentication
 router.use(validateAuth(["ADMIN"]));
 router.get("/", BannerController.getBanners);
 router.post("/", handleUploadBannerImages, BannerController.createBanner);

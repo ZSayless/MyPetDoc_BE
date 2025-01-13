@@ -31,7 +31,7 @@ const validateAuth = (allowedRoles = []) => {
       // Kiểm tra header Authorization
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        throw new ApiError(401, "Vui lòng đăng nhập");
+        throw new ApiError(401, "Please login");
       }
 
       // Lấy token
@@ -44,22 +44,22 @@ const validateAuth = (allowedRoles = []) => {
       const user = await User.findById(decoded.id);
 
       if (!user) {
-        throw new ApiError(401, "Người dùng không tồn tại");
+        throw new ApiError(401, "User not found");
       }
 
       // Kiểm tra user có bị khóa
       if (user.is_locked) {
-        throw new ApiError(401, "Tài khoản đã bị khóa");
+        throw new ApiError(401, "Account is locked");
       }
 
       // Kiểm tra user có được kích hoạt
       if (!user.is_active) {
-        throw new ApiError(401, "Tài khoản chưa được kích hoạt");
+        throw new ApiError(401, "Account is not activated");
       }
 
       // Kiểm tra role
       if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-        throw new ApiError(403, "Bạn không có quyền thực hiện hành động này");
+        throw new ApiError(403, "You do not have permission to perform this action");
       }
 
       // Lưu thông tin user vào request
@@ -69,9 +69,9 @@ const validateAuth = (allowedRoles = []) => {
     } catch (error) {
       console.log("Error:", error);
       if (error.name === "JsonWebTokenError") {
-        next(new ApiError(401, "Token không hợp lệ"));
+        next(new ApiError(401, "Invalid token"));
       } else if (error.name === "TokenExpiredError") {
-        next(new ApiError(401, "Token đã hết hạn"));
+        next(new ApiError(401, "Token expired"));
       } else {
         next(error);
       }

@@ -2,121 +2,121 @@ const FAQ = require("../models/Faq");
 const ApiError = require("../exceptions/ApiError");
 
 class FAQService {
-  // Lấy danh sách FAQ có phân trang
+  // Get list of FAQs with pagination
   async getFAQs(page = 1, limit = 10, includeDeleted = false) {
     try {
       return await FAQ.findAll(page, limit, includeDeleted);
     } catch (error) {
-      throw new ApiError(500, "Lỗi khi lấy danh sách FAQ");
+      throw new ApiError(500, "Error fetching FAQs");
     }
   }
 
-  // Tìm kiếm FAQ
+  // Search FAQs
   async searchFAQs(keyword, page = 1, limit = 10) {
     try {
       if (!keyword || keyword.trim().length < 2) {
-        throw new ApiError(400, "Từ khóa tìm kiếm phải có ít nhất 2 ký tự");
+        throw new ApiError(400, "Search keyword must be at least 2 characters");
       }
       return await FAQ.search(keyword.trim(), page, limit);
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError(500, "Lỗi khi tìm kiếm FAQ");
+      throw new ApiError(500, "Error searching FAQs");
     }
   }
 
-  // Lấy chi tiết FAQ
+  // Get details of a FAQ
   async getFAQById(id) {
     try {
       const faq = await FAQ.findById(id);
       if (!faq) {
-        throw new ApiError(404, "Không tìm thấy FAQ");
+        throw new ApiError(404, "FAQ not found");
       }
       return faq;
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError(500, "Lỗi khi lấy thông tin FAQ");
+      throw new ApiError(500, "Error fetching FAQ details");
     }
   }
 
-  // Tạo FAQ mới
+  // Create new FAQ
   async createFAQ(data, userId) {
     try {
-      // Validate dữ liệu
+      // Validate data
       await this.validateFAQData(data);
 
-      // Chuẩn bị dữ liệu
+      // Prepare data
       const faqData = {
         ...data,
         created_by: userId,
       };
 
-      // Tạo FAQ mới
+      // Create new FAQ
       return await FAQ.create(faqData);
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError(500, "Lỗi khi tạo FAQ");
+      throw new ApiError(500, "Error creating FAQ");
     }
   }
 
-  // Cập nhật FAQ
+  // Update FAQ
   async updateFAQ(id, data) {
     try {
-      // Kiểm tra FAQ tồn tại
+      // Check if FAQ exists
       const existingFAQ = await this.getFAQById(id);
 
-      // Validate dữ liệu
+      // Validate data
       await this.validateFAQData(data);
 
-      // Cập nhật FAQ
+      // Update FAQ
       return await FAQ.update(id, data);
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError(500, "Lỗi khi cập nhật FAQ");
+      throw new ApiError(500, "Error updating FAQ");
     }
   }
 
-  // Xóa mềm/khôi phục FAQ
+  // Soft delete/restore FAQ
   async toggleSoftDelete(id) {
     try {
       const faq = await this.getFAQById(id);
       return await FAQ.toggleSoftDelete(id);
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError(500, "Lỗi khi thay đổi trạng thái FAQ");
+      throw new ApiError(500, "Error toggling FAQ status");
     }
   }
 
-  // Xóa vĩnh viễn FAQ
+  // Hard delete FAQ
   async hardDelete(id) {
     try {
       const faq = await this.getFAQById(id);
       return await FAQ.hardDelete(id);
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError(500, "Lỗi khi xóa FAQ");
+      throw new ApiError(500, "Error hard deleting FAQ");
     }
   }
 
-  // Validate dữ liệu FAQ
+  // Validate FAQ data
   async validateFAQData(data) {
     const errors = [];
 
     // Validate câu hỏi
     if (!data.question) {
-      errors.push("Câu hỏi là bắt buộc");
+      errors.push("Question is required");
     } else if (data.question.trim().length < 10) {
-      errors.push("Câu hỏi phải có ít nhất 10 ký tự");
+      errors.push("Question must be at least 10 characters");
     }
 
     // Validate câu trả lời
     if (!data.answer) {
-      errors.push("Câu trả lời là bắt buộc");
+      errors.push("Answer is required");
     } else if (data.answer.trim().length < 10) {
-      errors.push("Câu trả lời phải có ít nhất 10 ký tự");
+      errors.push("Answer must be at least 10 characters");
     }
 
     if (errors.length > 0) {
-      throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
+      throw new ApiError(400, "Invalid data", errors);
     }
   }
 }

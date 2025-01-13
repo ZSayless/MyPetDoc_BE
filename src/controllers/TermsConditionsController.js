@@ -3,13 +3,13 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 
 class TermsConditionsController {
-  // Lấy điều khoản hiện tại
+  // Get current terms
   getCurrentTerms = asyncHandler(async (req, res) => {
     const terms = await TermsConditionsService.getCurrentTerms();
     res.json(terms);
   });
 
-  // Tạo phiên bản mới
+  // Create new version
   createNewVersion = asyncHandler(async (req, res) => {
     const terms = await TermsConditionsService.createNewVersion(
       req.body,
@@ -18,7 +18,7 @@ class TermsConditionsController {
     res.status(201).json(terms);
   });
 
-  // Lấy lịch sử phiên bản
+  // Get version history
   getVersionHistory = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const result = await TermsConditionsService.getVersionHistory(
@@ -28,13 +28,13 @@ class TermsConditionsController {
     res.json(result);
   });
 
-  // Lấy một phiên bản cụ thể
+  // Get specific version
   getVersion = asyncHandler(async (req, res) => {
     const terms = await TermsConditionsService.getVersion(req.params.version);
     res.json(terms);
   });
 
-  // Lấy điều khoản có hiệu lực tại một thời điểm
+  // Get effective terms at a specific time
   getEffectiveTerms = asyncHandler(async (req, res) => {
     const { date } = req.query;
     let effectiveDate = date ? new Date(date) : new Date();
@@ -47,7 +47,7 @@ class TermsConditionsController {
     res.json(terms);
   });
 
-  // So sánh hai phiên bản
+  // Compare two versions
   compareVersions = asyncHandler(async (req, res) => {
     const { version1, version2 } = req.query;
 
@@ -62,31 +62,31 @@ class TermsConditionsController {
     res.json(comparison);
   });
 
-  // Xóa mềm/khôi phục
+  // Soft delete/restore
   toggleSoftDelete = asyncHandler(async (req, res) => {
-    // Kiểm tra quyền admin
+    // Check admin permission
     if (req.user.role !== "ADMIN") {
-      throw new ApiError(403, "Bạn không có quyền thực hiện hành động này");
+      throw new ApiError(403, "You are not authorized to perform this action");
     }
 
     const terms = await TermsConditionsService.toggleSoftDelete(req.params.id);
     res.status(204).json({
       status: "success",
-      message: "Xóa phiên bản thành công",
+      message: "Soft delete version successful",
     });
   });
 
-  // Xóa vĩnh viễn
+  // Hard delete
   hardDeleteVersion = asyncHandler(async (req, res) => {
-    // Kiểm tra quyền admin
+    // Check admin permission
     if (req.user.role !== "ADMIN") {
-      throw new ApiError(403, "Bạn không có quyền thực hiện hành động này");
+      throw new ApiError(403, "You are not authorized to perform this action");
     }
 
     await TermsConditionsService.hardDelete(req.params.id);
     res.status(204).json({
       status: "success",
-      message: "Xóa vĩnh viễn phiên bản thành công",
+      message: "Hard delete version successful",
     });
   });
 }

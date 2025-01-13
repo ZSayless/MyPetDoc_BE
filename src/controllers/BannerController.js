@@ -3,15 +3,15 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 
 class BannerController {
-  // Lấy danh sách banner có phân trang
+  // Get list of banners with pagination
   getBanners = asyncHandler(async (req, res) => {
     const {
       page = 1,
       limit = 10,
-      includeDeleted = true, // Mặc định true cho admin route
+      includeDeleted = true, // Default true for admin route
     } = req.query;
 
-    // Log để debug
+    // Log for debugging
     // console.log("Get banners params:", {
     //   page,
     //   limit,
@@ -22,32 +22,32 @@ class BannerController {
     const result = await BannerService.getBanners(
       parseInt(page),
       parseInt(limit),
-      includeDeleted === "true" || includeDeleted === true // Đảm bảo xử lý đúng kiểu dữ liệu
+      includeDeleted === "true" || includeDeleted === true // Ensure correct data type
     );
     res.json(result);
   });
 
-  // Lấy danh sách banner đang active
+  // Get list of active banners
   getActiveBanners = asyncHandler(async (req, res) => {
     const banners = await BannerService.getActiveBanners();
     res.json(banners);
   });
 
-  // Lấy chi tiết banner
+  // Get banner details
   getBannerById = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const banner = await BannerService.getBannerById(parseInt(id));
     res.json(banner);
   });
 
-  // Tạo banner mới
+  // Create new banner
   createBanner = asyncHandler(async (req, res) => {
     if (!req.file) {
-      throw new ApiError(400, "Vui lòng upload ảnh banner");
+      throw new ApiError(400, "Please upload banner image");
     }
-    // Kiểm tra số lượng file
+    // Check number of files
     if (req.files && req.files.length > 1) {
-      throw new ApiError(400, "Chỉ được phép upload 1 ảnh cho banner");
+      throw new ApiError(400, "Only one image is allowed for banner");
     }
 
     const banner = await BannerService.createBanner(
@@ -58,16 +58,16 @@ class BannerController {
 
     res.status(201).json({
       status: "success",
-      message: "Tạo banner thành công",
+      message: "Create banner successful",
       data: banner,
     });
   });
 
-  // Cập nhật banner
+  // Update banner
   updateBanner = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    // Log để debug
+    // Log for debugging
     // console.log('Update banner request:', {
     //   id,
     //   body: req.body,
@@ -82,45 +82,45 @@ class BannerController {
 
     res.json({
       status: "success",
-      message: "Cập nhật banner thành công",
+      message: "Update banner successful",
       data: banner,
     });
   });
 
-  // Toggle trạng thái active
+  // Toggle active status
   toggleActive = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const banner = await BannerService.toggleActive(parseInt(id));
 
     res.json({
       status: "success",
-      message: `Banner đã được ${
-        banner.is_active ? "kích hoạt" : "vô hiệu hóa"
+      message: `Banner has been ${
+        banner.is_active ? "activated" : "deactivated"
       }`,
       data: banner,
     });
   });
 
-  // Xóa mềm banner
+  // Soft delete banner
   softDelete = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const banner = await BannerService.softDelete(parseInt(id));
 
     res.json({
       status: "success",
-      message: `Banner đã được ${banner.is_deleted ? "xóa" : "khôi phục"}`,
+      message: `Banner has been ${banner.is_deleted ? "deleted" : "restored"}`,
       data: banner,
     });
   });
 
-  // Xóa vĩnh viễn banner
+  // Hard delete banner
   hardDelete = asyncHandler(async (req, res) => {
     const { id } = req.params;
     await BannerService.hardDelete(parseInt(id));
 
     res.json({
       status: "success",
-      message: "Đã xóa vĩnh viễn banner",
+      message: "Banner has been permanently deleted",
     });
   });
 }

@@ -4,13 +4,13 @@ const ApiError = require("../exceptions/ApiError");
 const cloudinary = require("../config/cloudinary");
 
 class ReviewService {
-  // Tạo review mới
+  // Create new review
   async createReview(data, userId, file = null) {
     try {
-      // Validate dữ liệu cơ bản
+      // Validate basic data
       await this.validateReviewData(data, file);
 
-      // Kiểm tra đã review chưa
+      // Check if user has reviewed
       const hasReviewed = await Review.hasUserReviewed(
         userId,
         data.hospital_id
@@ -19,7 +19,7 @@ class ReviewService {
         throw new ApiError(400, "Bạn đã đánh giá bệnh viện này rồi");
       }
 
-      // Chuẩn bị dữ liệu review
+      // Prepare review data
       const reviewData = {
         user_id: userId,
         hospital_id: parseInt(data.hospital_id),
@@ -34,15 +34,15 @@ class ReviewService {
       const result = await Review.create(reviewData);
       console.log("Create result:", result);
 
-      // Lấy review vừa tạo
+      // Get created review
       const review = await Review.findById(result.insertId);
       if (!review) {
-        throw new ApiError(500, "Không thể tạo review");
+        throw new ApiError(500, "Cannot create review");
       }
 
       return review;
     } catch (error) {
-      // Nếu có lỗi và đã upload ảnh, xóa ảnh trên Cloudinary
+      // If there is an error and an image has been uploaded, delete the image on Cloudinary
       if (file && file.path) {
         try {
           const urlParts = file.path.split("/");
@@ -51,14 +51,14 @@ class ReviewService {
           }`;
           await cloudinary.uploader.destroy(publicId);
         } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+          console.error("Error deleting image on Cloudinary:", deleteError);
         }
       }
       throw error;
     }
   }
 
-  // Lấy danh sách review với filter và phân trang
+  // Get list of reviews with filters and pagination
   async getReviews(filters = {}, page = 1, limit = 10) {
     try {
       const offset = (page - 1) * limit;
@@ -68,12 +68,12 @@ class ReviewService {
     }
   }
 
-  // Lấy chi tiết một review
+  // Get detailed information of a review
   async getReviewById(id) {
     try {
       const review = await Review.findById(id);
       if (!review) {
-        throw new ApiError(404, "Không tìm thấy đánh giá này");
+        throw new ApiError(404, "Review not found");
       }
       return review;
     } catch (error) {
@@ -81,35 +81,35 @@ class ReviewService {
     }
   }
 
-  // Báo cáo review
+  // Report review
   async reportReview(reviewId, reportData, userId) {
     try {
-      // Kiểm tra review tồn tại
+      // Check if review exists
       const review = await this.getReviewById(reviewId);
       if (!review) {
-        throw new ApiError(404, "Không tìm thấy đánh giá này");
+        throw new ApiError(404, "Review not found");
       }
 
-      // Kiểm tra xem user đã báo cáo review này chưa
+      // Check if user has reported this review
       const hasReported = await Review.hasUserReported(userId, reviewId);
       if (hasReported) {
-        throw new ApiError(400, "Bạn đã báo cáo đánh giá này rồi");
+        throw new ApiError(400, "You have already reported this review");
       }
 
-      // Chuẩn bị dữ liệu báo cáo
+      // Prepare report data
       const reportWithUser = {
         review_id: reviewId,
         reported_by: userId,
-        reason: reportData.reason || "Không có lý do",
+        reason: reportData.reason || "No reason",
         created_at: new Date(),
       };
 
-      // Thêm báo cáo và cập nhật trạng thái review
+      // Add report and update review status
       const result = await Review.report(reviewId, reportWithUser);
 
       return {
         success: true,
-        message: "Đã báo cáo đánh giá thành công",
+        message: "Reported review successfully",
         data: result,
       };
     } catch (error) {
@@ -118,7 +118,7 @@ class ReviewService {
     }
   }
 
-  // Lấy thống kê đánh giá của bệnh viện
+  // Get review statistics of a hospital
   async getHospitalStats(hospitalId) {
     try {
       return await Review.getHospitalStats(hospitalId);
@@ -127,50 +127,50 @@ class ReviewService {
     }
   }
 
-  // Validate dữ liệu review
+  // Validate review data
   async validateReviewData(data, file = null, isUpdate = false) {
     const errors = [];
 
     // Validate hospital_id (chỉ bắt buộc khi tạo mới)
     if (!isUpdate && !data.hospital_id) {
-      errors.push("Hospital ID là bắt buộc");
+      errors.push("Hospital ID is required");
     }
 
     // Validate rating nếu có
     if (data.rating !== undefined) {
       const rating = parseInt(data.rating);
       if (isNaN(rating) || rating < 1 || rating > 5) {
-        errors.push("Rating phải từ 1-5");
+        errors.push("Rating must be between 1-5");
       }
     }
 
-    // Khi tạo mới: phải có ít nhất comment hoặc ảnh
-    // Khi cập nhật: không bắt buộc
+    // When creating: must have at least comment or image
+    // When updating: not required
     if (!isUpdate && !data.comment && !file) {
-      errors.push("Review phải có ít nhất comment hoặc ảnh");
+      errors.push("Review must have at least comment or image");
     }
 
     // Validate comment nếu có
     if (data.comment && data.comment.trim().length < 10) {
-      errors.push("Comment phải có ít nhất 10 ký tự");
+      errors.push("Comment must be at least 10 characters");
     }
 
     // Validate image_description nếu có ảnh mới
     if (file && !data.image_description) {
-      errors.push("Vui lòng thêm mô tả cho ảnh");
+      errors.push("Please add a description for the image");
     }
 
     if (errors.length > 0) {
-      throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
+      throw new ApiError(400, "Invalid data", errors);
     }
   }
 
-  // Kiểm tra URL ảnh hợp lệ
+  // Check if image URL is valid
   isValidImageUrl(url) {
-    // Kiểm tra định dạng URL cơ bản
+    // Check basic URL format
     try {
       new URL(url);
-      // Kiểm tra phần mở rộng file
+      // Check file extension
       const extensions = [".jpg", ".jpeg", ".png", ".gif"];
       return extensions.some((ext) => url.toLowerCase().endsWith(ext));
     } catch {
@@ -178,27 +178,27 @@ class ReviewService {
     }
   }
 
-  // Toggle soft delete review (xóa mềm/khôi phục)
+  // Toggle soft delete review (soft delete/restore)
   async toggleSoftDelete(id, userId, userRole) {
     try {
       const review = await Review.findById(id);
       if (!review) {
-        throw new ApiError(404, "Không tìm thấy review");
+        throw new ApiError(404, "Review not found");
       }
 
       // Kiểm tra quyền xóa
       if (userRole !== "ADMIN" && review.user_id !== userId) {
-        throw new ApiError(403, "Bạn không có quyền thực hiện hành động này");
+        throw new ApiError(403, "You do not have permission to perform this action");
       }
 
-      // Toggle trạng thái xóa
+      // Toggle delete status
       const updatedReview = await Review.toggleSoftDelete(id);
 
       return {
         success: true,
         message: updatedReview.is_deleted
-          ? "Đã xóa đánh giá thành công"
-          : "Đã khôi phục đánh giá thành công",
+          ? "Review deleted successfully"
+          : "Review restored successfully",
         review: updatedReview,
       };
     } catch (error) {
@@ -206,16 +206,16 @@ class ReviewService {
     }
   }
 
-  // Xóa vĩnh viễn review
+  // Hard delete review
   async hardDelete(id) {
     try {
-      // Lấy thông tin review trước khi xóa
+      // Get review information before deleting
       const review = await Review.findById(id);
       if (!review) {
-        throw new ApiError(404, "Không tìm thấy review");
+        throw new ApiError(404, "Review not found");
       }
 
-      // Xóa ảnh trên Cloudinary nếu có
+      // Delete image on Cloudinary if exists
       if (review.photo.image_url) {
         try {
           const imageUrl = review.photo.image_url;
@@ -226,23 +226,23 @@ class ReviewService {
 
           await cloudinary.uploader.destroy(publicId);
         } catch (cloudinaryError) {
-          console.error("Lỗi khi xóa ảnh trên Cloudinary:", cloudinaryError);
+          console.error("Error deleting image on Cloudinary:", cloudinaryError);
         }
       } else {
-        console.log("Không tìm thấy URL ảnh để xóa");
+        console.log("No image URL found to delete");
       }
 
-      // Xóa các báo cáo liên quan
+      // Delete related reports
       await Review.query("DELETE FROM report_reasons WHERE review_id = ?", [
         id,
       ]);
 
-      // Xóa review
+      // Delete review
       await Review.hardDelete(id);
 
       return {
         status: "success",
-        message: "Đã xóa vĩnh viễn đánh giá thành công",
+        message: "Review deleted successfully",
       };
     } catch (error) {
       console.error("Error in ReviewService.hardDelete:", error);
@@ -250,24 +250,24 @@ class ReviewService {
     }
   }
 
-  // Cập nhật review
+  // Update review
   async updateReview(id, data, userId, file = null) {
     try {
-      // Lấy review hiện tại
+      // Get current review
       const existingReview = await Review.findById(id);
       if (!existingReview) {
-        throw new ApiError(404, "Không tìm thấy review");
+        throw new ApiError(404, "Review not found");
       }
 
-      // Kiểm tra quyền
+      // Check permission
       if (existingReview.user_id !== userId) {
-        throw new ApiError(403, "Bạn không có quyền sửa review này");
+        throw new ApiError(403, "You do not have permission to edit this review");
       }
 
-      // Validate dữ liệu mới (với isUpdate = true)
+      // Validate new data (with isUpdate = true)
       await this.validateReviewData(data, file, true);
 
-      // Nếu có ảnh mới và có ảnh cũ, xóa ảnh cũ trên Cloudinary
+      // If there is a new image and there is an old image, delete the old image on Cloudinary
       if (file && existingReview.photo && existingReview.photo.image_url) {
         try {
           const urlParts = existingReview.photo.image_url.split("/");
@@ -276,11 +276,11 @@ class ReviewService {
           }`;
           await cloudinary.uploader.destroy(publicId);
         } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh cũ trên Cloudinary:", deleteError);
+          console.error("Error deleting old image on Cloudinary:", deleteError);
         }
       }
 
-      // Chuẩn bị dữ liệu cập nhật
+      // Prepare update data
       const updateData = {
         rating: data.rating ? parseInt(data.rating) : existingReview.rating,
         comment:
@@ -298,13 +298,13 @@ class ReviewService {
             : null,
       };
 
-      // Cập nhật review
+      // Update review
       const updatedReview = await Review.update(id, updateData);
 
-      console.log("Review đã được cập nhật:", updatedReview);
+      // console.log("Review updated:", updatedReview);
       return updatedReview;
     } catch (error) {
-      // Nếu có lỗi và đã upload ảnh mới, xóa ảnh mới trên Cloudinary
+      // If there is an error and a new image has been uploaded, delete the new image on Cloudinary
       if (file && file.path) {
         try {
           const urlParts = file.path.split("/");
@@ -313,40 +313,40 @@ class ReviewService {
           }`;
           await cloudinary.uploader.destroy(publicId);
         } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh mới trên Cloudinary:", deleteError);
+          console.error("Error deleting new image on Cloudinary:", deleteError);
         }
       }
       throw error;
     }
   }
 
-  // Kiểm tra điều kiện được phép review
+  // Check if user can review
   async canUserReview(userId, hospitalId) {
     try {
-      // Kiểm tra xem user đã từng review chưa
+      // Check if user has reviewed
       const hasReviewed = await Review.hasUserReviewed(userId, hospitalId);
       if (hasReviewed) {
         return {
           canReview: false,
-          message: "Bạn đã đánh giá bệnh viện này rồi",
+          message: "You have already reviewed this hospital",
         };
       }
 
       return {
         canReview: true,
-        message: "Bạn có thể đánh giá bệnh viện này",
+        message: "You can review this hospital",
       };
     } catch (error) {
       throw error;
     }
   }
 
-  // Lấy danh sách review theo hospital
+  // Get list of reviews by hospital
   async getHospitalReviews(hospitalId, { page = 1, limit = 10 } = {}) {
     try {
       const offset = (page - 1) * limit;
 
-      // Sử dụng phương thức search với filter theo hospital_id
+      // Use search method with filter by hospital_id
       const result = await Review.search(
         { hospital_id: hospitalId },
         { offset, limit }
@@ -375,26 +375,26 @@ class ReviewService {
 
   async deleteReview(id, userId, isAdmin = false) {
     try {
-      // Lấy thông tin review trước khi xóa
+      // Get review information before deleting
       const review = await Review.findById(id);
       if (!review) {
-        throw new ApiError(404, "Không tìm thấy review");
+        throw new ApiError(404, "Review not found");
       }
 
-      // Kiểm tra quyền xóa
+      // Check delete permission
       if (!isAdmin && review.user_id !== userId) {
-        throw new ApiError(403, "Bạn không có quyền xóa review này");
+        throw new ApiError(403, "You do not have permission to delete this review");
       }
 
-      // Xóa review trong database
+      // Delete review in database
       await Review.softDelete(id);
 
       return {
         success: true,
-        message: "Đã xóa review thành công",
+        message: "Review deleted successfully",
       };
     } catch (error) {
-      console.error("Lỗi khi xóa review:", error);
+      console.error("Delete review error:", error);
       throw error;
     }
   }

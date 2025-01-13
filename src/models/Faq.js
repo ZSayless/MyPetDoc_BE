@@ -14,7 +14,7 @@ class FAQ extends BaseModel {
     }
   }
 
-  // Lấy danh sách FAQ có phân trang
+  // Get all FAQs with pagination
   static async findAll(page = 1, limit = 10) {
     try {
       const pageNumber = parseInt(page);
@@ -56,7 +56,7 @@ class FAQ extends BaseModel {
     }
   }
 
-  // Tìm kiếm FAQ
+  // Search FAQs
   static async search(keyword, page = 1, limit = 10) {
     try {
       const pageNumber = parseInt(page);
@@ -106,7 +106,7 @@ class FAQ extends BaseModel {
     }
   }
 
-  // Tạo FAQ mới
+  // Create new FAQ
   static async create(data) {
     try {
       const faqData = await super.create(data);
@@ -117,7 +117,7 @@ class FAQ extends BaseModel {
     }
   }
 
-  // Cập nhật FAQ
+  // Update FAQ
   static async update(id, data) {
     try {
       const faqData = await super.update(id, data);
@@ -145,7 +145,7 @@ class FAQ extends BaseModel {
     }
   }
 
-  // Xóa vĩnh viễn
+  // Hard delete
   static async hardDelete(id) {
     try {
       const faqData = await super.hardDelete(id);
@@ -156,7 +156,7 @@ class FAQ extends BaseModel {
     }
   }
 
-  // Override các phương thức cơ bản
+  // Override basic methods
   static async findOne(conditions) {
     const faqData = await super.findOne(conditions);
     return faqData ? new FAQ(faqData) : null;

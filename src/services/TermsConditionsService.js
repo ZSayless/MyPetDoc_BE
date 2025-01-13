@@ -2,12 +2,12 @@ const TermsConditions = require("../models/TermsConditions");
 const ApiError = require("../exceptions/ApiError");
 
 class TermsConditionsService {
-  // Lấy điều khoản hiện tại
+  // Get current terms
   async getCurrentTerms() {
     try {
       const terms = await TermsConditions.getCurrentTerms();
       if (!terms) {
-        throw new ApiError(404, "Chưa có điều khoản nào được tạo");
+        throw new ApiError(404, "No terms created");
       }
       return terms;
     } catch (error) {
@@ -15,29 +15,29 @@ class TermsConditionsService {
     }
   }
 
-  // Tạo phiên bản mới
+  // Create new version
   async createNewVersion(data, userId) {
     try {
-      // Validate dữ liệu
+      // Validate data
       await this.validateTermsData(data);
 
-      // Lấy ngày hiện tại (chỉ lấy ngày, không lấy giờ)
+      // Get current date (only date, no time)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Lấy ngày hiệu lực (chỉ lấy ngày, không lấy giờ)
+      // Get effective date (only date, no time)
       const effectiveDate = new Date(data.effective_date);
       effectiveDate.setHours(0, 0, 0, 0);
 
-      // Kiểm tra ngày hiệu lực
+      // Check effective date
       if (effectiveDate < today) {
         throw new ApiError(
           400,
-          "Ngày hiệu lực phải lớn hơn hoặc bằng ngày hiện tại"
+          "Effective date must be greater than or equal to today"
         );
       }
 
-      // Tạo phiên bản mới
+      // Create new version
       const terms = await TermsConditions.createNewVersion(data, userId);
       return terms;
     } catch (error) {
@@ -45,7 +45,7 @@ class TermsConditionsService {
     }
   }
 
-  // Lấy lịch sử phiên bản
+  // Get version history
   async getVersionHistory(page = 1, limit = 10) {
     try {
       return await TermsConditions.getVersionHistory(page, limit);
@@ -54,12 +54,12 @@ class TermsConditionsService {
     }
   }
 
-  // Lấy một phiên bản cụ thể
+  // Get a specific version
   async getVersion(version) {
     try {
       const terms = await TermsConditions.getVersion(version);
       if (!terms) {
-        throw new ApiError(404, "Không tìm thấy phiên bản này");
+        throw new ApiError(404, "Version not found");
       }
       return terms;
     } catch (error) {
@@ -67,14 +67,14 @@ class TermsConditionsService {
     }
   }
 
-  // Lấy điều khoản có hiệu lực tại một thời điểm
+  // Get terms effective at a specific date
   async getEffectiveTerms(date) {
     try {
       const terms = await TermsConditions.getEffectiveTerms(date);
       if (!terms) {
         throw new ApiError(
           404,
-          "Không có điều khoản nào có hiệu lực tại thời điểm này"
+          "No terms effective at this time"
         );
       }
       return terms;
@@ -83,7 +83,7 @@ class TermsConditionsService {
     }
   }
 
-  // Xóa mềm/khôi phục
+  // Soft delete/restore
   async toggleSoftDelete(id) {
     try {
       return await TermsConditions.toggleSoftDelete(id);
@@ -92,13 +92,13 @@ class TermsConditionsService {
     }
   }
 
-  // Xóa vĩnh viễn
+  // Hard delete
   async hardDelete(id) {
     try {
-      // Kiểm tra xem có phải phiên bản hiện tại không
+      // Check if it is the current version
       const currentTerms = await TermsConditions.getCurrentTerms();
       if (currentTerms && currentTerms.id === parseInt(id)) {
-        throw new ApiError(400, "Không thể xóa phiên bản đang có hiệu lực");
+        throw new ApiError(400, "Cannot delete the current version");
       }
 
       return await TermsConditions.hardDelete(id);
@@ -107,36 +107,36 @@ class TermsConditionsService {
     }
   }
 
-  // Validate dữ liệu
+  // Validate data
   async validateTermsData(data) {
     const errors = [];
 
-    // Kiểm tra tiêu đề
+    // Check title
     if (!data.title || data.title.trim().length < 5) {
-      errors.push("Tiêu đề phải có ít nhất 5 ký tự");
+      errors.push("Title must be at least 5 characters");
     }
 
-    // Kiểm tra nội dung
+    // Check content
     if (!data.content || data.content.trim().length < 10) {
-      errors.push("Nội dung phải có ít nhất 10 ký tự");
+      errors.push("Content must be at least 10 characters");
     }
 
-    // Kiểm tra ngày hiệu lực
+    // Check effective date
     if (!data.effective_date) {
-      errors.push("Ngày hiệu lực là bắt buộc");
+      errors.push("Effective date is required");
     } else {
       const effectiveDate = new Date(data.effective_date);
       if (isNaN(effectiveDate.getTime())) {
-        errors.push("Ngày hiệu lực không hợp lệ");
+        errors.push("Effective date is invalid");
       }
     }
 
     if (errors.length > 0) {
-      throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
+      throw new ApiError(400, "Invalid data", errors);
     }
   }
 
-  // So sánh hai phiên bản
+  // Compare two versions
   async compareVersions(version1, version2) {
     try {
       const [v1, v2] = await Promise.all([
@@ -169,7 +169,7 @@ class TermsConditionsService {
     }
   }
 
-  // So sánh hai trường dữ liệu
+  // Compare two fields
   compareFields(field1, field2) {
     if (field1 === field2) return null;
     return {

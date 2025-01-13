@@ -12,7 +12,7 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
-// Kiểm tra kết nối
+// Check connection
 pool
   .getConnection()
   .then((connection) => {

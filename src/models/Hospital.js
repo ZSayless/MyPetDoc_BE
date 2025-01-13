@@ -1,10 +1,11 @@
 const BaseModel = require("./BaseModel");
 const convertBitToBoolean = require("../utils/convertBitToBoolean");
 const cloudinary = require("../config/cloudinary");
+const Review = require("./Review");
 
 class Hospital extends BaseModel {
   static tableName = "hospitals";
-  // Constructor để chuyển đổi dữ liệu
+  // Constructor to convert data
   constructor(data) {
     super();
     if (data) {
@@ -14,10 +15,10 @@ class Hospital extends BaseModel {
       });
     }
   }
-  // Phương thức tìm kiếm
+  // Search method
   static async search(searchParams = {}, options = {}) {
     try {
-      // Đảm bảo searchParams không bị undefined
+      // Ensure searchParams is not undefined
       searchParams = searchParams || {};
       options = options || {};
       const {
@@ -26,7 +27,7 @@ class Hospital extends BaseModel {
         sortBy = "created_at",
         sortOrder = "DESC",
       } = options;
-      // Chỉ lấy các tham số có giá trị
+      // Only get valid parameters
       const validSearchParams = {};
       if (searchParams.name) validSearchParams.name = searchParams.name;
       if (searchParams.address)
@@ -37,14 +38,14 @@ class Hospital extends BaseModel {
         validSearchParams.specialties = searchParams.specialties;
       let conditions = ["is_deleted = 0"];
       let params = [];
-      // Xử lý các tham số tìm kiếm
+      // Process search parameters
       Object.entries(validSearchParams).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== "") {
           conditions.push(`${key} LIKE ?`);
           params.push(`%${value}%`);
         }
       });
-      // Tạo câu query với điều kiện tìm kiếm
+      // Create query with search conditions
       const sql = `
        SELECT * FROM ${this.tableName}
        WHERE ${conditions.join(" AND ")}
@@ -52,7 +53,7 @@ class Hospital extends BaseModel {
        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
      `;
       const hospitals = await this.query(sql, params);
-      // Đếm tổng số kết quả
+      // Count total results
       const countSql = `
        SELECT COUNT(*) as total 
        FROM ${this.tableName}
@@ -68,12 +69,12 @@ class Hospital extends BaseModel {
       throw error;
     }
   }
-  // Phương thức đếm số lượng kết quả tìm kiếm
+  // Count search results
   static async countSearch(searchParams = {}) {
     try {
-      // Đảm bảo searchParams không bị undefined
+      // Ensure searchParams is not undefined
       searchParams = searchParams || {};
-      // Chỉ lấy các tham số có giá trị
+      // Only get valid parameters
       const validSearchParams = {};
       if (searchParams.name) validSearchParams.name = searchParams.name;
       if (searchParams.address)
@@ -84,7 +85,7 @@ class Hospital extends BaseModel {
         validSearchParams.specialties = searchParams.specialties;
       let conditions = ["is_deleted = 0"];
       let params = [];
-      // Xử lý các tham số tìm kiếm
+      // Process search parameters
       Object.entries(validSearchParams).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== "") {
           conditions.push(`${key} LIKE ?`);
@@ -103,7 +104,7 @@ class Hospital extends BaseModel {
       throw error;
     }
   }
-  // Phương thức kiểm tra tên đã tồn tại
+  // Check if name is taken
   static async isNameTaken(name, excludeId = null) {
     try {
       const sql = excludeId
@@ -117,7 +118,7 @@ class Hospital extends BaseModel {
       throw error;
     }
   }
-  // Override các phương thức từ BaseModel
+  // Override basic methods
   static async findOne(conditions) {
     const hospitalData = await super.findOne(conditions);
     if (!hospitalData) return null;
@@ -156,10 +157,10 @@ class Hospital extends BaseModel {
     ];
 
     const result = await this.query(sql, params);
-    return result; // Trả về kết quả insert để lấy insertId
+    return result; // Return insert result to get insertId
   }
   static async update(id, data) {
-    // Chuyển đổi boolean thành bit trước khi update
+    // Convert boolean to bit before update
     if (data.is_deleted !== undefined) {
       data.is_deleted = data.is_deleted ? 1 : 0;
     }
@@ -170,49 +171,65 @@ class Hospital extends BaseModel {
     const hospitals = await super.findAll(filters, options);
     return hospitals.map((hospitalData) => new Hospital(hospitalData));
   }
-  // Phương thức xóa mềm
+  // Soft delete method
   static async softDelete(id) {
     await this.update(id, { is_deleted: true });
   }
-  // Phương thức xóa cứng
+  // Hard delete method
   static async hardDelete(id) {
     try {
-      // Lấy tất cả ảnh của bệnh viện trước khi xóa
+      // 1. Delete all report_reasons related to reviews of hospital
+      await this.query(
+        `
+        DELETE rr FROM report_reasons rr
+        INNER JOIN reviews r ON rr.review_id = r.id
+        WHERE r.hospital_id = ?
+      `,
+        [id]
+      );
+
+      // 2. Delete all reviews of hospital
+      await this.query(
+        `
+        DELETE FROM reviews 
+        WHERE hospital_id = ?
+      `,
+        [id]
+      );
+
+      // 3. Delete all images of hospital
       const images = await this.query(
         "SELECT image_url FROM hospital_images WHERE hospital_id = ?",
         [id]
       );
 
-      // Kiểm tra nếu có ảnh
+      // Delete images on Cloudinary
       if (images && images.length > 0) {
-        // Xóa từng ảnh trên Cloudinary
         for (const image of images) {
           if (image.image_url) {
             try {
-              // Lấy public_id từ URL
               const urlParts = image.image_url.split("/");
               const filename = urlParts[urlParts.length - 1].split(".")[0];
               const publicId = `hospitals/${filename}`;
 
               await cloudinary.uploader.destroy(publicId);
-              console.log(`Đã xóa ảnh trên Cloudinary: ${publicId}`);
+              console.log(`Deleted image on Cloudinary: ${publicId}`);
             } catch (cloudinaryError) {
               console.error(
-                "Lỗi khi xóa ảnh trên Cloudinary:",
+                "Error deleting image on Cloudinary:",
                 cloudinaryError
               );
-              // Tiếp tục xử lý các ảnh khác ngay cả khi có lỗi
             }
           }
         }
       }
 
-      // Xóa các bản ghi ảnh trong bảng hospital_images
+      // 4. Delete images in hospital_images table
       await this.query("DELETE FROM hospital_images WHERE hospital_id = ?", [
         id,
       ]);
 
-      // Xóa bản ghi hospital trong database
+      // 5. Finally delete hospital record
       await this.query("DELETE FROM hospitals WHERE id = ?", [id]);
 
       return true;

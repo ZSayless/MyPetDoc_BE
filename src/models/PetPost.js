@@ -15,7 +15,7 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Lấy danh sách bài viết có phân trang và filter
+  // Get list of posts with pagination and filter
   static async findAll(options = {}) {
     try {
       const {
@@ -143,7 +143,7 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Lấy chi tiết bài viết
+  // Get post detail
   static async getDetail(id, includeDeleted = false) {
     try {
       const sql = `
@@ -166,7 +166,7 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Cập nhật số lượng tương tác
+  // Update interaction counts
   static async updateCounts(id) {
     try {
       const [[likesResult], [commentsResult]] = await Promise.all([
@@ -190,7 +190,7 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Tăng lượt xem
+  // Increment view count
   static async incrementViewCount(id) {
     try {
       await this.query(
@@ -203,17 +203,17 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Xóa bài viết và tất cả dữ liệu liên quan
+  // Delete post and all related data
   static async delete(id) {
     try {
-      // Xóa tất cả comments
+      // Delete all comments
       const PetPostComment = require("./PetPostComment");
       await PetPostComment.deleteAllByPostId(id);
 
-      // Xóa tất cả likes
+      // Delete all likes
       await this.query(`DELETE FROM pet_post_likes WHERE post_id = ?`, [id]);
 
-      // Xóa bài viết
+      // Delete post
       const sql = `
         DELETE FROM ${this.tableName}
         WHERE id = ?
@@ -227,20 +227,20 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Xóa nhiều bài viết
+  // Delete many posts
   static async deleteMany(ids) {
     try {
       if (!Array.isArray(ids) || ids.length === 0) {
         throw new Error("Danh sách ID không hợp lệ");
       }
 
-      // Xóa tất cả dữ liệu liên quan
+      // Delete all related data
       await Promise.all([
         this.query(`DELETE FROM pet_post_comments WHERE post_id IN (?)`, [ids]),
         this.query(`DELETE FROM pet_post_likes WHERE post_id IN (?)`, [ids]),
       ]);
 
-      // Xóa các bài viết
+      // Delete posts
       const sql = `
         DELETE FROM ${this.tableName}
         WHERE id IN (?)
@@ -254,7 +254,7 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Kiểm tra quyền sở hữu bài viết
+  // Check post ownership
   static async isOwnedByUser(postId, userId) {
     try {
       const [post] = await this.query(
@@ -269,7 +269,7 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Cập nhật trạng thái bài viết
+  // Update post status
   static async updateStatus(id, status, publishedAt = null) {
     try {
       const validStatuses = ["DRAFT", "PENDING", "PUBLISHED", "ARCHIVED"];
@@ -297,7 +297,7 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Cập nhật trạng thái featured
+  // Update featured status
   static async toggleFeatured(id) {
     try {
       const sql = `
@@ -314,7 +314,7 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Tìm kiếm bài viết theo tiêu đề
+  // Search posts by title
   static async search(searchQuery, options = {}) {
     try {
       const { page = 1, limit = 10, status = "PUBLISHED" } = options;
@@ -323,13 +323,13 @@ class PetPost extends BaseModel {
       let conditions = ["p.is_deleted = 0"];
       let params = [];
 
-      // Tìm kiếm theo tiêu đề
+      // Search by title
       if (searchQuery) {
         conditions.push("p.title LIKE ?");
         params.push(`%${searchQuery}%`);
       }
 
-      // Lọc theo trạng thái
+      // Filter by status
       if (status) {
         conditions.push("p.status = ?");
         params.push(status);
@@ -375,7 +375,7 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Soft delete - chỉ cập nhật trạng thái
+  // Soft delete - only update status
   static async softDelete(id) {
     try {
       const sql = `
@@ -393,13 +393,13 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Hard delete - xóa hoàn toàn bài viết và dữ liệu liên quan
+  // Hard delete - delete post and all related data
   static async hardDelete(id) {
     try {
-      // Xóa likes
+      // Delete likes
       await this.query(`DELETE FROM pet_post_likes WHERE post_id = ?`, [id]);
 
-      // Xóa báo cáo của comments
+      // Delete reports of comments
       await this.query(
         `DELETE rr FROM report_reasons rr
          INNER JOIN pet_post_comments c ON rr.pet_post_comment_id = c.id
@@ -407,10 +407,10 @@ class PetPost extends BaseModel {
         [id]
       );
 
-      // Xóa comments
+      // Delete comments
       await this.query(`DELETE FROM pet_post_comments WHERE post_id = ?`, [id]);
 
-      // Xóa bài viết
+      // Delete post
       await this.query(`DELETE FROM ${this.tableName} WHERE id = ?`, [id]);
 
       return true;
@@ -420,7 +420,7 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Soft delete nhiều bài viết
+  // Soft delete many posts
   static async softDeleteMany(ids) {
     try {
       const sql = `
@@ -438,15 +438,15 @@ class PetPost extends BaseModel {
     }
   }
 
-  // Hard delete nhiều bài viết
+  // Hard delete many posts
   static async hardDeleteMany(ids) {
     try {
-      // Xóa likes
+      // Delete likes
       await this.query(`DELETE FROM pet_post_likes WHERE post_id IN (?)`, [
         ids,
       ]);
 
-      // Xóa báo cáo của comments
+      // Delete reports of comments
       await this.query(
         `DELETE rr FROM report_reasons rr
          INNER JOIN pet_post_comments c ON rr.pet_post_comment_id = c.id
@@ -454,12 +454,12 @@ class PetPost extends BaseModel {
         [ids]
       );
 
-      // Xóa comments
+      // Delete comments
       await this.query(`DELETE FROM pet_post_comments WHERE post_id IN (?)`, [
         ids,
       ]);
 
-      // Xóa bài viết
+      // Delete post
       await this.query(`DELETE FROM ${this.tableName} WHERE id IN (?)`, [ids]);
 
       return true;

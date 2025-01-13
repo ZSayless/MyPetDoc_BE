@@ -66,11 +66,11 @@ class ReportReason extends BaseModel {
       const [result] = await this.query(sql, [
         userId,
         reviewId,
-        commentId, // Cho review
+        commentId, // For review
         commentId,
-        reviewId, // Cho comment
+        reviewId, // For comment
         commentId,
-        reviewId, // Cho post comment
+        reviewId, // For post comment
       ]);
 
       return result.count > 0;

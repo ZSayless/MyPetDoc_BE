@@ -24,7 +24,7 @@ class Banner extends BaseModel {
     }
   }
 
-  // Lấy tất cả banner đang active
+  // Get all active banners
   static async findActive() {
     try {
       const sql = `
@@ -55,7 +55,7 @@ class Banner extends BaseModel {
     }
   }
 
-  // Lấy danh sách banner có phân trang
+  // Get all banners with pagination
   static async findAll(page = 1, limit = 10, includeDeleted = true) {
     try {
       const pageNumber = parseInt(page);
@@ -128,7 +128,7 @@ class Banner extends BaseModel {
     }
   }
 
-  // Cập nhật banner
+  // Update banner
   static async update(id, data) {
     try {
       const updateData = await super.update(id, data);
@@ -139,7 +139,7 @@ class Banner extends BaseModel {
     }
   }
 
-  // Toggle trạng thái active
+  // Toggle active status
   static async toggleActive(id) {
     try {
       const banner = await this.findById(id);
@@ -173,7 +173,7 @@ class Banner extends BaseModel {
     }
   }
 
-  // Xóa vĩnh viễn
+  // Hard delete
   static async hardDelete(id) {
     try {
       const bannerData = await super.hardDelete(id);
@@ -184,7 +184,7 @@ class Banner extends BaseModel {
     }
   }
 
-  // Override các phương thức cơ bản
+  // Override basic methods
   static async findOne(conditions) {
     const bannerData = await super.findOne(conditions);
     return bannerData ? new Banner(bannerData) : null;
@@ -195,7 +195,7 @@ class Banner extends BaseModel {
     return bannerData ? new Banner(bannerData) : null;
   }
 
-  //phương thức mới để lấy banner theo created_by
+  // New method to get banner by created_by
   static async findByCreatedBy(userId) {
     try {
       const sql = `

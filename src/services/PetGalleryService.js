@@ -5,13 +5,13 @@ const PetGalleryLike = require("../models/PetGalleryLike");
 const cloudinary = require("../config/cloudinary");
 
 class PetGalleryService {
-  // Tạo bài đăng mới
+  // Create new post
   async createPost(data, userId, file = null) {
     try {
-      // Validate dữ liệu
+      // Validate data
       await this.validatePostData(data, file);
 
-      // Chuẩn bị dữ liệu bài đăng
+      // Prepare post data
       const postData = {
         user_id: userId,
         caption: data.caption,
@@ -23,11 +23,11 @@ class PetGalleryService {
         comments_count: 0,
       };
 
-      // Tạo bài đăng
+      // Create post
       const post = await PetGallery.create(postData);
       return post;
     } catch (error) {
-      // Nếu có lỗi và đã upload ảnh, xóa ảnh trên Cloudinary
+      // If there is an error and an image has been uploaded, delete the image on Cloudinary
       if (file && file.path) {
         try {
           const urlParts = file.path.split("/");
@@ -36,14 +36,14 @@ class PetGalleryService {
           }`;
           await cloudinary.uploader.destroy(publicId);
         } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+          console.error("Error deleting image on Cloudinary:", deleteError);
         }
       }
       throw error;
     }
   }
 
-  // Lấy danh sách bài đăng
+  // Get list of posts
   async getPosts(options = {}) {
     try {
       const {
@@ -72,12 +72,12 @@ class PetGalleryService {
     }
   }
 
-  // Lấy chi tiết bài đăng
+  // Get post detail
   async getPostDetail(id) {
     try {
       const post = await PetGallery.getDetail(id);
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài đăng");
+        throw new ApiError(404, "Post not found");
       }
       return post;
     } catch (error) {
@@ -85,18 +85,18 @@ class PetGalleryService {
     }
   }
 
-  // Cập nhật bài đăng
+  // Update post
   async updatePost(id, data, userId, file = null) {
     try {
-      // Kiểm tra bài đăng tồn tại
+      // Check if post exists
       const post = await PetGallery.getDetail(id);
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài đăng");
+        throw new ApiError(404, "Post not found");
       }
 
-      // Kiểm tra quyền sửa
+      // Check if user has permission to edit
       if (post.user_id !== userId) {
-        throw new ApiError(403, "Bạn không có quyền sửa bài đăng này");
+        throw new ApiError(403, "You do not have permission to edit this post");
       }
 
       const updateData = {};
@@ -105,9 +105,9 @@ class PetGalleryService {
       if (data.pet_type) updateData.pet_type = data.pet_type;
       if (data.tags) updateData.tags = data.tags;
 
-      // Nếu có upload ảnh mới
+      // If new image is uploaded
       if (file) {
-        // Xóa ảnh cũ trên Cloudinary nếu có
+        // Delete old image on Cloudinary if any
         if (post.image_url) {
           try {
             const urlParts = post.image_url.split("/");
@@ -116,26 +116,26 @@ class PetGalleryService {
             }`;
             await cloudinary.uploader.destroy(publicId);
           } catch (deleteError) {
-            console.error("Lỗi khi xóa ảnh cũ trên Cloudinary:", deleteError);
+            console.error("Error deleting old image on Cloudinary:", deleteError);
           }
         }
         updateData.image_url = file.path;
       }
 
-      // Validate dữ liệu
+      // Validate data
       await this.validatePostData(updateData, file, true);
 
-      // Cập nhật bài đăng
+      // Update post
       const updatedPost = await PetGallery.update(id, updateData);
 
-      // Kiểm tra kết quả cập nhật
+      // Check if update is successful
       if (!updatedPost) {
-        throw new ApiError(500, "Không thể cập nhật bài đăng");
+        throw new ApiError(500, "Cannot update post");
       }
 
       return updatedPost;
     } catch (error) {
-      // Nếu có lỗi và đã upload ảnh mới, xóa ảnh mới trên Cloudinary
+      // If there is an error and a new image has been uploaded, delete the new image on Cloudinary
       if (file && file.path) {
         try {
           const urlParts = file.path.split("/");
@@ -144,14 +144,14 @@ class PetGalleryService {
           }`;
           await cloudinary.uploader.destroy(publicId);
         } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh mới trên Cloudinary:", deleteError);
+          console.error("Error deleting new image on Cloudinary:", deleteError);
         }
       }
       throw error;
     }
   }
 
-  // Xử lý like/unlike
+  // Handle like/unlike
   async toggleLike(postId, userId) {
     try {
       const post = await this.getPostDetail(postId);
@@ -161,7 +161,7 @@ class PetGalleryService {
       const hasLiked = await PetGalleryLike.hasUserLiked(userId, postId);
       return {
         success: true,
-        message: hasLiked ? "Đã thích bài viết" : "Đã bỏ thích bài viết",
+        message: hasLiked ? "Liked post" : "Unliked post",
         hasLiked,
       };
     } catch (error) {
@@ -169,29 +169,29 @@ class PetGalleryService {
     }
   }
 
-  // Thêm comment
+  // Add comment
   async addComment(postId, userId, data) {
     try {
-      // Kiểm tra bài viết tồn tại
+      // Check if post exists
       const post = await PetGallery.getDetail(postId);
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài đăng");
+        throw new ApiError(404, "Post not found");
       }
 
-      // Validate dữ liệu
+      // Validate data
       if (!data.content || !data.content.trim()) {
-        throw new ApiError(400, "Nội dung bình luận không được để trống");
+        throw new ApiError(400, "Comment content cannot be empty");
       }
 
-      // Nếu là reply, kiểm tra comment gốc tồn tại
+      // If it is a reply, check if the parent comment exists
       if (data.parent_id) {
         const parentComment = await PetGalleryComment.getDetail(data.parent_id);
         if (!parentComment || parentComment.gallery_id !== Number(postId)) {
-          throw new ApiError(404, "Không tìm thấy bình luận gốc");
+          throw new ApiError(404, "Parent comment not found");
         }
       }
 
-      // Tạo comment mới
+      // Create new comment
       const comment = await PetGalleryComment.create({
         gallery_id: Number(postId),
         user_id: Number(userId),
@@ -199,7 +199,7 @@ class PetGalleryService {
         parent_id: data.parent_id ? Number(data.parent_id) : null,
       });
 
-      // Cập nhật số lượng comments trong bài viết
+      // Update comment count in post
       await this.updatePostCommentCount(postId);
 
       return comment;
@@ -216,21 +216,21 @@ class PetGalleryService {
     }
   }
 
-  // Xóa bài đăng
+  // Delete post
   async deletePost(id, userId, isAdmin = false) {
     try {
       const post = await PetGallery.getDetail(id);
 
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài đăng");
+        throw new ApiError(404, "Post not found");
       }
 
-      // Kiểm tra quyền xóa
+      // Check if user has permission to delete
       if (!isAdmin && post.user_id !== userId) {
-        throw new ApiError(403, "Bạn không có quyền xóa bài đăng này");
+        throw new ApiError(403, "You do not have permission to delete this post");
       }
 
-      // Xóa ảnh trên Cloudinary nếu có
+      // Delete image on Cloudinary if any
       if (post.image_url) {
         try {
           const urlParts = post.image_url.split("/");
@@ -239,15 +239,12 @@ class PetGalleryService {
           }`;
           await cloudinary.uploader.destroy(publicId);
         } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+          console.error("Error deleting image on Cloudinary:", deleteError);
         }
       }
 
-      // Xóa likes và comments trước
-      await this.deletePostDependencies(id);
-
-      // Xóa bài đăng
-      await PetGallery.hardDelete(id);
+      // Delete post and all related data
+      await PetGallery.delete(id);
 
       return true;
     } catch (error) {
@@ -256,102 +253,75 @@ class PetGalleryService {
     }
   }
 
-  // Thêm phương thức hỗ trợ xóa các dependencies
-  async deletePostDependencies(postId) {
-    try {
-      // Xóa likes
-      const deleteLikesSql = `
-        DELETE FROM pet_gallery_likes 
-        WHERE gallery_id = ?
-      `;
-
-      // Xóa comments
-      const deleteCommentsSql = `
-        DELETE FROM pet_gallery_comments 
-        WHERE gallery_id = ?
-      `;
-
-      await Promise.all([
-        PetGallery.query(deleteLikesSql, [postId]),
-        PetGallery.query(deleteCommentsSql, [postId]),
-      ]);
-
-      return true;
-    } catch (error) {
-      console.error("Delete post dependencies error:", error);
-      throw error;
-    }
-  }
-
-  // Validate dữ liệu bài đăng
+  // Validate post data
   async validatePostData(data, file = null, isUpdate = false) {
     const errors = [];
 
-    // Validate ảnh khi tạo mới
+    // Validate image when creating new
     if (!isUpdate && !file) {
-      errors.push("Ảnh là bắt buộc");
+      errors.push("Image is required");
     }
 
     // Validate caption
     if (!isUpdate && !data.caption) {
-      errors.push("Tiêu đề là bắt buộc");
+      errors.push("Title is required");
     } else if (data.caption && data.caption.trim().length < 5) {
-      errors.push("Tiêu đề phải có ít nhất 5 ký tự");
+      errors.push("Title must be at least 5 characters");
     }
 
-    // Validate description nếu có
+    // Validate description if any
     if (data.description && data.description.trim().length < 10) {
-      errors.push("Mô tả phải có ít nhất 10 ký tự");
+      errors.push("Description must be at least 10 characters");
     }
 
     // Validate pet_type
     if (!isUpdate && !data.pet_type) {
-      errors.push("Loại thú cưng là bắt buộc");
+      errors.push("Pet type is required");
     } else if (
       data.pet_type &&
       !["DOG", "CAT", "OTHER"].includes(data.pet_type)
     ) {
-      errors.push("Loại thú cưng không hợp lệ (DOG, CAT, OTHER)");
+      errors.push("Invalid pet type (DOG, CAT, OTHER)");
     }
 
-    // Validate tags nếu có
+    // Validate tags if any
     if (data.tags) {
       const tags = data.tags.split(",").map((tag) => tag.trim());
       if (tags.some((tag) => tag.length < 2)) {
-        errors.push("Mỗi tag phải có ít nhất 2 ký tự");
+        errors.push("Each tag must be at least 2 characters");
       }
       if (tags.length > 5) {
-        errors.push("Tối đa 5 tags cho mỗi bài đăng");
+        errors.push("Maximum 5 tags per post");
       }
     }
 
-    // Validate file type và size nếu có file
+    // Validate file type and size if any
     if (file) {
       const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
       if (!allowedTypes.includes(file.mimetype)) {
-        errors.push("Chỉ chấp nhận file ảnh (jpg, png, gif)");
+        errors.push("Only image files (jpg, png, gif) are accepted");
       }
       if (file.size > 5 * 1024 * 1024) {
         // 5MB
-        errors.push("Kích thước ảnh không được vượt quá 5MB");
+        errors.push("Image size must be less than 5MB");
       }
     }
 
     if (errors.length > 0) {
-      throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
+      throw new ApiError(400, "Invalid data", errors);
     }
   }
 
-  // Lấy comments của bài đăng
+  // Get comments of post
   async getPostComments(postId, options = {}) {
     try {
-      // Kiểm tra bài đăng tồn tại
+      // Check if post exists
       const post = await PetGallery.getDetail(postId);
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài đăng");
+        throw new ApiError(404, "Post not found");
       }
 
-      // Lấy danh sách comments
+      // Get list of comments
       const result = await PetGalleryComment.getPostComments(postId, options);
 
       return {
@@ -364,24 +334,24 @@ class PetGalleryService {
     }
   }
 
-  // Lấy replies của comment
+  // Get replies of comment
   async getCommentReplies(commentId, options = {}) {
     try {
       const page = Number(options.page || 1);
       const limit = Number(options.limit || 10);
       const offset = (page - 1) * limit;
-
-      // Kiểm tra comment tồn tại
+      
+      // Check if comment exists
       const [comment] = await PetGalleryComment.query(
         "SELECT * FROM pet_gallery_comments WHERE id = ? AND is_deleted = 0",
         [Number(commentId)]
       );
 
       if (!comment) {
-        throw new ApiError(404, "Không tìm thấy bình luận");
+        throw new ApiError(404, "Comment not found");
       }
 
-      // Sử dụng string interpolation cho LIMIT và OFFSET
+      // Use string interpolation for LIMIT and OFFSET
       const sql = `
         SELECT c.*, 
                u.full_name as user_name,
@@ -401,7 +371,7 @@ class PetGalleryService {
         AND is_deleted = 0
       `;
 
-      // Chỉ sử dụng prepared statement cho parent_id
+      // Only use prepared statement for parent_id
       const [replies, [countResult]] = await Promise.all([
         PetGalleryComment.query(sql, [Number(commentId)]),
         PetGalleryComment.query(countSql, [Number(commentId)]),
@@ -432,7 +402,7 @@ class PetGalleryService {
     }
   }
 
-  // Xóa comment
+  // Delete comment
   async deleteComment(commentId, userId, isAdmin = false) {
     try {
       const result = await PetGalleryComment.deleteWithReports(
@@ -442,22 +412,22 @@ class PetGalleryService {
       );
 
       if (!result) {
-        throw new ApiError(500, "Không thể xóa bình luận");
+        throw new ApiError(500, "Cannot delete comment");
       }
 
       return true;
     } catch (error) {
-      if (error.message === "Không tìm thấy bình luận") {
+      if (error.message === "Comment not found") {
         throw new ApiError(404, error.message);
       }
-      if (error.message === "Không có quyền xóa bình luận này") {
+      if (error.message === "You do not have permission to delete this comment") {
         throw new ApiError(403, error.message);
       }
       throw error;
     }
   }
 
-  // Cập nhật số lượng comments của bài viết
+  // Update comment count of post
   async updatePostCommentCount(galleryId) {
     try {
       const sql = `
@@ -479,44 +449,70 @@ class PetGalleryService {
     }
   }
 
-  // Báo cáo comment
+  // Report comment
   async reportComment(commentId, reportData, userId) {
     try {
-      // Kiểm tra comment tồn tại
+      // Check if comment exists
       const [comment] = await PetGalleryComment.query(
         "SELECT * FROM pet_gallery_comments WHERE id = ? AND is_deleted = 0",
         [commentId]
       );
 
       if (!comment) {
-        throw new ApiError(404, "Không tìm thấy bình luận");
+        throw new ApiError(404, "Comment not found");
       }
 
-      // Kiểm tra user đã báo cáo comment này chưa
+      // Check if user has reported this comment
       const hasReported = await PetGalleryComment.hasUserReported(
         userId,
         commentId
       );
       if (hasReported) {
-        throw new ApiError(400, "Bạn đã báo cáo bình luận này rồi");
+        throw new ApiError(400, "You have already reported this comment");
       }
 
-      // Thêm thông tin người báo cáo
+      // Add reporter information
       const reportWithUser = {
         reported_by: userId,
-        reason: reportData.reason || "Không có lý do",
+        reason: reportData.reason || "No reason",
       };
 
-      // Thực hiện báo cáo
+      // Perform report
       const result = await PetGalleryComment.report(commentId, reportWithUser);
 
       return {
         success: true,
-        message: "Đã báo cáo bình luận thành công",
+        message: "Reported comment successfully",
         data: result,
       };
     } catch (error) {
       console.error("Report comment error:", error);
+      throw error;
+    }
+  }
+
+  async deleteGallery(galleryId, userId, isAdmin = false) {
+    try {
+      // Check if gallery exists
+      const gallery = await PetGallery.findById(galleryId);
+      if (!gallery) {
+        throw new ApiError(404, "Gallery not found");
+      }
+
+      // Check if user has permission to delete
+      if (!isAdmin && gallery.user_id !== userId) {
+        throw new ApiError(403, "You do not have permission to delete this post");
+      }
+
+      // Delete gallery and all related data
+      await PetGallery.delete(galleryId);
+
+      return {
+        status: "success",
+        message: "Deleted post successfully",
+      };
+    } catch (error) {
+      console.error("Delete gallery error:", error);
       throw error;
     }
   }

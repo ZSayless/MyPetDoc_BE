@@ -2,7 +2,7 @@ const BaseModel = require("./BaseModel");
 const convertBitToBoolean = require("../utils/convertBitToBoolean");
 class ContactMessage extends BaseModel {
   static tableName = "contact_messages";
-  // Constructor để chuyển đổi dữ liệu
+  // Constructor to convert data
   constructor(data) {
     super();
     if (data) {
@@ -12,7 +12,7 @@ class ContactMessage extends BaseModel {
       });
     }
   }
-  // Phương thức tìm kiếm
+  // Search method
   static async search(searchParams = {}, options = {}) {
     try {
       const {
@@ -22,7 +22,7 @@ class ContactMessage extends BaseModel {
         sortOrder = "DESC",
       } = options;
 
-      // Chỉ lấy các tham số có giá trị
+      // Only get valid parameters
       const validSearchParams = {};
       if (searchParams.email) validSearchParams.email = searchParams.email;
       if (searchParams.name) validSearchParams.name = searchParams.name;
@@ -32,7 +32,7 @@ class ContactMessage extends BaseModel {
       let conditions = ["cm.is_deleted = 0"];
       let params = [];
 
-      // Xử lý các tham số tìm kiếm
+      // Process search parameters
       Object.entries(validSearchParams).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== "") {
           if (key === "user_id") {
@@ -45,7 +45,7 @@ class ContactMessage extends BaseModel {
         }
       });
 
-      // Tạo câu query với alias cho bảng
+      // Create query with alias for table
       const sql = `
         SELECT 
           cm.*,
@@ -58,7 +58,7 @@ class ContactMessage extends BaseModel {
         LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
       `;
 
-      // Câu query đếm tổng số
+      // Count query
       const countSql = `
         SELECT COUNT(*) as total 
         FROM ${this.tableName} cm
@@ -83,7 +83,7 @@ class ContactMessage extends BaseModel {
       throw error;
     }
   }
-  // Override các phương thức từ BaseModel
+  // Override basic methods from BaseModel
   static async findOne(conditions) {
     const messageData = await super.findOne(conditions);
     if (!messageData) return null;
@@ -106,28 +106,28 @@ class ContactMessage extends BaseModel {
     const messages = await super.findAll(filters, options);
     return messages.map((messageData) => new ContactMessage(messageData));
   }
-  // Phương thức xóa mềm
+  // Soft delete method
   static async softDelete(id) {
     await this.update(id, { is_deleted: true });
   }
-  // Phương thức xóa cứng
+  // Hard delete method
   static async hardDelete(id) {
     await super.hardDelete(id);
   }
-  // Phương thức gửi email phản hồi
+  // Send response email method
   static async sendResponseEmail(messageId, responseText) {
     try {
       const message = await this.findById(messageId);
       if (!message) {
         throw new Error("Không tìm thấy tin nhắn");
       }
-      // Gửi email phản hồi
+      // Send response email
       await EmailService.sendContactResponseEmail(message.email, {
         name: message.name,
         originalMessage: message.message,
         responseText: responseText,
       });
-      // Cập nhật trạng thái đã phản hồi
+      // Update responded status
       await this.update(messageId, {
         responded_at: new Date(),
         response: responseText,
@@ -143,7 +143,7 @@ class ContactMessage extends BaseModel {
       let conditions = ["cm.is_deleted = 0"];
       let params = [];
 
-      // Filter theo khoảng thời gian
+      // Filter by time range
       if (filters.from) {
         conditions.push("cm.created_at >= ?");
         params.push(filters.from);
@@ -153,7 +153,7 @@ class ContactMessage extends BaseModel {
         params.push(filters.to);
       }
 
-      // Đếm theo status - bỏ date khỏi SELECT
+      // Count by status - remove date from SELECT
       const sql = `
         SELECT 
           COUNT(*) as total,
@@ -165,7 +165,7 @@ class ContactMessage extends BaseModel {
 
       const results = await this.query(sql, params);
 
-      // Format kết quả
+      // Format result
       const stats = {
         total: 0,
         stats: {
@@ -181,7 +181,7 @@ class ContactMessage extends BaseModel {
         stats.stats[row.status] = parseInt(row.total);
       });
 
-      // Đếm theo ngày/tuần/tháng
+      // Count by day/week/month
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 

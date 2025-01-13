@@ -3,7 +3,7 @@ const ContactMessage = require("../models/ContactMessage");
 const EmailService = require("./EmailService");
 
 class ContactMessageService {
-  // Tạo tin nhắn mới
+  // Create new message
   async createMessage(messageData, userId = null) {
     try {
       await this.validateMessageData(messageData);
@@ -20,7 +20,7 @@ class ContactMessageService {
     }
   }
 
-  // Lấy danh sách tin nhắn với filter và phân trang
+  // Get list of messages with filter and pagination
   async getMessages(searchParams = {}, page = 1, limit = 10) {
     try {
       const offset = (page - 1) * limit;
@@ -36,12 +36,12 @@ class ContactMessageService {
     }
   }
 
-  // Lấy chi tiết một tin nhắn
+  // Get details of a message
   async getMessageById(id) {
     try {
       const message = await ContactMessage.findById(id);
       if (!message) {
-        throw new ApiError(404, "Không tìm thấy tin nhắn");
+        throw new ApiError(404, "Message not found");
       }
       return message;
     } catch (error) {
@@ -49,12 +49,12 @@ class ContactMessageService {
     }
   }
 
-  // Cập nhật trạng thái tin nhắn
+  // Update message status
   async updateStatus(id, status, userId) {
     try {
       const validStatuses = ["pending", "processing", "completed", "cancelled"];
       if (!validStatuses.includes(status)) {
-        throw new ApiError(400, "Trạng thái không hợp lệ");
+        throw new ApiError(400, "Invalid status");
       }
 
       const message = await this.getMessageById(id);
@@ -70,17 +70,17 @@ class ContactMessageService {
     }
   }
 
-  // Phản hồi tin nhắn
+  // Respond to message
   async respondToMessage(id, responseData, userId) {
     try {
       const { response } = responseData;
       if (!response) {
-        throw new ApiError(400, "Nội dung phản hồi không được để trống");
+        throw new ApiError(400, "Response content cannot be empty");
       }
 
       const message = await this.getMessageById(id);
 
-      // Cập nhật thông tin phản hồi
+      // Update response information
       const updateData = {
         response,
         responded_at: new Date(),
@@ -89,7 +89,7 @@ class ContactMessageService {
 
       const updatedMessage = await ContactMessage.update(id, updateData);
 
-      // Gửi email phản hồi cho người gửi
+      // Send response email to sender
       await EmailService.sendContactResponseEmail(message.email, {
         name: message.name,
         subject: message.subject,
@@ -103,7 +103,7 @@ class ContactMessageService {
     }
   }
 
-  // Xóa tin nhắn (mềm)
+  // Soft delete message
   async deleteMessage(id) {
     try {
       await ContactMessage.softDelete(id);
@@ -112,7 +112,7 @@ class ContactMessageService {
     }
   }
 
-  // Xóa tin nhắn (cứng)
+  // Hard delete message
   async hardDeleteMessage(id) {
     try {
       await ContactMessage.hardDelete(id);
@@ -121,42 +121,42 @@ class ContactMessageService {
     }
   }
 
-  // Validate dữ liệu tin nhắn
+  // Validate message data
   async validateMessageData(data) {
     const errors = [];
 
     // Validate email
     if (!data.email || !this.isValidEmail(data.email)) {
-      errors.push("Email không hợp lệ");
+      errors.push("Invalid email");
     }
 
-    // Validate tên
+    // Validate name
     if (!data.name || data.name.trim().length < 2) {
-      errors.push("Tên phải có ít nhất 2 ký tự");
+      errors.push("Name must be at least 2 characters");
     }
 
-    // Validate số điện thoại nếu có
+    // Validate phone number if provided
     if (data.phone && !this.isValidPhone(data.phone)) {
-      errors.push("Số điện thoại không hợp lệ");
+      errors.push("Invalid phone number");
     }
 
-    // Validate nội dung
+    // Validate message content
     if (!data.message || data.message.trim().length < 10) {
-      errors.push("Nội dung tin nhắn phải có ít nhất 10 ký tự");
+      errors.push("Message content must be at least 10 characters");
     }
 
     if (errors.length > 0) {
-      throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
+      throw new ApiError(400, "Invalid data", errors);
     }
   }
 
-  // Kiểm tra email hợp lệ
+  // Check if email is valid
   isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
 
-  // Kiểm tra số điện thoại hợp lệ
+  // Check if phone number is valid
   isValidPhone(phone) {
     const phoneRegex = /^[0-9]{10,11}$/;
     return phoneRegex.test(phone);

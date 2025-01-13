@@ -14,7 +14,7 @@ class PetGallery extends BaseModel {
     }
   }
 
-  // Lấy danh sách bài đăng có phân trang và filter
+  // Get list of posts with pagination and filter
   static async findAll(options = {}) {
     try {
       const {
@@ -32,25 +32,25 @@ class PetGallery extends BaseModel {
       let conditions = [];
       let params = [];
 
-      // Thêm điều kiện is_deleted
+      // Add is_deleted condition
       if (!includeDeleted) {
         conditions.push("g.is_deleted = ?");
         params.push(0);
       }
 
-      // Filter theo pet_type
+      // Filter by pet_type
       if (petType) {
         conditions.push("g.pet_type = ?");
         params.push(petType);
       }
 
-      // Filter theo user_id
+      // Filter by user_id
       if (userId) {
         conditions.push("g.user_id = ?");
         params.push(Number(userId));
       }
 
-      // Filter theo tags
+      // Filter by tags
       if (tags) {
         conditions.push("g.tags LIKE ?");
         params.push(`%${tags}%`);
@@ -70,7 +70,7 @@ class PetGallery extends BaseModel {
         ? sortOrder.toUpperCase()
         : "DESC";
 
-      // Query chính - sử dụng interpolation cho LIMIT và OFFSET
+      // Main query - use interpolation for LIMIT and OFFSET
       const sql = `
         SELECT g.*, 
                u.full_name as user_name,
@@ -84,7 +84,7 @@ class PetGallery extends BaseModel {
         LIMIT ${Number(limit)} OFFSET ${Number(offset)}
       `;
 
-      // Query đếm tổng số bản ghi
+      // Query to count total records
       const countSql = `
         SELECT COUNT(*) as total
         FROM ${this.tableName} g
@@ -114,7 +114,7 @@ class PetGallery extends BaseModel {
     }
   }
 
-  // Tạo bài đăng mới
+  // Create new post
   static async create(data) {
     try {
       const postData = await super.create({
@@ -129,7 +129,7 @@ class PetGallery extends BaseModel {
     }
   }
 
-  // Cập nhật số lượng like và comment
+  // Update like and comment counts
   static async updateCounts(id) {
     try {
       const [[likesResult], [commentsResult]] = await Promise.all([
@@ -153,7 +153,7 @@ class PetGallery extends BaseModel {
     }
   }
 
-  // Lấy chi tiết bài đăng kèm thông tin user
+  // Get post detail with user information
   static async getDetail(id) {
     try {
       const sql = `
@@ -176,13 +176,13 @@ class PetGallery extends BaseModel {
     }
   }
 
-  // Cập nhật bài đăng
+  // Update post
   static async update(id, data) {
     try {
       const updateData = { ...data };
       delete updateData.id;
 
-      // Lọc bỏ các trường undefined/null
+      // Filter out undefined/null fields
       const filteredData = Object.fromEntries(
         Object.entries(updateData).filter(
           ([_, value]) => value !== undefined && value !== null
@@ -193,7 +193,7 @@ class PetGallery extends BaseModel {
         throw new Error("Không có dữ liệu để cập nhật");
       }
 
-      // Tạo câu SET động từ các trường có giá trị
+      // Create dynamic SET clause from valid fields
       const setFields = Object.keys(filteredData)
         .map((key) => `${key} = ?`)
         .join(", ");
@@ -208,12 +208,12 @@ class PetGallery extends BaseModel {
 
       const result = await this.query(sql, params);
 
-      // Kiểm tra kết quả cập nhật
+      // Check update result
       if (result.affectedRows === 0) {
         return null;
       }
 
-      // Lấy và trả về bài đăng sau khi cập nhật
+      // Get and return post after update
       return await this.getDetail(id);
     } catch (error) {
       console.error("Update post error:", error);
@@ -221,7 +221,7 @@ class PetGallery extends BaseModel {
     }
   }
 
-  // Soft delete bài đăng
+  // Soft delete post
   static async softDelete(id) {
     try {
       const sql = `
@@ -238,7 +238,7 @@ class PetGallery extends BaseModel {
     }
   }
 
-  // Hard delete bài đăng
+  // Hard delete post
   static async hardDelete(id) {
     try {
       const sql = `
@@ -255,6 +255,56 @@ class PetGallery extends BaseModel {
       return true;
     } catch (error) {
       console.error("Hard delete post error:", error);
+      throw error;
+    }
+  }
+
+  static async delete(galleryId) {
+    try {
+      // 1. Get all comments (including replies)
+      const comments = await this.query(
+        `SELECT id FROM pet_gallery_comments 
+         WHERE gallery_id = ? OR parent_id IN 
+         (SELECT id FROM pet_gallery_comments WHERE gallery_id = ?)`,
+        [galleryId, galleryId]
+      );
+
+      const commentIds = comments.map((comment) => comment.id);
+
+      if (commentIds.length > 0) {
+        // 2. Delete all report_reasons related to comments
+        const reportReasonsSql = `DELETE FROM report_reasons WHERE pet_gallery_comment_id IN (${commentIds.join(
+          ","
+        )})`;
+        await this.query(reportReasonsSql);
+
+        // 3. Delete all replies before
+        await this.query(
+          `DELETE FROM pet_gallery_comments WHERE parent_id IN 
+           (SELECT id FROM (
+             SELECT id FROM pet_gallery_comments WHERE gallery_id = ?
+           ) AS tmp)`,
+          [galleryId]
+        );
+
+        // 4. Delete all root comments
+        await this.query(
+          `DELETE FROM pet_gallery_comments WHERE gallery_id = ?`,
+          [galleryId]
+        );
+      }
+
+      // 5. Delete likes of gallery
+      await this.query(`DELETE FROM pet_gallery_likes WHERE gallery_id = ?`, [
+        galleryId,
+      ]);
+
+      // 6. Delete gallery
+      await this.query(`DELETE FROM pet_gallery WHERE id = ?`, [galleryId]);
+
+      return true;
+    } catch (error) {
+      console.error("Delete gallery error:", error);
       throw error;
     }
   }

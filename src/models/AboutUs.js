@@ -14,7 +14,7 @@ class AboutUs extends BaseModel {
     }
   }
 
-  // Tìm thông tin about us hiện tại (active)
+  // Find current about us information (active)
   static async getCurrentAboutUs() {
     try {
       const sql = `
@@ -34,10 +34,10 @@ class AboutUs extends BaseModel {
     }
   }
 
-  // Tạo phiên bản mới
+  // Create new version
   static async createNewVersion(data, userId) {
     try {
-      // Lấy version hiện tại
+      // Get current version
       const currentVersion = await this.getCurrentAboutUs();
       const newVersion = currentVersion ? currentVersion.version + 1 : 1;
 
@@ -55,15 +55,15 @@ class AboutUs extends BaseModel {
     }
   }
 
-  // Lấy lịch sử các phiên bản
+  // Get version history
   static async getVersionHistory(page = 1, limit = 10) {
     try {
-      // Chuyển đổi tham số sang số
+      // Convert parameters to numbers
       const pageNumber = parseInt(page);
       const limitNumber = parseInt(limit);
       const offset = (pageNumber - 1) * limitNumber;
 
-      // Query để lấy danh sách phiên bản
+      // Query to get version list
       const sql = `
         SELECT au.*, u.full_name as last_updated_by_name
         FROM ${this.tableName} au
@@ -73,14 +73,14 @@ class AboutUs extends BaseModel {
         LIMIT ${limitNumber} OFFSET ${offset}
       `;
 
-      // Query để đếm tổng số phiên bản
+      // Query to count total versions
       const countSql = `
         SELECT COUNT(*) as total
         FROM ${this.tableName}
         WHERE is_deleted = 0
       `;
 
-      // Thực hiện cả 2 query
+      // Execute both queries
       const [versions, [countResult]] = await Promise.all([
         this.query(sql),
         this.query(countSql),
@@ -101,7 +101,7 @@ class AboutUs extends BaseModel {
     }
   }
 
-  // Lấy một phiên bản cụ thể
+  // Get a specific version
   static async getVersion(version) {
     try {
       const sql = `
@@ -119,7 +119,7 @@ class AboutUs extends BaseModel {
     }
   }
 
-  // Override các phương thức cơ bản
+  // Override basic methods
   static async findOne(conditions) {
     const aboutUsData = await super.findOne(conditions);
     return aboutUsData ? new AboutUs(aboutUsData) : null;
@@ -132,16 +132,16 @@ class AboutUs extends BaseModel {
 
   static async toggleSoftDelete(id) {
     try {
-      // Lấy trạng thái hiện tại
+      // Get current status
       const currentData = await this.findById(id);
       if (!currentData) {
         throw new Error("Record not found");
       }
 
-      // Đảo ngược trạng thái is_deleted
+      // Reverse is_deleted status
       const newStatus = !currentData.is_deleted;
 
-      // Cập nhật trạng thái mới
+      // Update new status
       const aboutUsData = await super.update(id, { is_deleted: newStatus });
       return new AboutUs(aboutUsData);
     } catch (error) {

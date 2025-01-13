@@ -12,38 +12,38 @@ module.exports = async (connection) => {
         summary TEXT,
         featured_image VARCHAR(255),
         thumbnail_image VARCHAR(255),
-        
-        /* Phân loại bài viết */
+
+        /* Post type */
         post_type ENUM('BLOG', 'NEWS', 'EVENT') NOT NULL,
         category VARCHAR(50),
         
-        /* SEO và URL thân thiện */
+        /* SEO and friendly URL */
         slug VARCHAR(255) UNIQUE,
         meta_title VARCHAR(255),
         meta_description TEXT,
         
-        /* Trạng thái bài viết */
+        /* Post status */
         status ENUM('DRAFT', 'PENDING', 'PUBLISHED', 'ARCHIVED') DEFAULT 'DRAFT',
         published_at DATETIME,
         
-        /* Thông tin sự kiện */
+        /* Event information */
         event_start_date DATETIME,
         event_end_date DATETIME,
         event_location VARCHAR(255),
         event_registration_link VARCHAR(255),
         is_featured BIT(1) DEFAULT 0,
-        
-        /* Thống kê tương tác */
+
+        /* Statistics */
         views_count INT DEFAULT 0,
         likes_count INT DEFAULT 0,
         comments_count INT DEFAULT 0,
         shares_count INT DEFAULT 0,
         
-        /* Liên kết */
+        /* Links */
         author_id BIGINT,
         hospital_id BIGINT DEFAULT NULL,
         
-        /* Tags và các trường bổ sung */
+        /* Tags and additional fields */
         tags VARCHAR(255) DEFAULT NULL,
         source VARCHAR(255) DEFAULT NULL,
         external_link VARCHAR(255) DEFAULT NULL,
@@ -53,7 +53,7 @@ module.exports = async (connection) => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // Tạo bảng cho comments của bài viết
+    // Create table for comments of the post
     await connection.query(`
       CREATE TABLE IF NOT EXISTS pet_post_comments (
         id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -72,7 +72,7 @@ module.exports = async (connection) => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // Tạo bảng cho likes của bài viết
+    // Create table for likes of the post
     await connection.query(`
       CREATE TABLE IF NOT EXISTS pet_post_likes (
         id BIGINT AUTO_INCREMENT PRIMARY KEY,

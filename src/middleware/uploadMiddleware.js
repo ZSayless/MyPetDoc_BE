@@ -3,44 +3,44 @@ const ApiError = require("../exceptions/ApiError");
 const cloudinary = require("../config/cloudinary");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
-// Tạo thư mục upload cho reviews
+// Create upload directory for reviews
 // const uploadReviewDir = path.join(__dirname, "../../uploads/reviews");
 // if (!fs.existsSync(uploadReviewDir)) {
 //   fs.mkdirSync(uploadReviewDir, { recursive: true });
 // }
 
-// Tạo thư mục upload cho avatars
+// Create upload directory for avatars
 // const uploadAvatarDir = path.join(__dirname, "../../uploads/avatars");
 // if (!fs.existsSync(uploadAvatarDir)) {
 //   fs.mkdirSync(uploadAvatarDir, { recursive: true });
 // }
 
-// Tạo thư mục upload cho banners
+// Create upload directory for banners
 // const uploadBannerDir = path.join(__dirname, "../../uploads/banners");
 // if (!fs.existsSync(uploadBannerDir)) {
 //   fs.mkdirSync(uploadBannerDir, { recursive: true });
 // }
 
-// Tạo thư mục upload cho pet posts
+// Create upload directory for pet posts
 // const uploadPetPostDir = path.join(__dirname, "../../uploads/petposts");
 // if (!fs.existsSync(uploadPetPostDir)) {
 //   fs.mkdirSync(uploadPetPostDir, { recursive: true });
 // }
 
-// Tạo thư mục upload cho hospitals
+// Create upload directory for hospitals
 // const uploadHospitalDir = path.join(__dirname, "../../uploads/hospitals");
 // if (!fs.existsSync(uploadHospitalDir)) {
 //   fs.mkdirSync(uploadHospitalDir, { recursive: true });
 // }
 
-// Tạo thư mục upload cho pet gallery
+// Create upload directory for pet gallery
 // const uploadPetGalleryDir = path.join(__dirname, "../../uploads/petgallery");
 // if (!fs.existsSync(uploadPetGalleryDir)) {
 //   fs.mkdirSync(uploadPetGalleryDir, { recursive: true });
 // }
 ////////////////////////////////////////////////////////////
 
-// Storage cho banner images
+// Storage for banner images
 // const bannerStorage = multer.diskStorage({
 //   destination: function (req, file, cb) {
 //     cb(null, uploadBannerDir);
@@ -63,7 +63,7 @@ const bannerStorage = new CloudinaryStorage({
 });
 ////////////////////////////////////////////////
 
-// Storage cho avatar
+// Storage for avatar
 // const avatarStorage = multer.diskStorage({
 //   destination: function (req, file, cb) {
 //     cb(null, uploadAvatarDir);
@@ -85,7 +85,7 @@ const avatarStorage = new CloudinaryStorage({
 });
 ////////////////////////////////////////////////////////////
 
-// Storage cho review images
+// Storage for review images
 // const reviewStorage = multer.diskStorage({
 //   destination: function (req, file, cb) {
 //     cb(null, uploadReviewDir);
@@ -107,7 +107,7 @@ const reviewStorage = new CloudinaryStorage({
 });
 ////////////////////////////////////////////////////////////
 
-// Storage cho pet post images
+// Storage for pet post images
 // const petPostStorage = multer.diskStorage({
 //   destination: function (req, file, cb) {
 //     cb(null, uploadPetPostDir);
@@ -128,7 +128,7 @@ const petPostStorage = new CloudinaryStorage({
   },
 });
 
-// Storage cho hospital images
+// Storage for hospital images
 // const hospitalStorage = multer.diskStorage({
 //   destination: function (req, file, cb) {
 //     console.log("Saving file to:", uploadHospitalDir);
@@ -152,7 +152,7 @@ const hospitalStorage = new CloudinaryStorage({
 });
 ////////////////////////////////////////////////////////////
 
-// Thêm storage cho pet gallery images
+// Add storage for pet gallery images
 // const petGalleryStorage = multer.diskStorage({
 //   destination: function (req, file, cb) {
 //     cb(null, uploadPetGalleryDir);
@@ -173,7 +173,8 @@ const petGalleryStorage = new CloudinaryStorage({
     transformation: [{ width: 800, height: 600, crop: "fill" }],
   },
 });
-// Middleware xử lý upload hình ảnh review
+////////////////////////////////////////////////////////////
+// Middleware for uploading review images
 // const handleUploadReviewImages = (req, res, next) => {
 //   const upload = multer({
 //     storage: reviewStorage, // Sửa từ storage thành reviewStorage
@@ -218,14 +219,14 @@ const handleUploadReviewImages = (req, res, next) => {
       if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new ApiError(400, "Chỉ chấp nhận file ảnh (jpg, png, gif)"));
+        cb(new ApiError(400, "Only accept image files (jpg, png, gif)"));
       }
     },
   }).single("image");
 
   upload(req, res, (err) => {
     if (err instanceof multer.MulterError) {
-      return next(new ApiError(400, `Lỗi upload: ${err.message}`));
+      return next(new ApiError(400, `Upload error: ${err.message}`));
     }
     if (err) {
       return next(new ApiError(400, err.message));
@@ -234,7 +235,7 @@ const handleUploadReviewImages = (req, res, next) => {
   });
 };
 ////////////////////////////////////////////////////////////
-// Middleware xử lý upload avatar
+// Middleware for uploading avatar
 // const handleUploadAvatar = (req, res, next) => {
 //   const upload = multer({
 //     storage: avatarStorage,
@@ -248,7 +249,7 @@ const handleUploadReviewImages = (req, res, next) => {
 //       if (allowedTypes.includes(file.mimetype)) {
 //         cb(null, true);
 //       } else {
-//         cb(new ApiError(400, "Chỉ chấp nhận file ảnh (jpg, png, gif)"));
+//         cb(new ApiError(400, "Only accept image files (jpg, png, gif)"));
 //       }
 //     },
 //   }).fields([
@@ -261,13 +262,13 @@ const handleUploadReviewImages = (req, res, next) => {
 
 //   upload(req, res, (err) => {
 //     if (err instanceof multer.MulterError) {
-//       return next(new ApiError(400, `Lỗi upload: ${err.message}`));
+//       return next(new ApiError(400, `Upload error: ${err.message}`));
 //     }
 //     if (err) {
 //       return next(new ApiError(400, err.message));
 //     }
 
-//     // Chuyển đổi các trường từ fields sang body
+//     // Convert fields to body
 //     req.body = {
 //       ...req.body,
 //       email: req.body.email,
@@ -292,18 +293,32 @@ const handleUploadAvatar = (req, res, next) => {
       if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new ApiError(400, "Chỉ chấp nhận file ảnh (jpg, png, gif)"));
+        cb(new ApiError(400, "Only accept image files (jpg, png, gif)"));
       }
     },
   }).single("avatar");
 
-  upload(req, res, (err) => {
+  upload(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
-      return next(new ApiError(400, `Lỗi upload: ${err.message}`));
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return next(new ApiError(400, "File size cannot exceed 2MB"));
+      }
+      return next(new ApiError(400, `Upload error: ${err.message}`));
     }
+
     if (err) {
       return next(new ApiError(400, err.message));
     }
+
+    // Lưu thông tin file vào req để xử lý trong controller
+    if (req.file) {
+      req.uploadedFile = {
+        path: req.file.path,
+        filename: req.file.filename,
+        publicId: `avatars/${req.file.filename.split("/").pop().split(".")[0]}`,
+      };
+    }
+
     next();
   });
 };
@@ -316,7 +331,7 @@ const handleUploadPetPostImages = (req, res, next) => {
     fileFilter: (req, file, cb) => {
       const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
       if (!allowedTypes.includes(file.mimetype)) {
-        return cb(new ApiError(400, "Chỉ chấp nhận file ảnh (jpg, png, gif)"));
+        return cb(new ApiError(400, "Only accept image files (jpg, png, gif)"));
       }
       cb(null, true);
     },
@@ -328,12 +343,12 @@ const handleUploadPetPostImages = (req, res, next) => {
   upload(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === "LIMIT_FILE_SIZE") {
-        return next(new ApiError(400, "File ảnh không được vượt quá 5MB"));
+        return next(new ApiError(400, "Image file size exceeds 5MB"));
       }
       if (err.code === "LIMIT_UNEXPECTED_FILE") {
-        return next(new ApiError(400, "Chỉ được upload tối đa 2 ảnh"));
+        return next(new ApiError(400, "Only upload up to 2 images"));
       }
-      return next(new ApiError(400, `Lỗi upload: ${err.message}`));
+      return next(new ApiError(400, `Upload error: ${err.message}`));
     }
 
     if (err) {
@@ -350,7 +365,7 @@ const handleUploadPetPostImages = (req, res, next) => {
                 const publicId = file.path.split("/").pop().split(".")[0];
                 await cloudinary.uploader.destroy(`petposts/${publicId}`);
               } catch (error) {
-                console.error(`Lỗi khi xóa ảnh ${file.path}:`, error);
+                console.error(`Error deleting image ${file.path}:`, error);
               }
             }
           }
@@ -367,7 +382,7 @@ const handleUploadPetPostImages = (req, res, next) => {
       ) {
         await cleanup();
         return next(
-          new ApiError(400, "Cần upload cả ảnh featured và thumbnail")
+          new ApiError(400, "Need to upload both featured and thumbnail images")
         );
       }
     }
@@ -430,14 +445,14 @@ const handleUploadBannerImages = (req, res, next) => {
       if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new ApiError(400, "Chỉ chấp nhận file ảnh (jpg, png, gif)"));
+        cb(new ApiError(400, "Only accept image files (jpg, png, gif)"));
       }
     },
   }).single("image");
 
   upload(req, res, (err) => {
     if (err instanceof multer.MulterError) {
-      return next(new ApiError(400, `Lỗi upload: ${err.message}`));
+      return next(new ApiError(400, `Upload error: ${err.message}`));
     }
     if (err) {
       return next(new ApiError(400, err.message));
@@ -485,7 +500,7 @@ const handleUploadHospitalImages = (req, res, next) => {
       if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new ApiError(400, "Chỉ chấp nhận file ảnh (jpg, png, gif)"));
+        cb(new ApiError(400, "Only accept image files (jpg, png, gif)"));
       }
     },
   }).array("images", 5);
@@ -493,9 +508,9 @@ const handleUploadHospitalImages = (req, res, next) => {
   upload(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === "LIMIT_UNEXPECTED_FILE") {
-        return next(new ApiError(400, "Chỉ được phép upload tối đa 5 ảnh"));
+        return next(new ApiError(400, "Only upload up to 5 images"));
       }
-      return next(new ApiError(400, `Lỗi upload: ${err.message}`));
+      return next(new ApiError(400, `Upload error: ${err.message}`));
     }
     if (err) {
       return next(new ApiError(400, err.message));
@@ -508,7 +523,7 @@ const handleUploadHospitalImages = (req, res, next) => {
 const handleUploadPetGalleryImages = (req, res, next) => {
   // Kiểm tra nếu có nhiều file trong request
   if (req.files && Object.keys(req.files).length > 0) {
-    return next(new ApiError(400, "Chỉ được phép upload 1 ảnh"));
+    return next(new ApiError(400, "Only upload 1 image"));
   }
 
   const upload = multer({
@@ -517,14 +532,14 @@ const handleUploadPetGalleryImages = (req, res, next) => {
     fileFilter: (req, file, cb) => {
       // Kiểm tra nếu đã có file được upload
       if (req.file) {
-        return cb(new ApiError(400, "Chỉ được phép upload 1 ảnh"));
+        return cb(new ApiError(400, "Only upload 1 image"));
       }
 
       const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
       if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new ApiError(400, "Chỉ chấp nhận file ảnh (jpg, png, gif)"));
+        cb(new ApiError(400, "Only accept image files (jpg, png, gif)"));
       }
     },
   }).single("image");
@@ -532,9 +547,9 @@ const handleUploadPetGalleryImages = (req, res, next) => {
   upload(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === "LIMIT_UNEXPECTED_FILE") {
-        return next(new ApiError(400, "Chỉ được phép upload 1 ảnh"));
+        return next(new ApiError(400, "Only upload 1 image"));
       }
-      return next(new ApiError(400, `Lỗi upload: ${err.message}`));
+      return next(new ApiError(400, `Upload error: ${err.message}`));
     }
     if (err) {
       return next(new ApiError(400, err.message));

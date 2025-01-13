@@ -3,36 +3,36 @@ const router = express.Router();
 const FavoriteController = require("../controllers/FavoriteController");
 const { validateAuth } = require("../middleware/validateAuth");
 
-// Tất cả các routes yêu cầu đăng nhập
+// All routes require login
 router.use(validateAuth());
 
-// Toggle favorite một bệnh viện
+// Toggle favorite a hospital
 router.post("/:hospitalId", FavoriteController.toggleFavorite);
 
-// Kiểm tra user đã favorite bệnh viện chưa
+// Check if user has favorited a hospital
 router.get("/check/:hospitalId", FavoriteController.checkUserFavorite);
 
-// Lấy danh sách bệnh viện yêu thích của user hiện tại
+// Get list of hospitals favorited by current user
 router.get("/user/hospitals", FavoriteController.getUserFavorites);
 
-// Lấy số lượng favorite của user hiện tại
+// Get count of favorites of current user
 router.get("/user/count", FavoriteController.getUserFavoriteCount);
 
-// Routes công khai (vẫn yêu cầu đăng nhập)
+// Public routes (still require login)
 router.use(validateAuth(["ADMIN", "HOSPITAL_ADMIN"]));
-// Lấy danh sách user đã favorite một bệnh viện
+// Get list of users who have favorited a hospital
 router.get(
   "/hospital/:hospitalId/users",
   FavoriteController.getHospitalFavorites
 );
 
-// Lấy số lượng favorite của một bệnh viện
+// Get count of favorites of a hospital
 router.get(
   "/hospital/:hospitalId/count",
   FavoriteController.getHospitalFavoriteCount
 );
 
-// Lấy danh sách favorite mới nhất (có thể giới hạn quyền ADMIN nếu cần)
+// Get list of latest favorites (can limit admin permission if needed)
 router.get("/latest", FavoriteController.getLatestFavorites);
 
 module.exports = router;

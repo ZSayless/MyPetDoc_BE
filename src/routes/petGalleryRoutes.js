@@ -8,7 +8,7 @@ const {
 
 const router = express.Router();
 
-// Routes công khai - không cần đăng nhập
+// Public routes (no need to login)
 router.get("/posts", PetGalleryController.getPosts);
 router.get("/posts/:id", PetGalleryController.getPostDetail);
 router.get("/posts/:id/comments", PetGalleryController.getComments);
@@ -17,24 +17,24 @@ router.get(
   PetGalleryController.getCommentReplies
 );
 
-// Routes yêu cầu đăng nhập (tất cả các roles)
+// Routes require login (all roles)
 router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));
 
-// Tương tác cơ bản - cho tất cả user đã đăng nhập
+// Basic interactions - for all logged in users
 router.post("/posts/:id/like", PetGalleryController.toggleLike);
 router.post("/posts/:id/comments", PetGalleryController.addComment);
-// Thêm route báo cáo comment
+// Add report comment route
 router.post("/comments/:commentId/report", PetGalleryController.reportComment);
 
-// Quản lý bài đăng của chính mình - cho tất cả user đã đăng nhập
+// Manage own posts - for all logged in users
 router.post(
   "/posts",
   handleUploadPetGalleryImages,
   PetGalleryController.createPost
 );
 
-// Chỉ cho phép user sửa/xóa bài đăng của chính mình
-// (Controller sẽ kiểm tra user_id)
+// Only allow users to edit/delete their own posts
+// (Controller will check user_id)
 router.put(
   "/posts/:id",
   handleUploadPetGalleryImages,
@@ -43,8 +43,8 @@ router.put(
 
 router.delete("/posts/:id", PetGalleryController.deletePost);
 
-// Chỉ cho phép user xóa comment của chính mình và admin có quyên xóa
-// (Controller sẽ kiểm tra user_id)
+// Only allow users to delete their own comments and admin to delete any comment
+// (Controller will check user_id)
 router.delete("/comments/:commentId", PetGalleryController.deleteComment);
 
 module.exports = router;

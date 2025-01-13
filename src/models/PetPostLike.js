@@ -35,7 +35,7 @@ class PetPostLike extends BaseModel {
         );
       }
 
-      // Cập nhật số lượng like trong bảng pet_posts
+      // Update likes count in pet_posts table
       const PetPost = require("./PetPost");
       await PetPost.updateCounts(postId);
 
@@ -46,7 +46,7 @@ class PetPostLike extends BaseModel {
     }
   }
 
-  // Lấy danh sách người dùng đã like bài viết
+  // Get list of users who liked post
   static async getLikedUsers(postId, options = {}) {
     try {
       const { page = 1, limit = 10 } = options;
@@ -87,7 +87,7 @@ class PetPostLike extends BaseModel {
     }
   }
 
-  // Thêm phương thức mới để đếm số lượng likes
+  // Add new method to count likes
   static async getPostLikesCount(postId) {
     try {
       const sql = `

@@ -2,12 +2,12 @@ const ContactInformation = require("../models/ContactInformation");
 const ApiError = require("../exceptions/ApiError");
 
 class ContactInformationService {
-  // Lấy thông tin liên hệ hiện tại
+  // Get current contact information
   async getCurrentContact() {
     try {
       const contact = await ContactInformation.getCurrentContact();
       if (!contact) {
-        throw new ApiError(404, "Chưa có thông tin liên hệ nào được tạo");
+        throw new ApiError(404, "No contact information created");
       }
       return contact;
     } catch (error) {
@@ -15,13 +15,13 @@ class ContactInformationService {
     }
   }
 
-  // Tạo phiên bản mới
+  // Create new version
   async createNewVersion(data, userId) {
     try {
-      // Validate dữ liệu
+      // Validate data
       await this.validateContactData(data);
 
-      // Tạo phiên bản mới
+      // Create new version
       const contact = await ContactInformation.createNewVersion(data, userId);
       return contact;
     } catch (error) {
@@ -29,7 +29,7 @@ class ContactInformationService {
     }
   }
 
-  // Lấy lịch sử phiên bản
+  // Get version history
   async getVersionHistory(page = 1, limit = 10) {
     try {
       return await ContactInformation.getVersionHistory(page, limit);
@@ -38,12 +38,12 @@ class ContactInformationService {
     }
   }
 
-  // Lấy một phiên bản cụ thể
+  // Get a specific version
   async getVersion(version) {
     try {
       const contact = await ContactInformation.getVersion(version);
       if (!contact) {
-        throw new ApiError(404, "Không tìm thấy phiên bản này");
+        throw new ApiError(404, "Version not found");
       }
       return contact;
     } catch (error) {
@@ -51,13 +51,13 @@ class ContactInformationService {
     }
   }
 
-  // Xóa mềm/khôi phục
+  // Soft delete/restore
   async toggleSoftDelete(id) {
     try {
-      // Kiểm tra xem có phải phiên bản hiện tại không
+      // Check if it is the current version
       // const currentContact = await ContactInformation.getCurrentContact();
       // if (currentContact && currentContact.id === parseInt(id)) {
-      //   throw new ApiError(400, "Không thể xóa phiên bản đang sử dụng");
+      //   throw new ApiError(400, "Cannot delete current version");
       // }
 
       return await ContactInformation.toggleSoftDelete(id);
@@ -66,13 +66,13 @@ class ContactInformationService {
     }
   }
 
-  // Xóa vĩnh viễn
+  // Hard delete
   async hardDelete(id) {
     try {
-      // Kiểm tra xem có phải phiên bản hiện tại không
+      // Check if it is the current version
       // const currentContact = await ContactInformation.getCurrentContact();
       // if (currentContact && currentContact.id === parseInt(id)) {
-      //   throw new ApiError(400, "Không thể xóa phiên bản đang sử dụng");
+      //   throw new ApiError(400, "Cannot delete current version");
       // }
 
       return await ContactInformation.hardDelete(id);
@@ -81,7 +81,7 @@ class ContactInformationService {
     }
   }
 
-  // So sánh hai phiên bản
+  // Compare two versions
   async compareVersions(version1, version2) {
     try {
       const [v1, v2] = await Promise.all([
@@ -95,50 +95,50 @@ class ContactInformationService {
     }
   }
 
-  // Validate dữ liệu
+  // Validate data
   async validateContactData(data) {
     const errors = [];
 
     // Validate email
     if (!data.email || !this.isValidEmail(data.email)) {
-      errors.push("Email không hợp lệ");
+      errors.push("Invalid email");
     }
 
-    // Validate số điện thoại
+    // Validate phone number
     if (!data.phone || !this.isValidPhone(data.phone)) {
-      errors.push("Số điện thoại không hợp lệ");
+      errors.push("Invalid phone number");
     }
 
-    // Validate địa chỉ
+    // Validate address
     if (!data.address || data.address.trim().length < 10) {
-      errors.push("Địa chỉ phải có ít nhất 10 ký tự");
+      errors.push("Address must be at least 10 characters");
     }
 
-    // Validate giờ hỗ trợ
+    // Validate support hours
     if (!data.support_hours || data.support_hours.trim().length < 5) {
-      errors.push("Giờ hỗ trợ phải có ít nhất 5 ký tự");
+      errors.push("Support hours must be at least 5 characters");
     }
 
-    // Validate mô tả hỗ trợ
+    // Validate support description
     if (
       data.support_description &&
       data.support_description.trim().length < 10
     ) {
-      errors.push("Mô tả hỗ trợ phải có ít nhất 10 ký tự");
+      errors.push("Support description must be at least 10 characters");
     }
 
     if (errors.length > 0) {
-      throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
+      throw new ApiError(400, "Invalid data", errors);
     }
   }
 
-  // Kiểm tra email hợp lệ
+  // Check if email is valid
   isValidEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
 
-  // Kiểm tra số điện thoại hợp lệ
+  // Check if phone number is valid
   isValidPhone(phone) {
     const phoneRegex = /^[0-9]{10,11}$/;
     return phoneRegex.test(phone);

@@ -1,13 +1,13 @@
 module.exports = async (connection) => {
   try {
-    // Thêm foreign key cho hospitals.created_by
+    // Add foreign key for hospitals.created_by
     await connection.query(`
       ALTER TABLE hospitals
       ADD CONSTRAINT fk_hospitals_created_by
       FOREIGN KEY (created_by) REFERENCES users(id);
     `);
 
-    // Thêm foreign key cho users.hospital_id
+    // Add foreign key for users.hospital_id
     await connection.query(`
       ALTER TABLE users
       ADD CONSTRAINT fk_users_hospital

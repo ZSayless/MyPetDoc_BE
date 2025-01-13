@@ -3,17 +3,17 @@ const ApiError = require("../exceptions/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
 
 class PetPostController {
-  // Tạo bài viết mới
+  // Create new post
   createPost = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const files = req.files || [];
 
-    // Validate dữ liệu
+    // Validate data
     if (!req.body.title || !req.body.content) {
-      throw new ApiError(400, "Tiêu đề và nội dung bài viết là bắt buộc");
+      throw new ApiError(400, "Title and content are required");
     }
 
-    // Tạo dữ liệu cho bài viết
+    // Create post data
     const postData = {
       title: req.body.title,
       content: req.body.content,
@@ -41,35 +41,35 @@ class PetPostController {
 
     res.status(201).json({
       success: true,
-      message: "Tạo bài viết thành công",
+      message: "Create post successful",
       data: post,
     });
   });
 
-  // Lấy danh sách bài viết
+  // Get list of posts
   getPosts = asyncHandler(async (req, res) => {
     const result = await PetPostService.getPosts(req.query);
 
     res.json({
       success: true,
-      message: "Lấy danh sách bài viết thành công",
+      message: "Get list of posts successful",
       data: result,
     });
   });
 
-  // Lấy chi tiết bài viết
+  // Get post details
   getPostDetail = asyncHandler(async (req, res) => {
     const postId = req.params.id;
     const post = await PetPostService.getPostDetail(postId);
 
     res.json({
       success: true,
-      message: "Lấy chi tiết bài viết thành công",
+      message: "Get post details successful",
       data: post,
     });
   });
 
-  // Cập nhật bài viết
+  // Update post
   updatePost = asyncHandler(async (req, res) => {
     const postId = req.params.id;
     const userId = req.user.id;
@@ -84,12 +84,12 @@ class PetPostController {
 
     res.json({
       success: true,
-      message: "Cập nhật bài viết thành công",
+      message: "Update post successful",
       data: post,
     });
   });
 
-  // Like/Unlike bài viết
+  // Like/Unlike post
   toggleLike = asyncHandler(async (req, res) => {
     const postId = req.params.id;
     const userId = req.user.id;
@@ -105,7 +105,7 @@ class PetPostController {
     });
   });
 
-  // Lấy danh sách người dùng đã like
+  // Get list of users who liked
   getLikedUsers = asyncHandler(async (req, res) => {
     const postId = req.params.id;
     const { page = 1, limit = 10 } = req.query;
@@ -117,12 +117,12 @@ class PetPostController {
 
     res.json({
       success: true,
-      message: "Lấy danh sách người dùng đã thích thành công",
+      message: "Get list of users who liked successful",
       data: result,
     });
   });
 
-  // Thêm comment
+  // Add comment
   addComment = asyncHandler(async (req, res) => {
     const postId = req.params.id;
     const userId = req.user.id;
@@ -135,12 +135,12 @@ class PetPostController {
 
     res.status(201).json({
       success: true,
-      message: "Thêm bình luận thành công",
+      message: "Add comment successful",
       data: comment,
     });
   });
 
-  // Lấy comments của bài viết
+  // Get comments of post
   getComments = asyncHandler(async (req, res) => {
     const postId = req.params.id;
     const { page = 1, limit = 10 } = req.query;
@@ -152,12 +152,12 @@ class PetPostController {
 
     res.json({
       success: true,
-      message: "Lấy danh sách bình luận thành công",
+      message: "Get comments successful",
       data: result,
     });
   });
 
-  // Lấy replies của comment
+  // Get replies of comment
   getCommentReplies = asyncHandler(async (req, res) => {
     const commentId = req.params.commentId;
     const { page = 1, limit = 10 } = req.query;
@@ -169,12 +169,12 @@ class PetPostController {
 
     res.json({
       success: true,
-      message: "Lấy danh sách trả lời thành công",
+      message: "Get replies successful",
       data: replies,
     });
   });
 
-  // Xóa comment
+  // Delete comment
   deleteComment = asyncHandler(async (req, res) => {
     const commentId = req.params.commentId;
     const userId = req.user.id;
@@ -184,11 +184,11 @@ class PetPostController {
 
     res.json({
       success: true,
-      message: "Xóa bình luận thành công",
+      message: "Delete comment successful",
     });
   });
 
-  // Cập nhật trạng thái bài viết
+  // Update post status
   updateStatus = asyncHandler(async (req, res) => {
     const postId = req.params.id;
     const userId = req.user.id;
@@ -204,12 +204,12 @@ class PetPostController {
 
     res.json({
       success: true,
-      message: "Cập nhật trạng thái bài viết thành công",
+      message: "Update post status successful",
       data: post,
     });
   });
 
-  // Báo cáo comment
+  // Report comment
   reportComment = asyncHandler(async (req, res) => {
     const commentId = req.params.commentId;
     const userId = req.user.id;
@@ -224,7 +224,7 @@ class PetPostController {
     res.json(result);
   });
 
-  // Xóa mềm bài viết
+  // Soft delete post
   softDeletePost = asyncHandler(async (req, res) => {
     const postId = req.params.id;
     const userId = req.user.id;
@@ -234,11 +234,11 @@ class PetPostController {
 
     res.json({
       success: true,
-      message: "Xóa bài viết thành công",
+      message: "Soft delete post successful",
     });
   });
 
-  // Xóa cứng bài viết
+  // Hard delete post
   hardDeletePost = asyncHandler(async (req, res) => {
     const postId = req.params.id;
     const userId = req.user.id;
@@ -248,43 +248,43 @@ class PetPostController {
 
     res.json({
       success: true,
-      message: "Xóa vĩnh viễn bài viết thành công",
+      message: "Hard delete post successful",
     });
   });
 
-  // Xóa mềm nhiều bài viết
+  // Soft delete many posts
   softDeleteManyPosts = asyncHandler(async (req, res) => {
     const { ids } = req.body;
     const userId = req.user.id;
     const isAdmin = req.user.role === "ADMIN";
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      throw new ApiError(400, "Danh sách ID bài viết không hợp lệ");
+      throw new ApiError(400, "Invalid list of post IDs");
     }
 
     await PetPostService.softDeleteManyPosts(ids, userId, isAdmin);
 
     res.json({
       success: true,
-      message: "Xóa các bài viết thành công",
+      message: "Soft delete many posts successful",
     });
   });
 
-  // Xóa cứng nhiều bài viết
+  // Hard delete many posts
   hardDeleteManyPosts = asyncHandler(async (req, res) => {
     const { ids } = req.body;
     const userId = req.user.id;
     const isAdmin = req.user.role === "ADMIN";
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      throw new ApiError(400, "Danh sách ID bài viết không hợp lệ");
+      throw new ApiError(400, "Invalid list of post IDs");
     }
 
     await PetPostService.hardDeleteManyPosts(ids, userId, isAdmin);
 
     res.json({
       success: true,
-      message: "Xóa vĩnh viễn các bài viết thành công",
+      message: "Hard delete many posts successful",
     });
   });
 

@@ -14,7 +14,7 @@ class ContactInformation extends BaseModel {
     }
   }
 
-  // Lấy thông tin liên hệ hiện tại
+  // Get current contact information
   static async getCurrentContact() {
     try {
       const sql = `
@@ -34,10 +34,10 @@ class ContactInformation extends BaseModel {
     }
   }
 
-  // Tạo phiên bản mới
+  // Create new version
   static async createNewVersion(data, userId) {
     try {
-      // Lấy version hiện tại
+      // Get current version
       const currentContact = await this.getCurrentContact();
       const newVersion = currentContact ? currentContact.version + 1 : 1;
 
@@ -55,7 +55,7 @@ class ContactInformation extends BaseModel {
     }
   }
 
-  // Lấy lịch sử các phiên bản
+  // Get version history
   static async getVersionHistory(page = 1, limit = 10) {
     try {
       const pageNumber = parseInt(page);
@@ -97,7 +97,7 @@ class ContactInformation extends BaseModel {
     }
   }
 
-  // Lấy một phiên bản cụ thể
+  // Get a specific version
   static async getVersion(version) {
     try {
       const sql = `
@@ -142,7 +142,7 @@ class ContactInformation extends BaseModel {
     }
   }
 
-  // So sánh hai phiên bản
+  // Compare two versions
   static async compareVersions(version1, version2) {
     try {
       const [v1, v2] = await Promise.all([
@@ -180,7 +180,7 @@ class ContactInformation extends BaseModel {
     }
   }
 
-  // Helper method để so sánh hai giá trị
+  // Helper method to compare two values
   static compareField(value1, value2) {
     if (value1 === value2) return null;
     return {

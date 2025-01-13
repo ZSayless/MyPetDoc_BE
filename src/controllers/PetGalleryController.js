@@ -4,31 +4,31 @@ const asyncHandler = require("../utils/asyncHandler");
 const cloudinary = require("cloudinary");
 
 class PetGalleryController {
-  // Tạo bài đăng mới
+  // Create new post
   createPost = asyncHandler(async (req, res) => {
     const userId = req.user.id;
     const file = req.file;
 
-    // Log để debug
-    console.log("Request body:", req.body);
-    console.log("File:", file);
-    console.log("Content-Type:", req.headers["content-type"]);
+    // Log for debugging
+    // console.log("Request body:", req.body);
+    // console.log("File:", file);
+    // console.log("Content-Type:", req.headers["content-type"]);
 
-    // Kiểm tra file
+    // Check file
     if (!file) {
-      throw new ApiError(400, "Vui lòng tải lên ảnh cho bài đăng");
+      throw new ApiError(400, "Please upload an image for the post");
     }
 
     const post = await PetGalleryService.createPost(req.body, userId, file);
 
     res.status(201).json({
       success: true,
-      message: "Tạo bài đăng thành công",
+      message: "Create post successful",
       data: post,
     });
   });
 
-  // Lấy danh sách bài đăng
+  // Get list of posts
   getPosts = asyncHandler(async (req, res, next) => {
     const {
       page = 1,
@@ -52,99 +52,91 @@ class PetGalleryController {
 
     res.json({
       success: true,
-      message: "Lấy danh sách bài đăng thành công",
+      message: "Get list of posts successful",
       data: posts,
     });
   });
 
-  // Lấy chi tiết bài đăng
+  // Get post details
   getPostDetail = asyncHandler(async (req, res, next) => {
     const postId = req.params.id;
     const post = await PetGalleryService.getPostDetail(postId);
 
     res.json({
       success: true,
-      message: "Lấy chi tiết bài đăng thành công",
+      message: "Get post details successful",
       data: post,
     });
   });
 
-  // Cập nhật bài đăng
+  // Update post
   updatePost = asyncHandler(async (req, res) => {
     const postId = req.params.id;
     const userId = req.user.id;
     const files = req.files;
 
-    // Kiểm tra số lượng file trước
-    if (files && Object.keys(files).length > 1) {
-      // Xóa tất cả file đã upload
-      for (const file of Object.values(files)) {
+    // Hàm helper để xóa ảnh
+    const deleteUploadedFiles = async (files) => {
+      if (!files) return;
+
+      const filesToDelete = Array.isArray(files) ? files : [files];
+      for (const file of filesToDelete) {
         if (file.path) {
           try {
             const urlParts = file.path.split("/");
-            const publicId = `petgallery/${
+            const publicId = `petgallerys/${
               urlParts[urlParts.length - 1].split(".")[0]
             }`;
             await cloudinary.uploader.destroy(publicId);
-          } catch (deleteError) {
-            console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+            console.log("Đã xóa ảnh:", publicId);
+          } catch (error) {
+            console.error("Lỗi khi xóa ảnh:", error);
           }
         }
       }
-      throw new ApiError(400, "Chỉ được phép upload 1 ảnh");
-    }
+    };
 
-    // Kiểm tra bài đăng tồn tại
-    const existingPost = await PetGalleryService.getPostDetail(postId);
-    if (!existingPost) {
-      // Nếu có file đã upload, xóa file
-      if (req.file && req.file.path) {
-        try {
-          const urlParts = req.file.path.split("/");
-          const publicId = `petgallery/${
-            urlParts[urlParts.length - 1].split(".")[0]
-          }`;
-          await cloudinary.uploader.destroy(publicId);
-        } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
-        }
+    try {
+      // Check file count
+      if (files && Object.keys(files).length > 1) {
+        await deleteUploadedFiles(Object.values(files));
+        throw new ApiError(400, "Only allowed to upload 1 image");
       }
-      throw new ApiError(404, "Không tìm thấy bài đăng");
-    }
 
-    // Kiểm tra quyền sửa
-    if (existingPost.user_id !== userId) {
-      // Xóa file nếu đã upload
-      if (req.file && req.file.path) {
-        try {
-          const urlParts = req.file.path.split("/");
-          const publicId = `petgallery/${
-            urlParts[urlParts.length - 1].split(".")[0]
-          }`;
-          await cloudinary.uploader.destroy(publicId);
-        } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
-        }
+      // Check if post exists
+      const existingPost = await PetGalleryService.getPostDetail(postId);
+      if (!existingPost) {
+        await deleteUploadedFiles(files || req.file);
+        throw new ApiError(404, "Post not found");
       }
-      throw new ApiError(403, "Bạn không có quyền sửa bài đăng này");
+
+      // Check permission to edit
+      if (existingPost.user_id !== userId) {
+        await deleteUploadedFiles(files || req.file);
+        throw new ApiError(403, "You are not allowed to edit this post");
+      }
+
+      const file = req.file;
+      const post = await PetGalleryService.updatePost(
+        postId,
+        req.body,
+        userId,
+        file
+      );
+
+      res.json({
+        success: true,
+        message: "Update post successful",
+        data: post,
+      });
+    } catch (error) {
+      // Đảm bảo xóa ảnh trong mọi trường hợp lỗi
+      await deleteUploadedFiles(files || req.file);
+      throw error;
     }
-
-    const file = req.file;
-    const post = await PetGalleryService.updatePost(
-      postId,
-      req.body,
-      userId,
-      file
-    );
-
-    res.json({
-      success: true,
-      message: "Cập nhật bài đăng thành công",
-      data: post,
-    });
   });
 
-  // Xóa bài đăng
+  // Delete post
   deletePost = asyncHandler(async (req, res, next) => {
     const postId = req.params.id;
     const userId = req.user.id;
@@ -155,11 +147,11 @@ class PetGalleryController {
 
     res.json({
       success: true,
-      message: "Xóa bài đăng thành công",
+      message: "Delete post successful",
     });
   });
 
-  // Like/Unlike bài đăng
+  // Like/Unlike post
   toggleLike = asyncHandler(async (req, res, next) => {
     const postId = req.params.id;
     const userId = req.user.id;
@@ -175,7 +167,7 @@ class PetGalleryController {
     });
   });
 
-  // Thêm comment
+  // Add comment
   addComment = asyncHandler(async (req, res, next) => {
     const postId = req.params.id;
     const userId = req.user.id;
@@ -188,12 +180,12 @@ class PetGalleryController {
 
     res.status(201).json({
       success: true,
-      message: "Thêm bình luận thành công",
+      message: "Add comment successful",
       data: comment,
     });
   });
 
-  // Lấy comments của bài đăng
+  // Get comments of post
   getComments = asyncHandler(async (req, res, next) => {
     const postId = req.params.id;
     const { page = 1, limit = 10 } = req.query;
@@ -205,12 +197,12 @@ class PetGalleryController {
 
     res.json({
       success: true,
-      message: "Lấy danh sách bình luận thành công",
+      message: "Get comments successful",
       data: result,
     });
   });
 
-  // Lấy replies của comment
+  // Get replies of comment
   getCommentReplies = asyncHandler(async (req, res, next) => {
     const commentId = req.params.commentId;
     const { page = 1, limit = 10 } = req.query;
@@ -222,22 +214,22 @@ class PetGalleryController {
 
     res.json({
       success: true,
-      message: "Lấy danh sách trả lời thành công",
+      message: "Get replies successful",
       data: replies,
     });
   });
 
-  // Xóa comment
+  // Delete comment
   deleteComment = asyncHandler(async (req, res, next) => {
     const commentId = req.params.commentId;
     const userId = req.user.id;
     const userRole = req.user.role;
     const isAdmin = userRole === "ADMIN";
 
-    // Nếu là route admin
+    // If it is admin route
     if (req.baseUrl.includes("/admin")) {
       if (!isAdmin) {
-        throw new ApiError(403, "Không có quyền truy cập");
+        throw new ApiError(403, "You are not allowed to access");
       }
     }
 
@@ -245,11 +237,11 @@ class PetGalleryController {
 
     res.json({
       success: true,
-      message: "Xóa bình luận thành công",
+      message: "Delete comment successful",
     });
   });
 
-  // Báo cáo comment
+  // Report comment
   reportComment = asyncHandler(async (req, res) => {
     const commentId = req.params.commentId;
     const userId = req.user.id;

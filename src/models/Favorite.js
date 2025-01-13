@@ -14,7 +14,7 @@ class Favorite extends BaseModel {
     }
   }
 
-  // Kiểm tra user đã favorite bệnh viện chưa
+  // Check if user has favorited hospital
   static async hasUserFavorited(userId, hospitalId) {
     try {
       const sql = `
@@ -45,7 +45,7 @@ class Favorite extends BaseModel {
           [userId, hospitalId]
         );
       } else {
-        // Kiểm tra xem đã có bản ghi bị soft delete chưa
+        // Check if there is a soft deleted record
         const [existingRecord] = await this.query(
           `SELECT id FROM ${this.tableName} 
            WHERE user_id = ? AND hospital_id = ?`,
@@ -53,7 +53,7 @@ class Favorite extends BaseModel {
         );
 
         if (existingRecord) {
-          // Nếu có thì restore
+          // If there is, restore
           await this.query(
             `UPDATE ${this.tableName} 
              SET is_deleted = 0 
@@ -61,7 +61,7 @@ class Favorite extends BaseModel {
             [userId, hospitalId]
           );
         } else {
-          // Nếu chưa có thì tạo mới
+          // If not, create new
           await this.query(
             `INSERT INTO ${this.tableName} (user_id, hospital_id) 
              VALUES (?, ?)`,
@@ -77,13 +77,13 @@ class Favorite extends BaseModel {
     }
   }
 
-  // Lấy danh sách bệnh viện yêu thích của user
+  // Get user's favorite hospitals
   static async getUserFavorites(userId, options = {}) {
     try {
       const { page = 1, limit = 10 } = options;
       const offset = (page - 1) * limit;
 
-      // // Log để debug
+      // Log for debug
       // console.log("Getting favorites for user:", userId);
       // console.log("Page:", page, "Limit:", limit, "Offset:", offset);
 
@@ -121,7 +121,7 @@ class Favorite extends BaseModel {
         AND h.is_deleted = 0
       `;
 
-      // // Log câu query để debug
+      // Log for debug
       // console.log("SQL Query:", sql);
       // console.log("Count SQL Query:", countSql);
       // console.log("Parameters:", [userId]);
@@ -131,7 +131,7 @@ class Favorite extends BaseModel {
         this.query(countSql, [userId]),
       ]);
 
-      // // Log kết quả để debug
+      // Log for debug
       // console.log("Found favorites:", favorites);
       // console.log("Count result:", countResult);
 
@@ -154,7 +154,7 @@ class Favorite extends BaseModel {
     }
   }
 
-  // Lấy danh sách user đã favorite một bệnh viện
+  // Get list of users who have favorited a hospital
   static async getHospitalFavorites(hospitalId, options = {}) {
     try {
       const { page = 1, limit = 10 } = options;
@@ -184,7 +184,7 @@ class Favorite extends BaseModel {
         AND u.is_deleted = 0
       `;
 
-      // // Log để debug
+      // Log for debug
       // console.log("SQL Query:", sql);
       // console.log("Count SQL Query:", countSql);
       // console.log("Parameters:", [hospitalId]);
@@ -194,7 +194,7 @@ class Favorite extends BaseModel {
         this.query(countSql, [hospitalId]),
       ]);
 
-      // Log kết quả
+      // Log for debug
       // console.log("Found users:", users);
       // console.log("Count result:", countResult);
 
@@ -211,7 +211,7 @@ class Favorite extends BaseModel {
     }
   }
 
-  // Đếm số lượng favorite của một bệnh viện
+  // Count hospital favorites
   static async countHospitalFavorites(hospitalId) {
     try {
       const sql = `
@@ -228,7 +228,7 @@ class Favorite extends BaseModel {
     }
   }
 
-  // Lấy số lượng favorite của một user
+  // Count user favorites
   static async countUserFavorites(userId) {
     try {
       const sql = `
@@ -248,7 +248,7 @@ class Favorite extends BaseModel {
     }
   }
 
-  // Lấy danh sách favorite mới nhất
+  // Get latest favorites
   static async getLatestFavorites(limit = 10) {
     try {
       const sql = `
@@ -271,6 +271,11 @@ class Favorite extends BaseModel {
       console.error("Get latest favorites error:", error);
       throw error;
     }
+  }
+
+  static async deleteByUserId(userId) {
+    const sql = "DELETE FROM favorites WHERE user_id = ?";
+    return this.query(sql, [userId]);
   }
 }
 

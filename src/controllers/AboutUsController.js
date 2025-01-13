@@ -3,13 +3,13 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 
 class AboutUsController {
-  // Lấy thông tin about us hiện tại
+  // Get current about us
   getCurrentAboutUs = asyncHandler(async (req, res) => {
     const aboutUs = await AboutUsService.getCurrentAboutUs();
     res.json(aboutUs);
   });
 
-  // Tạo phiên bản mới
+  // Create new version
   createNewVersion = asyncHandler(async (req, res) => {
     const aboutUs = await AboutUsService.createNewVersion(
       req.body,
@@ -18,7 +18,7 @@ class AboutUsController {
     res.status(201).json(aboutUs);
   });
 
-  // Lấy lịch sử phiên bản
+  // Get version history
   getVersionHistory = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const history = await AboutUsService.getVersionHistory(
@@ -28,39 +28,42 @@ class AboutUsController {
     res.json(history);
   });
 
-  // Lấy một phiên bản cụ thể
+  // Get a specific version
   getVersion = asyncHandler(async (req, res) => {
     const { version } = req.params;
     const aboutUs = await AboutUsService.getVersion(parseInt(version));
     res.json(aboutUs);
   });
 
-  // Xóa phiên bản
+  // Soft delete version
   toggleSoftDelete = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    await AboutUsService.toggleSoftDelete(parseInt(id));
-    res.status(204).json({
+    const aboutUs = await AboutUsService.toggleSoftDelete(parseInt(id));
+    res.status(200).json({
       status: "success",
-      message: "Xóa phiên bản thành công",
+      message: aboutUs.is_deleted
+        ? "Soft delete version successfully"
+        : "Restore version successfully",
+      data: aboutUs,
     });
   });
 
-  // Xóa vĩnh viễn
+  // Hard delete version
   hardDeleteVersion = asyncHandler(async (req, res) => {
     const { id } = req.params;
     await AboutUsService.hardDelete(parseInt(id));
     res.status(204).json({
       status: "success",
-      message: "Xóa vĩnh viễn phiên bản thành công",
+      message: "Hard delete version successfully",
     });
   });
 
-  // So sánh hai phiên bản
+  // Compare two versions
   compareVersions = asyncHandler(async (req, res) => {
     const { version1, version2 } = req.query;
 
     if (!version1 || !version2) {
-      throw new ApiError(400, "Vui lòng cung cấp đủ hai phiên bản để so sánh");
+      throw new ApiError(400, "Please provide both versions to compare");
     }
 
     const comparison = await AboutUsService.compareVersions(

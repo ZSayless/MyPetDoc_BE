@@ -1,27 +1,44 @@
-const app = require("./app");
 require("dotenv").config();
-
-const port = process.env.PORT || 3000;
-
-// Kết nối database
+const app = require("./app");
+const logger = require("./utils/logger");
+const cache = require("./config/redis");
 const db = require("./config/db");
-const conn = db.connection;
 
-// Khởi động server
-app.listen(port, () => {
-  console.log(`Server đang chạy trên port ${port}`);
+const PORT = process.env.PORT || 3000;
+
+// Connect to database
+const conn = db;
+
+// Start server
+const server = app.listen(PORT, async () => {
+  logger.info(`Server running on port ${PORT}`);
+
+  // Check cache status
+  const cacheStatus = cache.getStatus();
+  logger.info(
+    `Cache system: ${cacheStatus.type}, Connected: ${cacheStatus.connected}`
+  );
 });
 
-// Xử lý lỗi không được xử lý (Unhandled Promise Rejection)
+// Handle unhandled promise rejections
 process.on("unhandledRejection", (err) => {
-  console.log("UNHANDLED REJECTION! 💥 Shutting down...");
-  console.log(err.name, err.message);
+    logger.error("UNHANDLED REJECTION! 💥 Shutting down...");
+  logger.error(err);
+
+  if (server) {
+    server.close(() => {
+      process.exit(1);
+    });
+  } else {
+    process.exit(1);
+  }
+});
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (err) => {
+  logger.error("UNCAUGHT EXCEPTION! 💥 Shutting down...");
+  logger.error(err);
   process.exit(1);
 });
 
-// Xử lý lỗi không mong muốn
-process.on("uncaughtException", (err) => {
-  console.log("UNCAUGHT EXCEPTION! 💥 Shutting down...");
-  console.log(err.name, err.message);
-  process.exit(1);
-});
+module.exports = { app, server };

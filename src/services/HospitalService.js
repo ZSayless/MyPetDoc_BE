@@ -8,50 +8,53 @@ const HospitalImage = require("../models/HospitalImage");
 class HospitalService {
   async createHospital(hospitalData, userId, files = []) {
     try {
-      // Kiểm tra user
+      // Check if user exists
       const user = await User.findById(userId);
       if (!user) {
         throw new ApiError(404, "Không tìm thấy người dùng");
       }
 
-      // Kiểm tra quyền và điều kiện tạo bệnh viện
+      // Check user's role and conditions for creating a hospital
       if (user.role === "HOSPITAL_ADMIN") {
-        // Kiểm tra xem hospital admin đã có bệnh viện chưa
+        // Check if hospital admin already has a hospital
         if (user.hospital_id) {
-          throw new ApiError(403, "Hospital Admin chỉ được tạo một bệnh viện");
+          throw new ApiError(
+            403,
+            "Hospital Admin can only create one hospital"
+          );
         }
 
-        // Set is_active = false cho bệnh viện do HOSPITAL_ADMIN tạo
+        // Set is_active = false for hospital created by HOSPITAL_ADMIN
         hospitalData.is_active = 0;
       } else if (user.role === "ADMIN") {
-        // ADMIN có thể tạo bệnh viện với is_active = true
+        // ADMIN can create hospital with is_active = true
         hospitalData.is_active = 1;
       } else {
-        throw new ApiError(403, "Không có quyền tạo bệnh viện");
+        throw new ApiError(403, "No permission to create hospital");
       }
 
-      // Kiểm tra tên bệnh viện
+      // Check if hospital name is taken
       if (await Hospital.isNameTaken(hospitalData.name)) {
-        throw new ApiError(400, "Tên bệnh viện đã tồn tại");
+        throw new ApiError(400, "Hospital name already exists");
       }
 
-      // Thêm thông tin người tạo
+      // Add creator's information
       hospitalData.created_by = userId;
 
-      // Tạo bệnh viện
+      // Create hospital
       const result = await Hospital.create(hospitalData);
       const hospitalId = result.insertId;
 
       if (!hospitalId) {
-        throw new ApiError(500, "Không thể tạo bệnh viện");
+        throw new ApiError(500, "Cannot create hospital");
       }
 
-      // Nếu là HOSPITAL_ADMIN, cập nhật hospital_id cho user
+      // If user is HOSPITAL_ADMIN, update hospital_id for user
       if (user.role === "HOSPITAL_ADMIN") {
         await User.update(userId, { hospital_id: hospitalId });
       }
 
-      // Xử lý images nếu có
+      // Process images if any
       let images = [];
       if (files && files.length > 0) {
         try {
@@ -61,7 +64,7 @@ class HospitalService {
             userId
           );
         } catch (imageError) {
-          // Nếu lỗi khi thêm ảnh, rollback tất cả thay đổi
+          // If there is an error when adding images, rollback all changes
           await Hospital.hardDelete(hospitalId);
           if (user.role === "HOSPITAL_ADMIN") {
             await User.update(userId, { hospital_id: null });
@@ -70,10 +73,10 @@ class HospitalService {
         }
       }
 
-      // Lấy thông tin bệnh viện kèm ảnh
+      // Get hospital information with images
       const hospitalWithImages = await Hospital.findById(hospitalId);
       if (!hospitalWithImages) {
-        throw new ApiError(404, "Không tìm thấy bệnh viện sau khi tạo");
+        throw new ApiError(404, "Hospital not found after creation");
       }
 
       return {
@@ -81,7 +84,7 @@ class HospitalService {
         images: images || [],
       };
     } catch (error) {
-      // Xử lý xóa ảnh nếu có lỗi
+      // Process image deletion if there is an error
       if (files && files.length > 0) {
         for (const file of files) {
           if (file.path) {
@@ -92,7 +95,7 @@ class HospitalService {
             try {
               await cloudinary.uploader.destroy(publicId);
             } catch (deleteError) {
-              console.error("Lỗi khi xóa ảnh:", deleteError);
+              console.error("Error deleting image:", deleteError);
             }
           }
         }
@@ -114,11 +117,11 @@ class HospitalService {
 
       if (updateData.name && updateData.name !== hospital.name) {
         if (await Hospital.isNameTaken(updateData.name, id)) {
-          throw new ApiError(400, "Tên bệnh viện đã tồn tại");
+          throw new ApiError(400, "Hospital name already exists");
         }
       }
 
-      // Xóa các ảnh cũ nếu có yêu cầu
+      // Delete old images if requested
       if (imagesToDelete && imagesToDelete.length > 0) {
         for (const imageId of imagesToDelete) {
           try {
@@ -129,7 +132,7 @@ class HospitalService {
         }
       }
 
-      // Thêm ảnh mới nếu có
+      // Add new images if any
       let newImages = [];
       if (files && files.length > 0) {
         try {
@@ -140,14 +143,14 @@ class HospitalService {
         }
       }
 
-      // Cập nhật thông tin bệnh viện
+      // Update hospital information
       const updatedHospital = await Hospital.update(id, updateData);
 
-      // Lấy thông tin mới nhất kèm ảnh
+      // Get latest hospital information with images
       const hospitalWithImages = await this.getHospitalById(id);
       return hospitalWithImages;
     } catch (error) {
-      // Nếu có lỗi và đã upload ảnh mới, xóa các ảnh mới
+      // If there is an error and new images have been uploaded, delete new images
       if (files && files.length > 0) {
         for (const file of files) {
           if (file.path) {
@@ -158,7 +161,7 @@ class HospitalService {
             try {
               await cloudinary.uploader.destroy(publicId);
             } catch (deleteError) {
-              console.error("Lỗi khi xóa ảnh mới:", deleteError);
+              console.error("Error deleting new image:", deleteError);
             }
           }
         }
@@ -172,7 +175,7 @@ class HospitalService {
     try {
       const hospital = await this.getHospitalById(id);
       if (!hospital) {
-        throw new ApiError(404, "Không tìm thấy bệnh viện");
+        throw new ApiError(404, "Hospital not found");
       }
 
       const updateData = {
@@ -199,7 +202,7 @@ class HospitalService {
         ...otherFilters
       } = searchParams;
 
-      // Tìm kiếm bệnh viện với các điều kiện
+      // Search hospitals with conditions
       const hospitals = await Hospital.search(
         {
           name,
@@ -213,7 +216,7 @@ class HospitalService {
         { offset, limit }
       );
 
-      // Đếm tổng số kết quả
+      // Count total results
       const total = await Hospital.countSearch({
         name,
         address,
@@ -224,7 +227,7 @@ class HospitalService {
         ...otherFilters,
       });
 
-      // Lấy ảnh cho từng bệnh viện
+      // Get images for each hospital
       const hospitalsWithImages = await Promise.all(
         hospitals.data.map(async (hospital) => {
           const images = await hospitalImageService.getHospitalImages(
@@ -255,10 +258,10 @@ class HospitalService {
     try {
       const hospital = await Hospital.findById(id);
       if (!hospital) {
-        throw new ApiError(404, "Không tìm thấy bệnh viện");
+        throw new ApiError(404, "Hospital not found");
       }
 
-      // Lấy ảnh của bệnh viện
+      // Get hospital images
       const images = await hospitalImageService.getHospitalImages(id);
       return {
         ...hospital,
@@ -279,10 +282,10 @@ class HospitalService {
         sortOrder: searchParams.sortOrder || "DESC",
       });
 
-      // Đếm tổng số kết quả
+      // Count total results
       const total = await Hospital.countSearch(searchParams);
 
-      // Lấy ảnh cho từng bệnh viện
+      // Get images for each hospital
       const hospitalsWithImages = await Promise.all(
         hospitals.data.map(async (hospital) => {
           const images = await hospitalImageService.getHospitalImages(
@@ -312,76 +315,79 @@ class HospitalService {
   async validateHospitalData(data, isUpdate = false) {
     const errors = [];
 
-    // Kiểm tra tên bệnh viện
+    // Check hospital name
     if (!isUpdate || data.name) {
       if (!data.name || data.name.trim().length < 3) {
-        errors.push("Tên bệnh viện phải có ít nhất 3 ký tự");
+        errors.push("Hospital name must be at least 3 characters");
       }
     }
 
     if (data.phone) {
       const phoneRegex = /^[0-9]{10,11}$/;
       if (!phoneRegex.test(data.phone)) {
-        errors.push("Số điện thoại không hợp lệ");
+        errors.push("Invalid phone number");
       }
     }
 
-    // Kiểm tra địa chỉ nếu có
+    // Check address if any
     if (data.address && data.address.trim().length < 5) {
-      errors.push("Địa chỉ phải có ít nhất 5 ký tự");
+      errors.push("Address must be at least 5 characters");
     }
 
     if (errors.length > 0) {
-      throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
+      throw new ApiError(400, "Invalid data", errors);
     }
   }
 
   async hardDelete(id) {
     try {
-      // Lấy thông tin hospital trước khi xóa
+      // Get hospital information before deleting
       const hospital = await Hospital.findById(id);
       if (!hospital) {
-        throw new ApiError(404, "Không tìm thấy bệnh viện");
+        throw new ApiError(404, "Hospital not found");
       }
 
-      // Lấy danh sách ảnh của hospital
+      // Get hospital images before deleting
       const hospitalImages = await HospitalImage.findByHospitalId(id);
 
-      // Xóa ảnh trên Cloudinary
+      // Delete images on Cloudinary
       if (hospitalImages && hospitalImages.length > 0) {
         for (const image of hospitalImages) {
           try {
-            // Lấy public_id từ URL
+            // Get public_id from URL
             const urlParts = image.image_url.split("/");
             const publicId = `hospitals/${
               urlParts[urlParts.length - 1].split(".")[0]
             }`;
 
-            // Xóa ảnh trên Cloudinary
+            // Delete image on Cloudinary
             await cloudinary.uploader.destroy(publicId);
           } catch (cloudinaryError) {
-            console.error("Lỗi khi xóa ảnh trên Cloudinary:", cloudinaryError);
-            // Tiếp tục xử lý các ảnh khác ngay cả khi có lỗi
+            console.error(
+              "Error deleting image on Cloudinary:",
+              cloudinaryError
+            );
+            // Continue processing other images even if there is an error
           }
         }
       }
 
-      // Lấy danh sách users liên quan
+      // Get list of users related
       const users = await User.findByHospitalId(id);
 
-      // Cập nhật hospital_id thành null cho từng user
+      // Update hospital_id to null for each user
       if (users && users.length > 0) {
         for (const user of users) {
           await User.update(user.id, { hospital_id: null });
         }
       }
 
-      // Thực hiện xóa cứng
+      // Perform hard delete
       await Hospital.hardDelete(id);
 
       return {
         status: "success",
-        message: "Đã xóa bệnh viện thành công",
+        message: "Hospital deleted successfully",
       };
     } catch (error) {
       console.error("Error in HospitalService.hardDelete:", error);

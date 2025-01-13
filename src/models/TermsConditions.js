@@ -14,7 +14,7 @@ class TermsConditions extends BaseModel {
     }
   }
 
-  // Lấy điều khoản hiện tại (active)
+  // Get current terms (active)
   static async getCurrentTerms() {
     try {
       const sql = `
@@ -35,15 +35,15 @@ class TermsConditions extends BaseModel {
     }
   }
 
-  // Tạo phiên bản mới
+  // Create new version
   static async createNewVersion(data, userId) {
     try {
-      // Validate ngày hiệu lực
+      // Validate effective date
       if (!data.effective_date) {
         throw new Error("Effective date is required");
       }
 
-      // Lấy version hiện tại
+      // Get current version
       const currentTerms = await this.getCurrentTerms();
       const newVersion = currentTerms ? currentTerms.version + 1 : 1;
 
@@ -61,7 +61,7 @@ class TermsConditions extends BaseModel {
     }
   }
 
-  // Lấy lịch sử các phiên bản
+  // Get version history
   static async getVersionHistory(page = 1, limit = 10) {
     try {
       const pageNumber = parseInt(page);
@@ -103,7 +103,7 @@ class TermsConditions extends BaseModel {
     }
   }
 
-  // Lấy một phiên bản cụ thể
+  // Get specific version
   static async getVersion(version) {
     try {
       const sql = `
@@ -121,7 +121,7 @@ class TermsConditions extends BaseModel {
     }
   }
 
-  // Lấy điều khoản có hiệu lực tại một thời điểm
+  // Get effective terms at a specific time
   static async getEffectiveTerms(date = new Date()) {
     try {
       const sql = `
@@ -145,16 +145,16 @@ class TermsConditions extends BaseModel {
   // Toggle soft delete status
   static async toggleSoftDelete(id) {
     try {
-      // Lấy trạng thái hiện tại
+      // Get current status
       const currentData = await this.findById(id);
       if (!currentData) {
         throw new Error("Record not found");
       }
 
-      // Đảo ngược trạng thái is_deleted
+      // Toggle is_deleted status
       const newStatus = !currentData.is_deleted;
 
-      // Cập nhật trạng thái mới
+      // Update new status
       const termsData = await super.update(id, { is_deleted: newStatus });
       return new TermsConditions(termsData);
     } catch (error) {
@@ -174,7 +174,7 @@ class TermsConditions extends BaseModel {
     }
   }
 
-  // Override các phương thức cơ bản
+  // Override basic methods
   static async findOne(conditions) {
     const termsData = await super.findOne(conditions);
     return termsData ? new TermsConditions(termsData) : null;

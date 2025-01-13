@@ -25,7 +25,7 @@ class UserController {
       ...req.body,
       is_active: true,
     };
-    // Thêm đường dẫn ảnh từ Cloudinary nếu có file upload
+    // Add image path from Cloudinary if file is uploaded
     if (req.file) {
       userData.avatar = req.file.path;
     }
@@ -52,20 +52,20 @@ class UserController {
       }
     });
 
-    // Xử lý avatar mới nếu có upload file
+    // Handle new avatar if file is uploaded
     if (req.file) {
       updateData.avatar = req.file.path;
     }
 
     if (Object.keys(updateData).length === 0) {
-      throw new ApiError(400, "Không có dữ liệu để cập nhật");
+      throw new ApiError(400, "No data to update");
     }
 
     const user = await UserService.updateUser(userId, updateData);
 
     res.json({
       status: "success",
-      message: "Cập nhật người dùng thành công",
+      message: "Update user successful",
       data: user,
     });
   });
@@ -78,7 +78,7 @@ class UserController {
 
     res.json({
       status: "success",
-      message: "Đã xóa người dùng thành công",
+      message: "Delete user successful",
     });
   });
 
@@ -87,8 +87,8 @@ class UserController {
     res.json({
       status: "success",
       message: user.is_deleted
-        ? "Đã xóa mềm người dùng"
-        : "Đã khôi phục người dùng",
+        ? "Soft delete user successful"
+        : "Restore user successful",
       data: user,
     });
   });
@@ -113,7 +113,7 @@ class UserController {
       }
     });
 
-    // Xử lý avatar mới nếu có upload file
+    // Handle new avatar if file is uploaded
     if (req.file) {
       updateData.avatar = req.file.path;
     }
@@ -122,7 +122,7 @@ class UserController {
 
     res.json({
       status: "success",
-      message: "Cập nhật thông tin cá nhân thành công",
+      message: "Update profile successful",
       data: user,
     });
   });

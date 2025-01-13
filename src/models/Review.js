@@ -110,7 +110,7 @@ class Review extends BaseModel {
         params.push(filters.is_reported);
       }
 
-      // Convert offset và limit sang số
+      // Convert offset and limit to number
       const limitNum = Number(limit);
       const offsetNum = Number(offset);
 
@@ -168,7 +168,7 @@ class Review extends BaseModel {
     }
   }
 
-  // Cập nhật review
+  // Update review
   static async update(id, data) {
     try {
       const sql = `
@@ -197,7 +197,7 @@ class Review extends BaseModel {
     }
   }
 
-  // Xóa review và ảnh
+  // Delete review and image
   static async softDelete(id) {
     try {
       const sql = `
@@ -214,15 +214,15 @@ class Review extends BaseModel {
     }
   }
 
-  // Báo cáo review
+  // Report review
   static async report(reviewId, reportData) {
     try {
-      // Kiểm tra dữ liệu đầu vào
+      // Check report data
       if (!reviewId || !reportData.reported_by || !reportData.reason) {
-        throw new Error("Thiếu thông tin báo cáo");
+        throw new Error("Missing report data");
       }
 
-      // Thêm báo cáo vào bảng report_reasons
+      // Add report to report_reasons table
       await ReportReason.create({
         review_id: reportData.review_id,
         reported_by: reportData.reported_by,
@@ -231,7 +231,7 @@ class Review extends BaseModel {
         pet_post_comment_id: null,
       });
 
-      // Cập nhật trạng thái is_reported của review
+      // Update is_reported status of review
       const updateReviewSql = `
         UPDATE ${this.tableName}
         SET is_reported = 1
@@ -239,7 +239,7 @@ class Review extends BaseModel {
       `;
       await this.query(updateReviewSql, [reviewId]);
 
-      // Trả về review đã cập nhật
+      // Return updated review
       return await this.findById(reviewId);
     } catch (error) {
       console.error("Report review error:", error);
@@ -247,7 +247,7 @@ class Review extends BaseModel {
     }
   }
 
-  // Lấy thống kê đánh giá của bệnh viện
+  // Get hospital stats
   static async getHospitalStats(hospitalId) {
     try {
       const sql = `
@@ -270,7 +270,7 @@ class Review extends BaseModel {
     }
   }
 
-  // Kiểm tra user đã báo cáo review chưa
+  // Check if user has reported review
   static async hasUserReported(userId, reviewId) {
     try {
       return await ReportReason.hasUserReported(userId, reviewId, null);
@@ -280,7 +280,7 @@ class Review extends BaseModel {
     }
   }
 
-  // Kiểm tra user đã review bệnh viện chưa
+  // Check if user has reviewed hospital
   static async hasUserReviewed(userId, hospitalId) {
     try {
       const sql = `
@@ -296,16 +296,16 @@ class Review extends BaseModel {
     }
   }
 
-  // Toggle trạng thái xóa của review
+  // Toggle soft delete status of review
   static async toggleSoftDelete(id) {
     try {
-      // Lấy trạng thái hiện tại
+      // Get current status
       const review = await this.findById(id);
       if (!review) {
-        throw new ApiError(404, "Không tìm thấy review");
+        throw new ApiError(404, "Review not found");
       }
 
-      // Toggle trạng thái is_deleted
+      // Toggle is_deleted status
       const sql = `
         UPDATE ${this.tableName}
         SET is_deleted = ?
@@ -314,7 +314,7 @@ class Review extends BaseModel {
 
       await this.query(sql, [!review.is_deleted, id]);
 
-      // Trả về review sau khi cập nhật
+      // Return updated review
       return await this.findById(id);
     } catch (error) {
       console.error("Error in toggleSoftDelete:", error);
@@ -322,7 +322,7 @@ class Review extends BaseModel {
     }
   }
 
-  // Khôi phục review đã xóa mềm
+  // Restore soft deleted review
   static async restore(id) {
     try {
       const sql = `
@@ -339,10 +339,10 @@ class Review extends BaseModel {
     }
   }
 
-  // Xóa cứng review
+  // Hard delete review
   static async hardDelete(id) {
     try {
-      // Kiểm tra review tồn tại
+      // Check if review exists
       const sql = `
         SELECT * FROM ${this.tableName}
         WHERE id = ?
@@ -350,10 +350,10 @@ class Review extends BaseModel {
 
       const result = await this.query(sql, [id]);
       if (!result || result.length === 0) {
-        throw new ApiError(404, "Không tìm thấy review");
+        throw new ApiError(404, "Review not found");
       }
 
-      // Kiểm tra bảng report_reasons có tồn tại không
+      // Check if report_reasons table exists
       try {
         const checkTableSql = `
           SELECT COUNT(*) as count 
@@ -364,7 +364,7 @@ class Review extends BaseModel {
         const [tableExists] = await this.query(checkTableSql);
 
         if (tableExists && tableExists.count > 0) {
-          // Nếu bảng tồn tại, xóa các báo cáo liên quan
+          // If table exists, delete related reports
           await this.query(
             `
             DELETE FROM report_reasons 
@@ -374,10 +374,10 @@ class Review extends BaseModel {
           );
         }
       } catch (error) {
-        console.log("Lỗi khi kiểm tra/xóa báo cáo:", error.message);
+        console.log("Error when checking/deleting report:", error.message);
       }
 
-      // Xóa review
+      // Delete review
       const deleteReviewSql = `
         DELETE FROM ${this.tableName}
         WHERE id = ?
@@ -386,9 +386,14 @@ class Review extends BaseModel {
 
       return true;
     } catch (error) {
-      console.error("Error in delete:", error);
+      console.error("Error in hardDelete:", error);
       throw error;
     }
+  }
+
+  static async deleteByUserId(userId) {
+    const sql = "DELETE FROM reviews WHERE user_id = ?";
+    return this.query(sql, [userId]);
   }
 }
 

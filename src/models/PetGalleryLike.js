@@ -3,7 +3,7 @@ const BaseModel = require("./BaseModel");
 class PetGalleryLike extends BaseModel {
   static tableName = "pet_gallery_likes";
 
-  // Kiểm tra user đã like bài đăng chưa
+  // Check if user has liked post
   static async hasUserLiked(userId, galleryId) {
     try {
       const sql = `
@@ -37,7 +37,7 @@ class PetGalleryLike extends BaseModel {
         );
       }
 
-      // Cập nhật số lượng like trong bảng pet_gallery
+      // Update like count in pet_gallery table
       const PetGallery = require("./PetGallery");
       await PetGallery.updateCounts(galleryId);
 
@@ -48,7 +48,14 @@ class PetGalleryLike extends BaseModel {
     }
   }
 
-  // Lấy danh sách người dùng đã like bài đăng
+  // Delete like of post
+  static async delete(galleryId) {
+    await this.query(`DELETE FROM ${this.tableName} WHERE gallery_id = ?`, [
+      galleryId,
+    ]);
+  }
+
+  // Get list of users who liked post
   static async getLikedUsers(galleryId, options = {}) {
     try {
       const { page = 1, limit = 10 } = options;

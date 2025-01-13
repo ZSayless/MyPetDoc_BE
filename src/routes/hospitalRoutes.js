@@ -2,25 +2,36 @@ const express = require("express");
 const HospitalController = require("../controllers/HospitalController");
 const { validateAuth } = require("../middleware/validateAuth");
 const {
+  validateHospital,
+  validateHospitalOwnership,
+} = require("../middleware/validateHospital");
+const cacheMiddleware = require("../middleware/cacheMiddleware");
+const {
   handleUploadHospitalImages,
 } = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
-// Routes công khai - không cần đăng nhập
-router.get("/", HospitalController.getHospitals);
-router.get("/search", HospitalController.searchHospitals);
-router.get("/:id", HospitalController.getHospitalById);
+// Public routes (no need to login)
+router.get("/", cacheMiddleware(3600), HospitalController.getHospitals);
+router.get(
+  "/search",
+  cacheMiddleware(1800),
+  HospitalController.searchHospitals
+);
+router.get("/:id", cacheMiddleware(3600), HospitalController.getHospitalById);
 router.get("/:hospitalId/images", HospitalController.getImages);
 
-// Routes yêu cầu ADMIN hoặc HOSPITAL_ADMIN
+// Routes require admin or hospital admin permission
 router.use(validateAuth(["ADMIN", "HOSPITAL_ADMIN"]));
 
-// Routes cho HOSPITAL_ADMIN (chỉ quản lý bệnh viện của mình)
+// Routes for HOSPITAL_ADMIN (only manage own hospital)
 router.put(
   "/:id",
   validateAuth(["HOSPITAL_ADMIN", "ADMIN"]),
   handleUploadHospitalImages,
+  validateHospitalOwnership,
+  validateHospital,
   HospitalController.updateHospital
 );
 

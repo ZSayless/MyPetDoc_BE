@@ -4,15 +4,15 @@ const ApiError = require("../exceptions/ApiError");
 const HospitalService = require("../services/HospitalService");
 
 class ReviewController {
-  // Tạo review mới
+  // Create new review
   createReview = asyncHandler(async (req, res) => {
     const file = req.file;
-    // kiểm tra bệnh viện có tồn tại không
+    // Check if hospital exists
     const hospital = await HospitalService.getHospitalById(
       req.body.hospital_id
     );
     if (!hospital) {
-      throw new ApiError(404, "Bệnh viện không tồn tại");
+      throw new ApiError(404, "Hospital not found");
     }
 
     const review = await ReviewService.createReview(
@@ -22,12 +22,12 @@ class ReviewController {
     );
     res.status(201).json({
       status: "success",
-      message: "Đã tạo đánh giá thành công",
+      message: "Create review successful",
       data: review,
     });
   });
 
-  // Lấy danh sách review
+  // Get list of reviews
   getReviews = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, ...filters } = req.query;
     const reviews = await ReviewService.getReviews(filters, page, limit);
@@ -37,7 +37,7 @@ class ReviewController {
     });
   });
 
-  // Lấy chi tiết review
+  // Get review details
   getReviewById = asyncHandler(async (req, res) => {
     const review = await ReviewService.getReviewById(req.params.id);
     res.json({
@@ -46,7 +46,7 @@ class ReviewController {
     });
   });
 
-  // Báo cáo review
+  // Report review
   reportReview = asyncHandler(async (req, res) => {
     const review = await ReviewService.reportReview(
       req.params.id,
@@ -55,12 +55,12 @@ class ReviewController {
     );
     res.json({
       status: "success",
-      message: "Đã báo cáo đánh giá thành công",
+      message: "Report review successful",
       data: review,
     });
   });
 
-  // Lấy thống kê đánh giá của bệnh viện
+  // Get hospital review stats
   getHospitalStats = asyncHandler(async (req, res) => {
     const stats = await ReviewService.getHospitalStats(req.params.hospitalId);
     res.json({
@@ -69,7 +69,7 @@ class ReviewController {
     });
   });
 
-  // Toggle trạng thái xóa của review
+  // Toggle soft delete status of review
   async toggleSoftDelete(req, res, next) {
     try {
       const { id } = req.params;
@@ -88,7 +88,7 @@ class ReviewController {
     }
   }
 
-  // Cập nhật review
+  // Update review
   updateReview = asyncHandler(async (req, res) => {
     const review = await ReviewService.updateReview(
       req.params.id,
@@ -98,12 +98,12 @@ class ReviewController {
     );
     res.json({
       status: "success",
-      message: "Đã cập nhật đánh giá thành công",
+      message: "Update review successful",
       data: review,
     });
   });
 
-  // Kiểm tra có thể review không
+  // Check if user can review
   canUserReview = asyncHandler(async (req, res) => {
     const result = await ReviewService.canUserReview(
       req.user.id,
@@ -115,7 +115,7 @@ class ReviewController {
     });
   });
 
-  // Lấy danh sách review theo hospital
+  // Get list of reviews by hospital
   async getHospitalReviews(req, res, next) {
     try {
       const { hospitalId } = req.params;

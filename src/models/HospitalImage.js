@@ -7,7 +7,7 @@ class HospitalImage extends BaseModel {
     try {
       console.log("Creating hospital image with data:", data);
 
-      // Đảm bảo các trường bắt buộc
+      // Ensure required fields
       if (!data.hospital_id) {
         throw new Error("hospital_id is required");
       }
@@ -24,7 +24,7 @@ class HospitalImage extends BaseModel {
       const params = [
         data.hospital_id,
         data.image_url,
-        data.created_by || null, // Nếu không có created_by thì dùng null
+        data.created_by || null, // If no created_by, use null
       ];
 
       // console.log("SQL:", sql);

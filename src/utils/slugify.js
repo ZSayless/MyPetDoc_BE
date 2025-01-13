@@ -72,16 +72,16 @@ const slugify = (text) => {
   return (
     text
       .toLowerCase()
-      // Thay thế ký tự có dấu thành không dấu
+      // Replace characters with diacritics with no diacritics
       .replace(/[^\w ]/g, (char) => vietnamese[char] || "")
-      // Thay thế khoảng trắng thành dấu gạch ngang
+      // Replace spaces with hyphens
       .replace(/\s+/g, "-")
-      // Xóa các ký tự đặc biệt
+      // Remove special characters
       .replace(/[^\w-]+/g, "")
-      // Xóa dấu gạch ngang ở đầu và cuối
+      // Remove hyphens at the beginning and end
       .replace(/^-+/, "")
       .replace(/-+$/, "")
-      // Thêm timestamp để đảm bảo unique
+      // Add timestamp to ensure uniqueness
       .concat(`-${Date.now()}`)
   );
 };

@@ -3,7 +3,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 
 class FavoriteController {
-  // Toggle favorite một bệnh viện
+  // Toggle favorite a hospital
   toggleFavorite = asyncHandler(async (req, res) => {
     const { hospitalId } = req.params;
     const userId = req.user.id;
@@ -19,7 +19,7 @@ class FavoriteController {
     });
   });
 
-  // Lấy danh sách bệnh viện yêu thích của user
+  // Get list of favorite hospitals of user
   getUserFavorites = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const userId = req.user.id;
@@ -36,7 +36,7 @@ class FavoriteController {
     });
   });
 
-  // Lấy danh sách user đã favorite một bệnh viện
+  // Get list of users who have favorite a hospital
   getHospitalFavorites = asyncHandler(async (req, res) => {
     const { hospitalId } = req.params;
     const { page = 1, limit = 10 } = req.query;
@@ -53,7 +53,7 @@ class FavoriteController {
     });
   });
 
-  // Kiểm tra user đã favorite bệnh viện chưa
+  // Check if user has favorite a hospital
   checkUserFavorite = asyncHandler(async (req, res) => {
     const { hospitalId } = req.params;
     const userId = req.user.id;
@@ -66,7 +66,7 @@ class FavoriteController {
     });
   });
 
-  // Lấy số lượng favorite của một bệnh viện
+  // Get favorite count of a hospital
   getHospitalFavoriteCount = asyncHandler(async (req, res) => {
     const { hospitalId } = req.params;
 
@@ -78,7 +78,7 @@ class FavoriteController {
     });
   });
 
-  // Lấy số lượng favorite của một user
+  // Get favorite count of a user
   getUserFavoriteCount = asyncHandler(async (req, res) => {
     const userId = req.user.id;
 
@@ -90,7 +90,7 @@ class FavoriteController {
     });
   });
 
-  // Lấy danh sách favorite mới nhất
+  // Get list of latest favorites
   getLatestFavorites = asyncHandler(async (req, res) => {
     const { limit = 10 } = req.query;
 

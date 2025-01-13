@@ -3,7 +3,7 @@ const router = express.Router();
 const ReportReasonController = require("../controllers/ReportReasonController");
 const { validateAuth } = require("../middleware/validateAuth");
 
-// Routes chỉ cho ADMIN
+// Routes only for ADMIN
 router.use(validateAuth(["ADMIN"]));
 router.get("/", ReportReasonController.getAllReports);
 router.get("/:id", ReportReasonController.getReportDetail);

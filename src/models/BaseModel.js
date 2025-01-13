@@ -91,18 +91,18 @@ class BaseModel {
         [this.tableName]
       );
 
-      // Kiểm tra và xử lý kết quả
+      // Check and process the result
       if (!columnsResult || !columnsResult.columns) {
         throw new Error("Could not fetch table columns");
       }
 
-      // Chuyển string columns thành array
+      // Convert string columns to array
       const validFields = columnsResult.columns.split(",");
 
       const filteredData = {};
 
       for (const key in data) {
-        // Bỏ qua trường values và các trường tự động
+        // Skip values and automatic fields
         if (
           key === "values" ||
           key === "id" ||
@@ -112,7 +112,7 @@ class BaseModel {
           continue;
 
         if (validFields.includes(key)) {
-          // Xử lý các giá trị đặc biệt
+          // Process special values
           if (data[key] === undefined) {
             filteredData[key] = null;
           } else if (typeof data[key] === "boolean") {
@@ -123,12 +123,12 @@ class BaseModel {
         }
       }
 
-      // Nếu không có dữ liệu hợp lệ
+      // If no valid data
       if (Object.keys(filteredData).length === 0) {
         throw new Error("No valid fields provided");
       }
 
-      // Tạo câu query
+      // Create query
       const fields = Object.keys(filteredData);
       const values = Object.values(filteredData);
       const placeholders = Array(values.length).fill("?").join(", ");
@@ -139,10 +139,10 @@ class BaseModel {
         VALUES (${placeholders})
       `;
 
-      // Thực thi query
+      // Execute query
       const result = await this.query(sql, values);
 
-      // Trả về dữ liệu vừa tạo
+      // Return created data
       if (result && result.insertId) {
         return await this.findById(result.insertId);
       }

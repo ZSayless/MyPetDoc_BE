@@ -7,7 +7,7 @@ const Banner = require("../models/Banner");
 class UserService {
   async createUser(userData) {
     if (await User.isEmailTaken(userData.email)) {
-      // Nếu có file đã upload, xóa file trên Cloudinary
+      // If there is a file uploaded, delete the file on Cloudinary
       if (userData.avatar && !userData.avatar.includes("default-avatar")) {
         try {
           const urlParts = userData.avatar.split("/");
@@ -22,25 +22,25 @@ class UserService {
       throw new ApiError(400, "Email đã được sử dụng");
     }
 
-    // Nếu có password, hash password
+    // If there is password, hash password
     if (userData.password) {
       const salt = await bcrypt.genSalt(10);
       userData.password = await bcrypt.hash(userData.password, salt);
     }
 
-    // Xử lý avatar
+    // Handle avatar
     const defaultAvatar = "default-avatar.png";
     if (!userData.avatar) {
       userData.avatar = defaultAvatar;
     }
 
-    // Đảm bảo is_active = true
+    // Ensure is_active = true
     userData.is_active = true;
 
     try {
       return await User.create(userData);
     } catch (error) {
-      // Nếu có lỗi và đã upload avatar, xóa ảnh trên Cloudinary
+      // If there is an error and the avatar is uploaded, delete the image on Cloudinary
       if (userData.avatar && !userData.avatar.includes("default-avatar")) {
         try {
           const urlParts = userData.avatar.split("/");
@@ -83,14 +83,14 @@ class UserService {
   async updateUser(id, updateData) {
     const user = await this.getUserById(id);
 
-    // Kiểm tra email mới có bị trùng không
+    // Check if the new email is taken
     if (updateData.email && updateData.email !== user.email) {
       if (await User.isEmailTaken(updateData.email, id)) {
-        throw new ApiError(400, "Email đã được sử dụng");
+        throw new ApiError(400, "Email already used");
       }
     }
 
-    // Xóa ảnh cũ trên Cloudinary nếu có ảnh mới
+    // Delete old image on Cloudinary if there is a new image
     if (
       updateData.avatar &&
       user.avatar &&
@@ -102,13 +102,13 @@ class UserService {
           urlParts[urlParts.length - 1].split(".")[0]
         }`;
         await cloudinary.uploader.destroy(publicId);
-        console.log(`Đã xóa ảnh cũ: ${publicId}`);
+        console.log(`Deleted old image: ${publicId}`);
       } catch (deleteError) {
-        console.error("Lỗi khi xóa ảnh cũ:", deleteError);
+        console.error("Error deleting old image:", deleteError);
       }
     }
 
-    // Nếu có cập nhật password, hash password mới
+    // If there is an update password, hash new password
     if (updateData.password) {
       const salt = await bcrypt.genSalt(10);
       updateData.password = await bcrypt.hash(updateData.password, salt);
@@ -131,21 +131,34 @@ class UserService {
     try {
       const userToDelete = await this.getUserById(id);
 
-      // Kiểm tra quyền xóa
-      if (userToDelete.role === "ADMIN") {
-        if (currentUser.id !== id) {
-          // Nếu không phải tự xóa chính mình
-          throw new ApiError(403, "Không thể xóa tài khoản ADMIN khác");
-        }
+      // Check delete permission
+      // Nếu không phải tự xóa tài khoản
+      if (currentUser.id != id) {
+        console.log("currentUser.id:", currentUser.id);
+        console.log("id:", id);
+        throw new ApiError(403, "Không thể xóa tài khoản ADMIN khác");
       }
 
-      // 1. Cập nhật created_by thành null cho tất cả banner của user
+      // Kiểm tra số lượng admin còn lại
+      const adminCount = await User.countAdmins();
+      if (adminCount <= 1) {
+        throw new ApiError(
+          400,
+          "Không thể xóa tài khoản ADMIN khi chỉ còn 1 ADMIN trong hệ thống"
+        );
+      }
+
+      // Kiểm tra các quan hệ trước khi xóa
+      const relations = await User.checkUserRelations(id);
+      console.log("User relations:", relations);
+
+      // 1. Update created_by to null for all banners of user
       const userBanners = await Banner.findByCreatedBy(id);
       for (const banner of userBanners) {
         await Banner.update(banner.id, { created_by: null });
       }
 
-      // 2. Xóa ảnh avatar trên Cloudinary nếu có
+      // 2. Delete avatar on Cloudinary if there is
       if (
         userToDelete.avatar &&
         !userToDelete.avatar.includes("default-avatar")
@@ -156,19 +169,20 @@ class UserService {
             urlParts[urlParts.length - 1].split(".")[0]
           }`;
           await cloudinary.uploader.destroy(publicId);
-          console.log(`Đã xóa ảnh avatar: ${publicId}`);
+          console.log(`Deleted avatar: ${publicId}`);
         } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+          console.error("Error deleting image on Cloudinary:", deleteError);
         }
       }
-
-      // 3. Xóa user
+      // 3. Delete user relations
+      await User.deleteUserRelations(id);
+      // 4. Delete user
       await User.hardDelete(id);
     } catch (error) {
       console.error("Delete user error:", error);
       throw error instanceof ApiError
         ? error
-        : new ApiError(500, "Lỗi khi xóa người dùng: " + error.message);
+        : new ApiError(500, "Error deleting user: " + error.message);
     }
   }
 
@@ -190,17 +204,17 @@ class UserService {
 
     // Validate mật khẩu
     if (!data.password) {
-      errors.push("Mật khẩu là bắt buộc");
+      errors.push("Password is required");
     } else if (data.password.length < 6) {
-      errors.push("Mật khẩu phải có ít nhất 6 ký tự");
+      errors.push("Password must be at least 6 characters");
     } else if (!/[A-Z]/.test(data.password)) {
-      errors.push("Mật khẩu phải chứa ít nhất 1 chữ hoa");
+      errors.push("Password must contain at least 1 uppercase letter");
     } else if (!/[0-9]/.test(data.password)) {
-      errors.push("Mật khẩu phải chứa ít nhất 1 số");
+      errors.push("Password must contain at least 1 number");
     }
 
     if (errors.length > 0) {
-      throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
+      throw new ApiError(400, "Invalid data", errors);
     }
   }
 
@@ -209,7 +223,7 @@ class UserService {
 
     // Validate dữ liệu cập nhật
     if (updateData.full_name && updateData.full_name.trim().length < 2) {
-      throw new ApiError(400, "Họ tên phải có ít nhất 2 ký tự");
+      throw new ApiError(400, "Full name must be at least 2 characters");
     }
 
     // Xóa ảnh cũ trên Cloudinary nếu có ảnh mới
@@ -224,9 +238,9 @@ class UserService {
           urlParts[urlParts.length - 1].split(".")[0]
         }`;
         await cloudinary.uploader.destroy(publicId);
-        console.log(`Đã xóa ảnh cũ: ${publicId}`);
+        console.log(`Deleted old image: ${publicId}`);
       } catch (deleteError) {
-        console.error("Lỗi khi xóa ảnh cũ:", deleteError);
+        console.error("Error deleting old image:", deleteError);
       }
     }
 

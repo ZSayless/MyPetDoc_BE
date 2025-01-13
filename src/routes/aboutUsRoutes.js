@@ -4,10 +4,10 @@ const { validateAuth } = require("../middleware/validateAuth");
 
 const router = express.Router();
 
-// Routes công khai
+// Public routes
 router.get("/current", AboutUsController.getCurrentAboutUs);
 
-// Routes yêu cầu quyền admin
+// Routes require admin permission
 router.use(validateAuth(["ADMIN"]));
 router.get("/version/:version", AboutUsController.getVersion);
 router.get("/history", AboutUsController.getVersionHistory);

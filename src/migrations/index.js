@@ -46,14 +46,14 @@ const runMigrations = async () => {
     await connection.query(`USE ${process.env.DB_NAME}`);
 
     console.log("Creating tables...");
-    // 1. Tạo các bảng cơ bản trước (không có foreign key)
+    // 1. Create basic tables (without foreign keys)
     await createHospitals(connection);
     await createUsers(connection);
 
-    // 2. Thêm foreign keys sau
+    // 2. Add foreign keys after
     await addForeignKeys(connection);
 
-    // 3. Tạo các bảng phụ thuộc
+    // 3. Create dependent tables
     await createHospitalImages(connection);
     await createBanners(connection);
     await createAboutUs(connection);

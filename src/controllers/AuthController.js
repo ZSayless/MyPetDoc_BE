@@ -6,78 +6,87 @@ const bcrypt = require("bcrypt");
 const cloudinary = require("cloudinary");
 
 class AuthController {
-  // Đăng ký tài khoản
+  // Register account
   register = async (req, res) => {
     try {
       const { email, password, full_name, role = "GENERAL_USER" } = req.body;
 
-      // Validate dữ liệu
+      // Validate data
       await this.validateUserData({ email, password, full_name });
 
-      // Kiểm tra email đã tồn tại
+      // Check if email already exists
       if (await User.isEmailTaken(email)) {
-        // Nếu có file đã upload, xóa file trên Cloudinary
-        if (req.file) {
+        // Nếu có ảnh đã upload, xóa ảnh
+        if (req.uploadedFile) {
           try {
-            const publicId = `avatars/${req.file.filename}`;
-            await cloudinary.uploader.destroy(publicId);
-          } catch (deleteError) {
-            console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+            await cloudinary.uploader.destroy(req.uploadedFile.publicId);
+          } catch (error) {
+            console.error("Error deleting image:", error);
           }
         }
-        throw new ApiError(400, "Email đã được sử dụng");
+        throw new ApiError(400, "Email already used");
       }
 
-      // Mã hóa mật khẩu với salt
+      // Handle avatar
+      let userAvatar = "default-avatar.png";
+      if (req.uploadedFile) {
+        userAvatar = req.uploadedFile.path;
+      }
+
+      // Hash password
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
 
-      // Tạo verification token
+      // Create verification token
       const verificationToken = crypto.randomBytes(32).toString("hex");
       const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-      // Xử lý avatar
-      const defaultAvatar = "default-avatar.png";
-      let userAvatar = defaultAvatar;
+      try {
+        // Create new user
+        const user = await User.create({
+          email,
+          password: hashedPassword,
+          full_name,
+          role,
+          is_active: false,
+          verification_token: verificationToken,
+          verification_expires: verificationExpires,
+          avatar: userAvatar,
+        });
 
-      if (req.file) {
-        userAvatar = req.file.path; // Cloudinary trả về URL trong file.path
+        // Send verification email
+        await emailService.sendVerificationEmail(email, verificationToken);
+
+        // Remove sensitive information
+        delete user.password;
+        delete user.verification_token;
+        delete user.verification_expires;
+
+        res.status(201).json({
+          status: "success",
+          message:
+            "Register successfully. Please check your email to verify your account.",
+          data: user,
+        });
+      } catch (error) {
+        // If creating user fails, delete uploaded image
+        if (req.uploadedFile) {
+          try {
+            await cloudinary.uploader.destroy(req.uploadedFile.publicId);
+          } catch (deleteError) {
+            console.error("Error deleting image:", deleteError);
+          }
+        }
+        throw error;
       }
 
-      // Tạo user mới
-      const user = await User.create({
-        email,
-        password: hashedPassword,
-        full_name,
-        role,
-        is_active: false,
-        verification_token: verificationToken,
-        verification_expires: verificationExpires,
-        avatar: userAvatar,
-      });
-
-      // Gửi email xác thực
-      await emailService.sendVerificationEmail(email, verificationToken);
-
-      // Loại bỏ thông tin nhạy cảm
-      delete user.password;
-      delete user.verification_token;
-      delete user.verification_expires;
-
-      res.status(201).json({
-        status: "success",
-        message:
-          "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.",
-        data: user,
-      });
     } catch (error) {
-      // Nếu có lỗi và đã upload file, xóa file trên Cloudinary
-      if (req.file) {
+      // If there is an error and a file is uploaded, delete the file on Cloudinary
+      if (req.uploadedFile) {
         try {
-          const publicId = `avatars/${req.file.filename}`;
-          await cloudinary.uploader.destroy(publicId);
+          await cloudinary.uploader.destroy(req.uploadedFile.publicId);
         } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+          console.error("Error deleting image:", deleteError);
         }
       }
       throw error;
@@ -89,86 +98,86 @@ class AuthController {
 
     // Validate email
     if (!data.email) {
-      errors.push("Email là bắt buộc");
+      errors.push("Email is required");
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-      errors.push("Email không hợp lệ");
+      errors.push("Invalid email");
     }
 
-    // Validate mật khẩu
+    // Validate password
     if (!data.password) {
-      errors.push("Mật khẩu là bắt buộc");
+      errors.push("Password is required");
     } else if (data.password.length < 6) {
-      errors.push("Mật khẩu phải có ít nhất 6 ký tự");
+      errors.push("Password must be at least 6 characters");
     } else if (!/[A-Z]/.test(data.password)) {
-      errors.push("Mật khẩu phải chứa ít nhất 1 chữ hoa");
+      errors.push("Password must contain at least 1 uppercase letter");
     } else if (!/[0-9]/.test(data.password)) {
-      errors.push("Mật khẩu phải chứa ít nhất 1 số");
+      errors.push("Password must contain at least 1 number");
     }
 
-    // Validate họ tên
+    // Validate full name
     if (!data.full_name || data.full_name.trim().length < 2) {
-      errors.push("Họ tên phải có ít nhất 2 ký tự");
+      errors.push("Full name must be at least 2 characters");
     }
 
     if (errors.length > 0) {
-      throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
+      throw new ApiError(400, "Invalid data", errors);
     }
   };
 
-  // Đăng nhập
+  // Login
   async login(req, res) {
     const { email, password } = req.body;
 
-    // Kiểm tra user tồn tại
+    // Check if user exists
     const user = await User.findByEmail(email);
     if (!user) {
-      throw new ApiError(401, "Email hoặc mật khẩu không đúng");
+      throw new ApiError(401, "Email or password is incorrect");
     }
 
-    // Kiểm tra mật khẩu
+    // Check password
     const isPasswordMatch = await bcrypt.compare(password, user.password);
     if (!isPasswordMatch) {
-      throw new ApiError(401, "Email hoặc mật khẩu không đúng");
+      throw new ApiError(401, "Email or password is incorrect");
     }
 
-    // Kiểm tra tài khoản có bị khóa
+    // Check if account is locked
     if (user.is_locked) {
-      throw new ApiError(401, "Tài khoản đã bị khóa");
+      throw new ApiError(401, "Account is locked");
     }
 
-    // Kiểm tra tài khoản có active
+    // Check if account is active
     if (!user.is_active) {
-      // Kiểm tra token xác thực đã hết hạn chưa
+      // Check if verification token has expired
       if (
         !user.verification_token ||
         new Date() > new Date(user.verification_expires)
       ) {
-        // Tạo verification token mới
+        // Create new verification token
         const verificationToken = crypto.randomBytes(32).toString("hex");
         const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-        // Cập nhật token mới
+        // Update new token
         await User.update(user.id, {
           verification_token: verificationToken,
           verification_expires: verificationExpires,
         });
 
-        // Gửi lại email xác thực
+        // Send verification email again
         await emailService.sendVerificationEmail(user.email, verificationToken);
 
         throw new ApiError(
           401,
-          "Mã xác thực đã hết hạn. Chúng tôi đã gửi lại mã xác thực mới vào email của bạn."
+          "Verification code has expired. We have sent a new verification code to your email."
         );
       }
 
       throw new ApiError(
         401,
-        "Tài khoản chưa được kích hoạt. Vui lòng kiểm tra email để xác thực tài khoản."
+        "Account is not active. Please check your email to verify your account."
       );
     }
 
-    // Tạo token và loại bỏ thông tin nhạy cảm
+    // Create token and remove sensitive information
     const token = user.generateAuthToken();
     delete user.password;
     delete user.verification_token;
@@ -194,11 +203,11 @@ class AuthController {
     });
 
     if (!user) {
-      throw new ApiError(400, "Token không hợp lệ hoặc đã hết hạn");
+      throw new ApiError(400, "Invalid token or expired");
     }
 
     if (new Date() > new Date(user.verification_expires)) {
-      throw new ApiError(400, "Token đã hết hạn");
+      throw new ApiError(400, "Token expired");
     }
 
     await User.update(user.id, {
@@ -209,7 +218,7 @@ class AuthController {
 
     res.json({
       status: "success",
-      message: "Xác thực email thành công",
+      message: "Email verification successful",
     });
   }
 
@@ -218,11 +227,11 @@ class AuthController {
     const user = await User.findByEmail(email);
 
     if (!user) {
-      throw new ApiError(404, "Email không tồn tại");
+      throw new ApiError(404, "Email does not exist");
     }
 
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 giờ
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
     await User.update(user.id, {
       reset_password_token: resetToken,
@@ -233,7 +242,7 @@ class AuthController {
 
     res.json({
       status: "success",
-      message: "Email đặt lại mật khẩu đã được gửi",
+      message: "Reset password email has been sent",
     });
   }
 
@@ -246,11 +255,11 @@ class AuthController {
     });
 
     if (!user) {
-      throw new ApiError(400, "Token không hợp lệ hoặc đã hết hạn");
+      throw new ApiError(400, "Invalid token or expired");
     }
 
     if (new Date() > new Date(user.reset_password_expires)) {
-      throw new ApiError(400, "Token đã hết hạn");
+      throw new ApiError(400, "Token expired");
     }
 
     await User.update(user.id, {
@@ -261,7 +270,7 @@ class AuthController {
 
     res.json({
       status: "success",
-      message: "Đặt lại mật khẩu thành công",
+      message: "Reset password successful",
     });
   }
 
@@ -270,10 +279,10 @@ class AuthController {
       const userData = req.user;
 
       if (userData.isNewUser) {
-        // Nếu là user mới, trả về trạng thái chờ chọn role
+        // If it's a new user, return pending role status
         res.json({
           status: "pending_role",
-          message: "Vui lòng chọn loại tài khoản",
+          message: "Please choose account type",
           data: {
             profile: userData.profile,
           },
@@ -284,7 +293,7 @@ class AuthController {
       const token = userData.generateAuthToken();
       res.json({
         status: "success",
-        message: "Đăng nhập thành công",
+        message: "Login successful",
         data: {
           user: {
             id: userData.id,
@@ -300,22 +309,22 @@ class AuthController {
       console.error("Google callback error:", error);
       res.status(error.statusCode || 500).json({
         status: "error",
-        message: error.message || "Xác thực thất bại",
+        message: error.message || "Authentication failed",
       });
     }
   }
 
-  // Thêm method mới để hoàn tất đăng ký Google
+  // Add new method to complete Google signup
   async completeGoogleSignup(req, res) {
     const { email, full_name, google_id, avatar, role } = req.body;
 
     if (!["GENERAL_USER", "HOSPITAL_ADMIN"].includes(role)) {
-      throw new ApiError(400, "Role không hợp lệ");
+      throw new ApiError(400, "Invalid role");
     }
 
-    // Kiểm tra email đã tồn tại
+    // Check if email already exists
     if (await User.isEmailTaken(email)) {
-      throw new ApiError(400, "Email đã được sử dụng");
+      throw new ApiError(400, "Email already used");
     }
 
     const randomPassword = Math.random().toString(36).slice(-8);
@@ -330,33 +339,33 @@ class AuthController {
       hashedPassword,
     });
 
-    // Tạo user mới với các giá trị mặc định cho các trường bắt buộc
+    // Create new user with default values for required fields
     let user = await User.create({
       email,
       full_name,
-      google_id: google_id || null, // Cho phép null nếu không có
-      avatar: avatar || null, // Cho phép null nếu không có
+      google_id: google_id || null, // Allow null if not provided
+      avatar: avatar || null, // Allow null if not provided
       role,
       is_active: true,
       is_locked: false,
       password: hashedPassword,
-      verification_token: null, // Thêm các trường bắt buộc
+      verification_token: null, // Add required fields
       verification_expires: null,
       reset_password_token: null,
       reset_password_expires: null,
-      hospital_id: null, // Nếu là HOSPITAL_ADMIN, có thể cập nhật sau
+      hospital_id: null, // If HOSPITAL_ADMIN, can update later
     });
 
-    // Lấy thông tin user đầy đủ sau khi tạo
+    // Get full user information after creation
     user = await User.findById(user.id);
 
     if (!user) {
-      throw new ApiError(500, "Lỗi khi tạo tài khoản");
+      throw new ApiError(500, "Error creating account");
     }
 
     const token = user.generateAuthToken();
 
-    // Loại bỏ các thông tin nhạy cảm
+    // Remove sensitive information
     const userResponse = {
       id: user.id,
       email: user.email,
@@ -369,7 +378,7 @@ class AuthController {
 
     res.json({
       status: "success",
-      message: "Đăng ký thành công",
+      message: "Register successful",
       data: {
         user: userResponse,
         token,

@@ -4,7 +4,7 @@ const ApiError = require("../exceptions/ApiError");
 const ContactMessage = require("../models/ContactMessage");
 
 class ContactMessageController {
-  // Lấy danh sách tin nhắn với filter và phân trang
+  // Get list of messages with filter and pagination
   getMessages = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, ...filters } = req.query;
     const result = await ContactMessageService.getMessages(
@@ -15,15 +15,15 @@ class ContactMessageController {
     res.json(result);
   });
 
-  // Lấy chi tiết một tin nhắn
+  // Get details of a message
   getMessageById = asyncHandler(async (req, res) => {
     const message = await ContactMessageService.getMessageById(req.params.id);
     res.json(message);
   });
 
-  // Tạo tin nhắn mới
+  // Create new message
   createMessage = asyncHandler(async (req, res) => {
-    // Lấy user ID nếu đã đăng nhập
+    // Get user ID if logged in
     const userId = req.user ? req.user.id : null;
     const messageData = {
       ...req.body,
@@ -34,11 +34,11 @@ class ContactMessageController {
     res.status(201).json(message);
   });
 
-  // Cập nhật trạng thái tin nhắn
+  // Update message status
   updateStatus = asyncHandler(async (req, res) => {
     const { status } = req.body;
     if (!status) {
-      throw new ApiError(400, "Trạng thái không được để trống");
+      throw new ApiError(400, "Status cannot be empty");
     }
 
     const message = await ContactMessageService.updateStatus(
@@ -49,7 +49,7 @@ class ContactMessageController {
     res.json(message);
   });
 
-  // Phản hồi tin nhắn
+  // Respond to message
   respondToMessage = asyncHandler(async (req, res) => {
     const message = await ContactMessageService.respondToMessage(
       req.params.id,
@@ -59,19 +59,19 @@ class ContactMessageController {
     res.json(message);
   });
 
-  // Xóa tin nhắn (mềm)
+  // Soft delete message
   deleteMessage = asyncHandler(async (req, res) => {
     await ContactMessageService.deleteMessage(req.params.id);
     res.status(204).send();
   });
 
-  // Xóa tin nhắn (cứng)
+  // Hard delete message
   hardDeleteMessage = asyncHandler(async (req, res) => {
     await ContactMessageService.hardDeleteMessage(req.params.id);
     res.status(204).send();
   });
 
-  // Lấy tin nhắn của user hiện tại
+  // Get messages of current user
   getMyMessages = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const result = await ContactMessageService.getMessages(
@@ -82,7 +82,7 @@ class ContactMessageController {
     res.json(result);
   });
 
-  // Lấy thống kê tin nhắn theo trạng thái
+  // Get message stats by status
   getMessageStats = asyncHandler(async (req, res) => {
     const { from, to } = req.query;
     const filters = {};

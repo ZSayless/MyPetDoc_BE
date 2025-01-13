@@ -5,14 +5,15 @@ const { handleUploadAvatar } = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
-// Route cập nhật profile cá nhân
-router.put("/profile/update", 
-  validateAuth(), 
+// Route update personal profile
+router.put(
+  "/profile/update",
+  validateAuth(),
   handleUploadAvatar,
   UserController.updateProfile
 );
 
-// Các routes yêu cầu quyền ADMIN
+// Routes require admin permission
 router.use(validateAuth(["ADMIN"]));
 
 router.get("/", UserController.getUsers);

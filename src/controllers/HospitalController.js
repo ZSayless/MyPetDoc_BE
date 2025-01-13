@@ -6,7 +6,7 @@ const path = require("path");
 const fs = require("fs");
 
 class HospitalController {
-  // Lấy danh sách bệnh viện với filter và phân trang
+  // Get list of hospitals with filter and pagination
   getHospitals = asyncHandler(async (req, res, next) => {
     const { page = 1, limit = 10, ...filters } = req.query;
     const result = await HospitalService.getHospitals(
@@ -17,28 +17,28 @@ class HospitalController {
     res.json(result);
   });
 
-  // Lấy chi tiết một bệnh viện
+  // Get details of a hospital
   getHospitalById = asyncHandler(async (req, res, next) => {
     const hospital = await HospitalService.getHospitalById(req.params.id);
     res.json(hospital);
   });
 
-  // Tạo mới bệnh viện
+  // Create new hospital
   createHospital = asyncHandler(async (req, res, next) => {
     try {
-      // Validate dữ liệu đầu vào
+      // Validate input data
       await HospitalService.validateHospitalData(req.body);
 
-      // Chuẩn bị dữ liệu hospital
+      // Prepare hospital data
       const hospitalData = {
         ...req.body,
       };
 
-      // Tạo bệnh viện và xử lý ảnh trong một lần gọi
+      // Create hospital and handle images in one call
       const result = await HospitalService.createHospital(
         hospitalData,
         req.user.id,
-        req.files || [] // Truyền files vào service
+        req.files || [] // Pass files to service
       );
 
       res.status(201).json({
@@ -48,7 +48,7 @@ class HospitalController {
       });
     } catch (error) {
       console.error("Error in createHospital controller:", error);
-      // Xóa các file đã upload nếu có lỗi
+      // Delete uploaded files if there is an error
       if (req.files) {
         req.files.forEach((file) => {
           if (fs.existsSync(file.path)) {
@@ -65,13 +65,13 @@ class HospitalController {
     }
   });
 
-  // Cập nhật thông tin bệnh viện
+  // Update hospital information
   updateHospital = asyncHandler(async (req, res, next) => {
     try {
-      // Validate dữ liệu cập nhật
+      // Validate update data
       await HospitalService.validateHospitalData(req.body, true);
 
-      // Parse imageIdsToDelete từ string JSON thành array
+      // Parse imageIdsToDelete from string JSON to array
       let imageIdsToDelete = [];
       if (req.body.imageIdsToDelete) {
         try {
@@ -85,16 +85,16 @@ class HospitalController {
         }
       }
 
-      // Loại bỏ imageIdsToDelete khỏi dữ liệu cập nhật
+      // Remove imageIdsToDelete from update data
       const { imageIdsToDelete: removed, ...updateData } = req.body;
 
       updateData.created_by = req.user.id;
 
-      // Cập nhật thông tin bệnh viện
+      // Update hospital information
       const updatedHospital = await HospitalService.updateHospital(
         req.params.id,
         updateData,
-        req.files || [], // Ảnh mới
+        req.files || [], // New images
         imageIdsToDelete,
         req.user.id
       );
@@ -105,30 +105,33 @@ class HospitalController {
         data: updatedHospital,
       });
     } catch (error) {
+      // Nếu có lỗi và đã upload files, xóa files
       if (req.files) {
-        req.files.forEach((file) => {
-          if (fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
+        for (const file of req.files) {
+          try {
+            await cloudinary.uploader.destroy(file.filename);
+          } catch (deleteError) {
+            console.error("Lỗi khi xóa ảnh:", deleteError);
           }
-        });
+        }
       }
-      next(error);
+      throw error;
     }
   });
 
-  // Xóa vĩnh viễn bệnh viện
+  // Hard delete hospital
   hardDelete = asyncHandler(async (req, res, next) => {
     const result = await HospitalService.hardDelete(req.params.id);
     res.status(200).json(result);
   });
 
-  // Toggle xóa mềm bệnh viện
+  // Toggle soft delete hospital
   toggleDelete = asyncHandler(async (req, res, next) => {
     const hospital = await HospitalService.toggleDelete(req.params.id);
     res.json(hospital);
   });
 
-  // Tìm kiếm bệnh viện nâng cao
+  // Advanced search hospitals
   searchHospitals = asyncHandler(async (req, res, next) => {
     const {
       page = 1,
@@ -155,23 +158,26 @@ class HospitalController {
     res.json(result);
   });
 
-  // Thêm ảnh cho bệnh viện
+  // Add images to hospital
   async addImages(req, res, next) {
     try {
       const { hospitalId } = req.params;
       const userId = req.user.id;
 
-      // Kiểm tra quyền (chỉ ADMIN hoặc HOSPITAL_ADMIN của bệnh viện đó)
+      // Check permission (only ADMIN or HOSPITAL_ADMIN of the hospital)
       if (
         req.user.role !== "ADMIN" &&
         (req.user.role !== "HOSPITAL_ADMIN" ||
           req.user.hospital_id != hospitalId)
       ) {
-        throw new ApiError(403, "Không có quyền thêm ảnh cho bệnh viện này");
+        throw new ApiError(
+          403,
+          "You are not allowed to add images to this hospital"
+        );
       }
 
       if (!req.files || req.files.length === 0) {
-        throw new ApiError(400, "Vui lòng chọn ít nhất 1 ảnh");
+        throw new ApiError(400, "Please select at least 1 image");
       }
 
       const images = await HospitalImageService.addImages(
@@ -182,7 +188,7 @@ class HospitalController {
 
       res.json({
         status: "success",
-        message: "Thêm ảnh thành công",
+        message: "Add images successful",
         data: images,
       });
     } catch (error) {
@@ -190,33 +196,36 @@ class HospitalController {
     }
   }
 
-  // Xóa ảnh bệnh viện
+  // Delete hospital image
   async deleteImage(req, res, next) {
     try {
       const { hospitalId, imageId } = req.params;
       const userId = req.user.id;
 
-      // Kiểm tra quyền
+      // Check permission
       if (
         req.user.role !== "ADMIN" &&
         (req.user.role !== "HOSPITAL_ADMIN" ||
           req.user.hospital_id != hospitalId)
       ) {
-        throw new ApiError(403, "Không có quyền xóa ảnh của bệnh viện này");
+        throw new ApiError(
+          403,
+          "You are not allowed to delete this hospital's image"
+        );
       }
 
       await HospitalImageService.deleteImage(imageId, userId);
 
       res.json({
         status: "success",
-        message: "Xóa ảnh thành công",
+        message: "Delete image successful",
       });
     } catch (error) {
       next(error);
     }
   }
 
-  // Lấy danh sách ảnh của bệnh viện
+  // Get list of hospital images
   async getImages(req, res, next) {
     try {
       const { hospitalId } = req.params;

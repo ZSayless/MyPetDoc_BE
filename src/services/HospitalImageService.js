@@ -30,14 +30,14 @@ class HospitalImageService {
       }
       return images;
     } catch (error) {
-      // Nếu có lỗi, xóa các ảnh đã upload lên Cloudinary
+      // If there is an error, delete the uploaded images on Cloudinary
       for (const file of files) {
         if (file.path) {
           const publicId = `hospitals/${file.filename}`;
           try {
             await cloudinary.uploader.destroy(publicId);
           } catch (deleteError) {
-            console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+            console.error("Error deleting image on Cloudinary:", deleteError);
           }
         }
       }
@@ -47,7 +47,7 @@ class HospitalImageService {
 
   async deleteImage(imageId, hospitalId) {
     try {
-      // Tìm ảnh theo id
+      // Find image by id
       let image;
       if (typeof imageId === "string") {
         image = await HospitalImage.findOne({ image_url: imageId });
@@ -56,14 +56,14 @@ class HospitalImageService {
       }
 
       if (!image) {
-        throw new ApiError(404, "Không tìm thấy ảnh");
+        throw new ApiError(404, "Image not found");
       }
 
-      // Chuyển đổi sang number để so sánh
+      // Convert to number for comparison
       const imageHospitalId = parseInt(image.hospital_id);
       const targetHospitalId = parseInt(hospitalId);
 
-      // So sánh sau khi đã chuyển đổi kiểu dữ liệu
+      // Compare after converting data type
       if (imageHospitalId !== targetHospitalId) {
         console.log(
           "Image hospital ID:",
@@ -73,11 +73,11 @@ class HospitalImageService {
         );
         throw new ApiError(
           403,
-          "Không th� xóa ảnh không thuộc về bệnh viện này"
+          "Cannot delete image not belong to this hospital"
         );
       }
 
-      // Xóa ảnh trên Cloudinary
+      // Delete image on Cloudinary
       if (image.image_url) {
         const urlParts = image.image_url.split("/");
         const publicId = `hospitals/${
@@ -86,17 +86,17 @@ class HospitalImageService {
 
         try {
           await cloudinary.uploader.destroy(publicId);
-          console.log(`Đã xóa ảnh: ${publicId}`);
+          console.log(`Deleted image: ${publicId}`);
         } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+          console.error("Error deleting image on Cloudinary:", deleteError);
         }
       }
 
-      // Xóa record trong database
+      // Delete record in database
       await HospitalImage.delete(image.id);
       return true;
     } catch (error) {
-      console.error("Lỗi khi xóa ảnh:", error);
+      console.error("Error deleting image:", error);
       throw error;
     }
   }

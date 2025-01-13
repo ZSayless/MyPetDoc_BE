@@ -2,12 +2,12 @@ const ReportReason = require("../models/ReportReason");
 const ApiError = require("../exceptions/ApiError");
 
 class ReportReasonService {
-  // Lấy danh sách tất cả báo cáo có phân trang
+  // Get all reports with pagination
   async getAllReports(page = 1, limit = 10, filters = {}) {
     try {
       const offset = (page - 1) * limit;
 
-      // Mở rộng câu query để lấy thêm thông tin chi tiết
+      // Extend query to get detailed information
       let sql = `
         SELECT 
           rr.*,
@@ -31,7 +31,7 @@ class ReportReasonService {
         LEFT JOIN pet_posts pp ON ppc.post_id = pp.id
       `;
 
-      // Xây dựng điều kiện WHERE dựa trên filters
+      // Build WHERE conditions based on filters
       const whereConditions = [];
       const params = [];
 
@@ -58,14 +58,14 @@ class ReportReasonService {
         sql += ` WHERE ${whereConditions.join(" AND ")}`;
       }
 
-      // Thêm ORDER BY và LIMIT
+      // Add ORDER BY and LIMIT
       sql += `
         ORDER BY rr.id DESC
         LIMIT ${limit} OFFSET ${offset}
       `;
       params.push(limit, offset);
 
-      // Query để đếm tổng số báo cáo
+      // Query to count total reports
       let countSql = `
         SELECT COUNT(*) as total 
         FROM report_reasons rr
@@ -74,13 +74,13 @@ class ReportReasonService {
         countSql += ` WHERE ${whereConditions.join(" AND ")}`;
       }
 
-      // Thực hiện cả hai query
+      // Perform both queries
       const [reports, [countResult]] = await Promise.all([
         ReportReason.query(sql, params),
         ReportReason.query(countSql, params.slice(0, -2)),
       ]);
 
-      // Format kết quả với thông tin chi tiết hơn
+      // Format result with more detailed information
       const formattedReports = reports.map((report) => ({
         id: report.id,
         reason: report.reason,
@@ -137,21 +137,21 @@ class ReportReasonService {
       };
     } catch (error) {
       console.error("Get all reports error:", error);
-      throw new ApiError(500, "Lỗi khi lấy danh sách báo cáo", error.message);
+      throw new ApiError(500, "Error fetching reports", error.message);
     }
   }
 
-  // Đánh dấu báo cáo đã được xử lý
+  // Mark report as resolved
   async resolveReport(reportId) {
     try {
       const report = await ReportReason.findById(reportId);
       if (!report) {
-        throw new ApiError(404, "Không tìm thấy báo cáo");
+        throw new ApiError(404, "Report not found");
       }
 
       await ReportReason.resolve(reportId);
       return {
-        message: "Đã đánh dấu báo cáo là đã xử lý",
+        message: "Report marked as resolved",
         reportId,
       };
     } catch (error) {
@@ -160,7 +160,7 @@ class ReportReasonService {
     }
   }
 
-  // Lấy chi tiết một báo cáo
+  // Get detailed information of a report
   async getReportDetail(reportId) {
     try {
       const sql = `
@@ -190,7 +190,7 @@ class ReportReasonService {
       const [report] = await ReportReason.query(sql, [reportId]);
 
       if (!report) {
-        throw new ApiError(404, "Không tìm thấy báo cáo");
+        throw new ApiError(404, "Report not found");
       }
 
       return {

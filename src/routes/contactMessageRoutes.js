@@ -4,18 +4,18 @@ const { validateAuth } = require("../middleware/validateAuth");
 
 const router = express.Router();
 
-// Routes công khai (không cần đăng nhập)
+// Public routes (no need to login)
 router.post(
   "/create",
   validateAuth({ required: false }),
   ContactMessageController.createMessage
 );
 
-// Routes yêu cầu đăng nhập
+// Routes require login
 router.use(validateAuth());
 router.get("/my-messages", ContactMessageController.getMyMessages);
 
-// Routes yêu cầu quyền admin
+// Routes require admin permission
 router.use(validateAuth(["ADMIN"]));
 router.get("/", ContactMessageController.getMessages);
 router.get("/stats", ContactMessageController.getMessageStats);

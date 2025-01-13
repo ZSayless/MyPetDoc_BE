@@ -2,7 +2,7 @@ const ReportReasonService = require("../services/ReportReasonService");
 const asyncHandler = require("../utils/asyncHandler");
 
 class ReportReasonController {
-  // Lấy danh sách báo cáo
+  // Get list of reports
   getAllReports = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, resolved, reportType } = req.query;
 
@@ -23,7 +23,7 @@ class ReportReasonController {
     });
   });
 
-  // Lấy chi tiết báo cáo
+  // Get report details
   getReportDetail = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const report = await ReportReasonService.getReportDetail(parseInt(id));
@@ -34,7 +34,7 @@ class ReportReasonController {
     });
   });
 
-  // Đánh dấu báo cáo đã xử lý
+  // Mark report as resolved
   resolveReport = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const result = await ReportReasonService.resolveReport(parseInt(id));

@@ -8,19 +8,19 @@ const path = require("path");
 const cloudinary = require("../config/cloudinary");
 
 class PetPostService {
-  // Tạo bài viết mới
+  // Create new post
   async createPost(data, userId) {
     try {
       console.log(data);
-      // Validate dữ liệu
+      // Validate data
       await this.validatePostData(data);
 
-      // Tự động tạo slug nếu không có
+      // Auto create slug if not provided
       if (!data.slug) {
         data.slug = slugify(data.title);
       }
 
-      // Không cần upload lại, chỉ cần lấy path từ file đã upload
+      // No need to upload again, just get path from uploaded file
       const postData = {
         ...data,
         thumbnail_image: data.thumbnail_image?.path,
@@ -28,11 +28,11 @@ class PetPostService {
         author_id: userId,
       };
 
-      // Tạo bài viết
+      // Create post
       const post = await PetPost.create(postData);
       return await PetPost.getDetail(post.id);
     } catch (error) {
-      // Xóa ảnh đã upload nếu có lỗi
+      // Delete uploaded images if error
       if (data.thumbnail_image?.path)
         await this.deleteImage(data.thumbnail_image.path);
       if (data.featured_image?.path)
@@ -41,26 +41,26 @@ class PetPostService {
     }
   }
 
-  // Xóa bài viết
+  // Delete post
   async deletePost(id, userId, isAdmin = false) {
     try {
       const post = await PetPost.getDetail(id);
 
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài viết");
+        throw new ApiError(404, "Post not found");
       }
 
-      // Kiểm tra quyền xóa
+      // Check if user has permission to delete
       if (!isAdmin && !(await PetPost.isOwnedByUser(id, userId))) {
-        throw new ApiError(403, "Bạn không có quyền xóa bài viết này");
+        throw new ApiError(403, "You do not have permission to delete this post");
       }
 
-      // Xóa ảnh
+      // Delete images
       if (post.thumbnail_image || post.featured_image) {
         await this.deletePostImages(post);
       }
 
-      // Soft delete bài viết thay vì xóa hoàn toàn
+      // Soft delete post instead of hard delete
       await PetPost.softDelete(id);
       return true;
     } catch (error) {
@@ -68,33 +68,33 @@ class PetPostService {
     }
   }
 
-  // Xóa nhiều bài viết
+  // Delete multiple posts
   async deleteManyPosts(ids, userId, isAdmin = false) {
     try {
-      // Lấy thông tin các bài viết
+      // Get post details
       const posts = await Promise.all(ids.map((id) => PetPost.getDetail(id)));
 
-      // Kiểm tra quyền và tồn tại
+      // Check permission and existence
       for (const post of posts) {
         if (!post) {
-          throw new ApiError(404, "Một hoặc nhiều bài viết không tồn tại");
+          throw new ApiError(404, "One or more posts do not exist");
         }
         if (!isAdmin && !(await PetPost.isOwnedByUser(post.id, userId))) {
           throw new ApiError(
             403,
-            "Bạn không có quyền xóa một hoặc nhiều bài viết"
+            "You do not have permission to delete one or more posts"
           );
         }
       }
 
-      // Xóa ảnh của tất cả bài viết có ảnh
+      // Delete images of all posts with images
       await Promise.all(
         posts
           .filter((post) => post.thumbnail_image || post.featured_image)
           .map((post) => this.deletePostImages(post))
       );
 
-      // Soft delete tất cả bài viết
+      // Soft delete all posts
       await PetPost.softDeleteMany(ids);
       return true;
     } catch (error) {
@@ -102,7 +102,7 @@ class PetPostService {
     }
   }
 
-  // Helper method để xóa ảnh
+  // Helper method to delete images
   async deletePostImages(post) {
     try {
       const imagesToDelete = [post.thumbnail_image, post.featured_image].filter(
@@ -111,12 +111,12 @@ class PetPostService {
 
       for (const imageUrl of imagesToDelete) {
         try {
-          // Lấy public_id từ URL cloudinary
+          // Get public_id from cloudinary URL
           const publicId = imageUrl.split("/").pop().split(".")[0];
           await cloudinary.uploader.destroy(`petposts/${publicId}`);
-          console.log(`Đã xóa ảnh: ${imageUrl}`);
+          console.log(`Deleted image: ${imageUrl}`);
         } catch (err) {
-          console.error(`Lỗi khi xóa ảnh ${imageUrl}:`, err);
+          console.error(`Error deleting image ${imageUrl}:`, err);
         }
       }
     } catch (error) {
@@ -124,7 +124,7 @@ class PetPostService {
     }
   }
 
-  // Helper method để kiểm tra file tồn tại
+  // Helper method to check if file exists
   async fileExists(filePath) {
     try {
       await fs.promises.access(filePath);
@@ -134,18 +134,18 @@ class PetPostService {
     }
   }
 
-  // Xử lý like/unlike
+  // Handle like/unlike
   async toggleLike(postId, userId) {
     try {
       const post = await PetPost.getDetail(postId);
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài viết");
+        throw new ApiError(404, "Post not found");
       }
 
       const result = await PetPostLike.toggleLike(userId, postId);
       return {
         success: true,
-        message: result ? "Đã thích bài viết" : "Đã bỏ thích bài viết",
+        message: result ? "Liked post" : "Unliked post",
         hasLiked: result,
       };
     } catch (error) {
@@ -153,23 +153,23 @@ class PetPostService {
     }
   }
 
-  // Thêm comment
+  // Add comment
   async addComment(postId, userId, data) {
     try {
       const post = await PetPost.getDetail(postId);
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài viết");
+        throw new ApiError(404, "Post not found");
       }
 
       if (!data.content?.trim()) {
-        throw new ApiError(400, "Nội dung bình luận không được để trống");
+        throw new ApiError(400, "Comment content cannot be empty");
       }
 
-      // Kiểm tra parent comment nếu là reply
+      // Check parent comment if it's a reply
       if (data.parent_id) {
         const parentComment = await PetPostComment.getDetail(data.parent_id);
         if (!parentComment || parentComment.post_id !== Number(postId)) {
-          throw new ApiError(404, "Không tìm thấy bình luận gốc");
+          throw new ApiError(404, "Parent comment not found");
         }
       }
 
@@ -186,32 +186,32 @@ class PetPostService {
     }
   }
 
-  // Validate dữ liệu bài viết
+  // Validate post data
   async validatePostData(data, isUpdate = false) {
     const errors = [];
 
     if (!isUpdate) {
-      if (!data.title) errors.push("Tiêu đề bài viết là bắt buộc");
-      if (!data.content) errors.push("Nội dung bài viết là bắt buộc");
-      if (!data.post_type) errors.push("Loại bài viết là bắt buộc");
-      if (!data.thumbnail_image) errors.push("Ảnh thumbnail là bắt buộc");
-      if (!data.featured_image) errors.push("Ảnh featured là bắt buộc");
+      if (!data.title) errors.push("Post title is required");
+      if (!data.content) errors.push("Post content is required");
+      if (!data.post_type) errors.push("Post type is required");
+      if (!data.thumbnail_image) errors.push("Thumbnail image is required");
+      if (!data.featured_image) errors.push("Featured image is required");
     }
 
     if (data.title && data.title.trim().length < 10) {
-      errors.push("Tiêu đề phải có ít nhất 10 ký tự");
+      errors.push("Title must be at least 10 characters");
     }
 
     if (data.content && data.content.trim().length < 50) {
-      errors.push("Nội dung phải có ít nhất 50 ký tự");
+      errors.push("Content must be at least 50 characters");
     }
 
     if (errors.length > 0) {
-      throw new ApiError(400, "Dữ liệu không hợp lệ", errors);
+      throw new ApiError(400, "Invalid data", errors);
     }
   }
 
-  // Lấy danh sách bài viết
+  // Get list of posts
   async getPosts(options = {}) {
     try {
       const {
@@ -230,7 +230,7 @@ class PetPostService {
 
       let result;
 
-      // Nếu có search query thì dùng phương thức search
+      // If there is search query, use search method
       if (search) {
         result = await PetPost.search(search, {
           page: parseInt(page),
@@ -238,7 +238,7 @@ class PetPostService {
           status,
         });
       } else {
-        // Ngược lại dùng findAll
+        // Otherwise, use findAll method
         result = await PetPost.findAll({
           page: parseInt(page),
           limit: parseInt(limit),
@@ -260,16 +260,16 @@ class PetPostService {
     }
   }
 
-  // Lấy chi tiết bài viết
+  // Get post detail
   async getPostDetail(id) {
     try {
       const post = await PetPost.getDetail(id);
 
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài viết");
+        throw new ApiError(404, "Post not found");
       }
 
-      // Lấy thêm thông tin likes và comments
+      // Get likes and comments count
       const [likesCount, commentsCount] = await Promise.all([
         PetPostLike.getPostLikesCount(id),
         PetPostComment.getPostCommentsCount(id),
@@ -285,12 +285,12 @@ class PetPostService {
     }
   }
 
-  // Lấy danh sách người dùng đã like bài viết
+  // Get list of users who liked the post
   async getLikedUsers(postId, options = {}) {
     try {
       const post = await PetPost.getDetail(postId);
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài viết");
+        throw new ApiError(404, "Post not found");
       }
 
       return await PetPostLike.getLikedUsers(postId, options);
@@ -299,12 +299,12 @@ class PetPostService {
     }
   }
 
-  // Lấy comments của bài viết
+  // Get comments of the post
   async getPostComments(postId, options = {}) {
     try {
       const post = await PetPost.getDetail(postId);
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài viết");
+        throw new ApiError(404, "Post not found");
       }
 
       return await PetPostComment.getPostComments(postId, options);
@@ -313,12 +313,12 @@ class PetPostService {
     }
   }
 
-  // Lấy replies của comment
+  // Get replies of the comment
   async getCommentReplies(commentId, options = {}) {
     try {
       const comment = await PetPostComment.getDetail(commentId);
       if (!comment) {
-        throw new ApiError(404, "Không tìm thấy bình luận");
+        throw new ApiError(404, "Comment not found");
       }
 
       return await PetPostComment.getCommentReplies(commentId, options);
@@ -327,7 +327,7 @@ class PetPostService {
     }
   }
 
-  // Xóa comment
+  // Delete comment
   async deleteComment(commentId, userId, isAdmin = false) {
     try {
       const result = await PetPostComment.deleteWithReports(
@@ -337,38 +337,38 @@ class PetPostService {
       );
 
       if (!result) {
-        throw new ApiError(500, "Không thể xóa bình luận");
+        throw new ApiError(500, "Cannot delete comment");
       }
 
       return true;
     } catch (error) {
-      if (error.message === "Không tìm thấy bình luận") {
+      if (error.message === "Comment not found") {
         throw new ApiError(404, error.message);
       }
-      if (error.message === "Không có quyền xóa bình luận này") {
+      if (error.message === "You do not have permission to delete this comment") {
         throw new ApiError(403, error.message);
       }
       throw error;
     }
   }
 
-  // Cập nhật trạng thái bài viết
+  // Update post status
   async updateStatus(postId, status, userId, isAdmin = false) {
     try {
       const post = await PetPost.getDetail(postId);
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài viết");
+        throw new ApiError(404, "Post not found");
       }
 
       // Kiểm tra quyền cập nhật
       if (!isAdmin && post.author_id !== userId) {
-        throw new ApiError(403, "Bạn không có quyền cập nhật bài viết này");
+        throw new ApiError(403, "You do not have permission to update this post");
       }
 
       // Validate status
       const validStatuses = ["DRAFT", "PUBLISHED", "ARCHIVED"];
       if (!validStatuses.includes(status)) {
-        throw new ApiError(400, "Trạng thái không hợp lệ");
+        throw new ApiError(400, "Invalid status");
       }
 
       await PetPost.update(postId, { status });
@@ -378,7 +378,7 @@ class PetPostService {
     }
   }
 
-  // Cập nhật bài viết
+  // Update post
   async updatePost(id, data, userId) {
     try {
       const post = await PetPost.getDetail(id);
@@ -387,7 +387,7 @@ class PetPostService {
           await this.deleteImage(data.featured_image.path);
         if (data.thumbnail_image)
           await this.deleteImage(data.thumbnail_image.path);
-        throw new ApiError(404, "Không tìm thấy bài viết");
+        throw new ApiError(404, "Post not found");
       }
 
       if (!(await PetPost.isOwnedByUser(id, userId))) {
@@ -395,33 +395,33 @@ class PetPostService {
           await this.deleteImage(data.featured_image.path);
         if (data.thumbnail_image)
           await this.deleteImage(data.thumbnail_image.path);
-        throw new ApiError(403, "Bạn không có quyền cập nhật bài viết này");
+        throw new ApiError(403, "You do not have permission to update this post");
       }
 
       await this.validatePostData(data, true);
 
       const updatedData = { ...data };
 
-      // Xử lý ảnh mới (chỉ lấy path từ object file)
+      // Handle new images (only get path from file object)
       if (data.featured_image) {
-        // Xóa ảnh cũ
+        // Delete old image
         if (post.featured_image) {
           await this.deleteImage(post.featured_image);
         }
-        // Chỉ lưu URL từ path
+        // Only save URL from path
         updatedData.featured_image = data.featured_image.path;
       }
 
       if (data.thumbnail_image) {
-        // Xóa ảnh cũ
+        // Delete old image
         if (post.thumbnail_image) {
           await this.deleteImage(post.thumbnail_image);
         }
-        // Chỉ lưu URL từ path
+        // Only save URL from path
         updatedData.thumbnail_image = data.thumbnail_image.path;
       }
 
-      // Cập nhật các trường khác
+      // Update other fields
       if (data.title && data.title !== post.title) {
         updatedData.slug = slugify(data.title);
       }
@@ -440,7 +440,7 @@ class PetPostService {
     }
   }
 
-  // Helper method để xóa các files đã upload
+  // Helper method to delete uploaded files
   async deleteUploadedFiles(files) {
     if (!files || files.length === 0) return;
 
@@ -449,12 +449,12 @@ class PetPostService {
         const publicId = file.filename.split(".")[0];
         await cloudinary.uploader.destroy(`petposts/${publicId}`);
       } catch (err) {
-        console.error(`Lỗi khi xóa file ${file.filename}:`, err);
+        console.error(`Error deleting file ${file.filename}:`, err);
       }
     }
   }
 
-  // Helper method để xóa ảnh cũ
+  // Helper method to delete old image
   async deleteImage(imageUrl) {
     if (!imageUrl) return;
 
@@ -462,11 +462,11 @@ class PetPostService {
       const publicId = imageUrl.split("/").pop().split(".")[0];
       await cloudinary.uploader.destroy(`petposts/${publicId}`);
     } catch (err) {
-      console.error(`Lỗi khi xóa ảnh ${imageUrl}:`, err);
+      console.error(`Error deleting image ${imageUrl}:`, err);
     }
   }
 
-  // Thêm phương thức upload ảnh lên cloud
+  // Add method to upload image to cloud
   async uploadToCloud(file, folder = "petposts") {
     try {
       const result = await cloudinary.uploader.upload(file.path, {
@@ -480,36 +480,36 @@ class PetPostService {
     }
   }
 
-  // Báo cáo comment
+  // Report comment
   async reportComment(commentId, reportData, userId) {
     try {
-      // Kiểm tra comment tồn tại
+      // Check if comment exists
       const comment = await PetPostComment.getDetail(commentId);
       if (!comment) {
-        throw new ApiError(404, "Không tìm thấy bình luận");
+        throw new ApiError(404, "Comment not found");
       }
 
-      // Kiểm tra user đã báo cáo comment này chưa
+      // Check if user has reported this comment
       const hasReported = await PetPostComment.hasUserReported(
         userId,
         commentId
       );
       if (hasReported) {
-        throw new ApiError(400, "Bạn đã báo cáo bình luận này rồi");
+        throw new ApiError(400, "You have already reported this comment");
       }
 
-      // Thêm thông tin người báo cáo
+      // Add reporter information
       const reportWithUser = {
         reported_by: userId,
-        reason: reportData.reason || "Không có lý do",
+        reason: reportData.reason || "No reason",
       };
 
-      // Thực hiện báo cáo
+      // Perform report
       const result = await PetPostComment.report(commentId, reportWithUser);
 
       return {
         success: true,
-        message: "Đã báo cáo bình luận thành công",
+        message: "Reported comment successfully",
         data: result,
       };
     } catch (error) {
@@ -518,18 +518,18 @@ class PetPostService {
     }
   }
 
-  // Xóa mềm bài viết
+  // Soft delete post
   async softDeletePost(id, userId, isAdmin = false) {
     try {
       const post = await PetPost.getDetail(id);
 
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài viết");
+        throw new ApiError(404, "Post not found");
       }
 
-      // Kiểm tra quyền xóa
+      // Check if user has permission to delete
       if (!isAdmin && !(await PetPost.isOwnedByUser(id, userId))) {
-        throw new ApiError(403, "Bạn không có quyền xóa bài viết này");
+        throw new ApiError(403, "You do not have permission to delete this post");
       }
 
       await PetPost.softDelete(id);
@@ -539,26 +539,26 @@ class PetPostService {
     }
   }
 
-  // Xóa cứng bài viết
+  // Hard delete post
   async hardDeletePost(id, userId, isAdmin = false) {
     try {
       const post = await PetPost.getDetail(id);
 
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài viết");
+        throw new ApiError(404, "Post not found");
       }
 
-      // Kiểm tra quyền xóa
+      // Check if user has permission to delete
       if (!isAdmin && !(await PetPost.isOwnedByUser(id, userId))) {
-        throw new ApiError(403, "Bạn không có quyền xóa bài viết này");
+        throw new ApiError(403, "You do not have permission to delete this post");
       }
 
-      // Xóa ảnh trước
+      // Delete images before deleting post
       if (post.thumbnail_image || post.featured_image) {
         await this.deletePostImages(post);
       }
 
-      // Xóa bài viết và dữ liệu liên quan
+      // Delete post and related data
       await PetPost.hardDelete(id);
       return true;
     } catch (error) {
@@ -566,19 +566,19 @@ class PetPostService {
     }
   }
 
-  // Xóa mềm nhiều bài viết
+  // Soft delete multiple posts
   async softDeleteManyPosts(ids, userId, isAdmin = false) {
     try {
-      // Kiểm tra quyền và tồn tại
+      // Check permission and existence
       for (const id of ids) {
         const post = await PetPost.getDetail(id);
         if (!post) {
-          throw new ApiError(404, "Một hoặc nhiều bài viết không tồn tại");
+          throw new ApiError(404, "One or more posts do not exist");
         }
         if (!isAdmin && !(await PetPost.isOwnedByUser(id, userId))) {
           throw new ApiError(
             403,
-            "Bạn không có quyền xóa một hoặc nhiều bài viết"
+            "You do not have permission to delete one or more posts"
           );
         }
       }
@@ -590,33 +590,33 @@ class PetPostService {
     }
   }
 
-  // Xóa cứng nhiều bài viết
+  // Hard delete multiple posts
   async hardDeleteManyPosts(ids, userId, isAdmin = false) {
     try {
-      // Lấy thông tin các bài viết
+      // Get post details
       const posts = await Promise.all(ids.map((id) => PetPost.getDetail(id)));
 
-      // Kiểm tra quyền và tồn tại
+      // Check permission and existence
       for (const post of posts) {
         if (!post) {
-          throw new ApiError(404, "Một hoặc nhiều bài viết không tồn tại");
+          throw new ApiError(404, "One or more posts do not exist");
         }
         if (!isAdmin && !(await PetPost.isOwnedByUser(post.id, userId))) {
           throw new ApiError(
             403,
-            "Bạn không có quyền xóa một hoặc nhiều bài viết"
+            "You do not have permission to delete one or more posts"
           );
         }
       }
 
-      // Xóa ảnh của tất cả bài viết có ảnh
+      // Delete images of all posts with images
       await Promise.all(
         posts
           .filter((post) => post.thumbnail_image || post.featured_image)
           .map((post) => this.deletePostImages(post))
       );
 
-      // Xóa bài viết và dữ liệu liên quan
+      // Delete post and related data
       await PetPost.hardDeleteMany(ids);
       return true;
     } catch (error) {
@@ -624,32 +624,32 @@ class PetPostService {
     }
   }
 
-  // Toggle trạng thái xóa mềm
+  // Toggle soft delete status
   async toggleSoftDelete(id, userId, isAdmin = false) {
     try {
       const post = await PetPost.getDetail(id);
 
       if (!post) {
-        throw new ApiError(404, "Không tìm thấy bài viết");
+        throw new ApiError(404, "Post not found");
       }
 
-      // Kiểm tra quyền
+      // Check if user has permission
       if (!isAdmin && !(await PetPost.isOwnedByUser(id, userId))) {
         throw new ApiError(
           403,
-          "Bạn không có quyền thay đổi trạng thái bài viết này"
+          "You do not have permission to change the status of this post"
         );
       }
 
       await PetPost.toggleSoftDelete(id);
 
-      // Lấy trạng thái mới sau khi toggle
+      // Get new status after toggle
       const updatedPost = await PetPost.getDetail(id);
       return {
         is_deleted: updatedPost.is_deleted,
         message: updatedPost.is_deleted
-          ? "Đã xóa bài viết"
-          : "Đã khôi phục bài viết",
+          ? "Post deleted"
+          : "Post restored",
       };
     } catch (error) {
       throw error;
