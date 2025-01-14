@@ -4,7 +4,7 @@ const errorConverter = (err, req, res, next) => {
   let error = err;
   if (!(error instanceof ApiError)) {
     const statusCode = error.statusCode || 500;
-    const message = error.message || "Lỗi hệ thống";
+    const message = error.message || "Error from system";
     error = new ApiError(statusCode, message, false, err.stack);
   }
   next(error);

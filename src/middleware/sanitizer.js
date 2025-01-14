@@ -1,7 +1,7 @@
 const sanitizeHtml = require("sanitize-html");
 const ApiError = require("../exceptions/ApiError");
 
-// Export function trả về middleware
+// Export function return middleware
 const sanitizer = () => {
   return (req, res, next) => {
     // Sanitize body

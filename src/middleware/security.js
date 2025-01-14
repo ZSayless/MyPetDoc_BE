@@ -3,6 +3,7 @@ const rateLimit = require("express-rate-limit");
 const cors = require("cors");
 const xss = require("xss");
 const hpp = require("hpp");
+const express = require("express");
 
 const securityMiddleware = (app) => {
   // 1. Helmet - Protect HTTP headers
@@ -32,7 +33,10 @@ const securityMiddleware = (app) => {
   });
   app.use("/api", limiter);
 
-  // 4. XSS Protection - Sử dụng xss package thay vì xss-clean
+  // 4. Limit request size
+  app.use(express.json({ limit: "50kb" }));
+
+  // 5. XSS Protection
   app.use((req, res, next) => {
     if (req.body) {
       // Sanitize request body
@@ -55,10 +59,10 @@ const securityMiddleware = (app) => {
     next();
   });
 
-  // 5. Prevent HTTP Parameter Pollution
+  // 6. Prevent HTTP Parameter Pollution
   app.use(hpp());
 
-  // 6. Security Headers
+  // 7. Security Headers
   app.use((req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");

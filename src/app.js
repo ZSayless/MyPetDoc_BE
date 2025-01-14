@@ -5,7 +5,6 @@ const routes = require("./routes");
 const cors = require("cors");
 const morgan = require("morgan");
 const passport = require("./config/passport");
-const applySecurityMiddleware = require("./middleware/securityMiddleware");
 const securityMiddleware = require("./middleware/security");
 const timeout = require("./middleware/timeout");
 const { sanitizer } = require("./middleware/sanitizer");
@@ -18,7 +17,6 @@ app.use(morgan("combined")); // Log requests
 app.use(cors());
 
 // Security middleware
-applySecurityMiddleware(app);
 securityMiddleware(app);
 
 // Sanitizer middleware
