@@ -2,7 +2,6 @@ const HospitalService = require("../services/HospitalService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const HospitalImageService = require("../services/HospitalImageService");
-const path = require("path");
 const fs = require("fs");
 
 class HospitalController {
@@ -87,8 +86,6 @@ class HospitalController {
 
       // Remove imageIdsToDelete from update data
       const { imageIdsToDelete: removed, ...updateData } = req.body;
-
-      updateData.created_by = req.user.id;
 
       // Update hospital information
       const updatedHospital = await HospitalService.updateHospital(

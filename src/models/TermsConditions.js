@@ -14,7 +14,7 @@ class TermsConditions extends BaseModel {
     }
   }
 
-  // Get current terms (active)
+  // Get terms (active)
   static async getCurrentTerms() {
     try {
       const sql = `
@@ -24,11 +24,10 @@ class TermsConditions extends BaseModel {
         WHERE tc.is_deleted = 0
         AND tc.effective_date <= CURRENT_DATE()
         ORDER BY tc.effective_date DESC, tc.version DESC
-        LIMIT 1
       `;
 
-      const [termsData] = await this.query(sql);
-      return termsData ? new TermsConditions(termsData) : null;
+      const termsDataList = await this.query(sql);
+      return termsDataList.map((term) => new TermsConditions(term));
     } catch (error) {
       console.error("Get current terms error:", error);
       throw error;
@@ -43,9 +42,14 @@ class TermsConditions extends BaseModel {
         throw new Error("Effective date is required");
       }
 
-      // Get current version
-      const currentTerms = await this.getCurrentTerms();
-      const newVersion = currentTerms ? currentTerms.version + 1 : 1;
+      // Get current version - Sửa lại cách lấy version cao nhất
+      const sql = `
+        SELECT MAX(version) as maxVersion 
+        FROM ${this.tableName}
+        WHERE is_deleted = 0
+      `;
+      const [result] = await this.query(sql);
+      const newVersion = (result.maxVersion || 0) + 1;
 
       const newData = {
         ...data,

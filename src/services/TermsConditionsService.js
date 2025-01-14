@@ -21,21 +21,21 @@ class TermsConditionsService {
       // Validate data
       await this.validateTermsData(data);
 
-      // Get current date (only date, no time)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // // Get current date (only date, no time)
+      // const today = new Date();
+      // today.setHours(0, 0, 0, 0);
 
-      // Get effective date (only date, no time)
-      const effectiveDate = new Date(data.effective_date);
-      effectiveDate.setHours(0, 0, 0, 0);
+      // // Get effective date (only date, no time)
+      // const effectiveDate = new Date(data.effective_date);
+      // effectiveDate.setHours(0, 0, 0, 0);
 
-      // Check effective date
-      if (effectiveDate < today) {
-        throw new ApiError(
-          400,
-          "Effective date must be greater than or equal to today"
-        );
-      }
+      // // Check effective date
+      // if (effectiveDate < today) {
+      //   throw new ApiError(
+      //     400,
+      //     "Effective date must be greater than or equal to today"
+      //   );
+      // }
 
       // Create new version
       const terms = await TermsConditions.createNewVersion(data, userId);
@@ -72,10 +72,7 @@ class TermsConditionsService {
     try {
       const terms = await TermsConditions.getEffectiveTerms(date);
       if (!terms) {
-        throw new ApiError(
-          404,
-          "No terms effective at this time"
-        );
+        throw new ApiError(404, "No terms effective at this time");
       }
       return terms;
     } catch (error) {

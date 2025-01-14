@@ -11,7 +11,7 @@ module.exports = async (connection) => {
         description TEXT,
         likes_count INT DEFAULT 0,
         comments_count INT DEFAULT 0,
-        user_id BIGINT NOT NULL,
+        user_id BIGINT NULL,
         pet_type VARCHAR(50),
         tags VARCHAR(255),
         FOREIGN KEY (user_id) REFERENCES users(id)

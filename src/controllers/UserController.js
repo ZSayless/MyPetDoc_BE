@@ -84,7 +84,7 @@ class UserController {
 
   toggleDelete = asyncHandler(async (req, res) => {
     const user = await UserService.toggleDelete(req.params.id);
-    res.json({
+    res.status(200).json({
       status: "success",
       message: user.is_deleted
         ? "Soft delete user successful"

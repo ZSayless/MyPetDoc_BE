@@ -2,6 +2,7 @@ const BaseModel = require("./BaseModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const convertBitToBoolean = require("../utils/convertBitToBoolean");
+const cloudinary = require("../config/cloudinary");
 
 class User extends BaseModel {
   static tableName = "users";
@@ -144,32 +145,29 @@ class User extends BaseModel {
 
   static async deleteUserRelations(userId) {
     const queries = [
-      // 1. Xóa comments và likes trong pet gallery
+      // 1. Delete comments and likes in pet gallery
       "UPDATE pet_gallery SET user_id = NULL WHERE user_id = ?",
       "DELETE FROM pet_gallery_comments WHERE user_id = ?",
       "DELETE FROM pet_gallery_likes WHERE user_id = ?",
 
-      // 2. Xóa comments và likes trong pet post
+      // 2. Delete comments and likes in pet post
       "UPDATE pet_posts SET author_id = NULL WHERE author_id = ?",
       "DELETE FROM pet_post_comments WHERE user_id = ?",
       "DELETE FROM pet_post_likes WHERE user_id = ?",
 
-      // 3. Xóa tất cả report_reasons của reviews mà user đã viết
+      // 3. Delete all report_reasons of reviews that user wrote
       `DELETE rr FROM report_reasons rr 
        INNER JOIN reviews r ON rr.review_id = r.id 
        WHERE r.user_id = ?`,
       "DELETE FROM report_reasons WHERE reported_by = ?",
 
-      // 4. Xóa reviews của user
-      "DELETE FROM reviews WHERE user_id = ?",
-
-      // 5. Xóa favorites của user
+      // 4. Delete favorites of user
       "DELETE FROM favorites WHERE user_id = ?",
 
-      // 6. Cập nhật contact message
+      // 5. Update contact message
       "UPDATE contact_messages SET user_id = NULL WHERE user_id = ?",
 
-      // 7. Cập nhật các bảng tham chiếu có created_by/last_updated_by
+      // 6. Update tables with created_by/last_updated_by
       "UPDATE banners SET created_by = NULL WHERE created_by = ?",
       "UPDATE about_us SET last_updated_by = NULL WHERE last_updated_by = ?",
       "UPDATE privacy_policy SET last_updated_by = NULL WHERE last_updated_by = ?",
@@ -179,23 +177,75 @@ class User extends BaseModel {
       "UPDATE hospitals SET created_by = NULL WHERE created_by = ?",
     ];
 
-    // Log để debug
+    // Log for debug
     console.log("Deleting relations for user:", userId);
 
-    // Thực thi các câu query theo thứ tự
-    for (const sql of queries) {
-      try {
+    try {
+      // First execute other queries in order
+      for (const sql of queries) {
         console.log("Executing query:", sql);
         await this.query(sql, [userId]);
-      } catch (error) {
-        console.error(`Error executing query: ${sql}`, error);
-        console.error("Error details:", error.message);
-        throw error;
       }
+      // Handle reviews deletion with special method
+      await this.hardDeleteReview(userId);
+    } catch (error) {
+      console.error("Error in deleteUserRelations:", error);
+      throw error;
     }
   }
 
-  // Thêm phương thức để kiểm tra cấu trúc bảng
+  // Hard delete user reviews
+  static async hardDeleteReview(userId) {
+    try {
+      // Get all reviews of user
+      const sql = `SELECT * FROM reviews WHERE user_id = ?`;
+      const reviews = await this.query(sql, [userId]);
+
+      // Delete images from Cloudinary if exists
+      for (const review of reviews) {
+        if (review.image_url) {
+          try {
+            const urlParts = review.image_url.split("/");
+            const filename = urlParts[urlParts.length - 1].split(".")[0];
+            const publicId = `reviews/${filename}`;
+
+            await cloudinary.uploader.destroy(publicId);
+            console.log(`Deleted image for review ${review.id}: ${publicId}`);
+          } catch (cloudinaryError) {
+            console.error(
+              `Error deleting image for review ${review.id}:`,
+              cloudinaryError
+            );
+          }
+        }
+      }
+
+      // Delete related reports for all reviews
+      const reviewIds = reviews.map((review) => review.id);
+      if (reviewIds.length > 0) {
+        // Sửa lại cách xử lý IN clause
+        const placeholders = reviewIds.map(() => "?").join(",");
+        await this.query(
+          `DELETE FROM report_reasons WHERE review_id IN (${placeholders})`,
+          reviewIds
+        );
+      }
+
+      // Delete all reviews of user
+      await this.query(`DELETE FROM reviews WHERE user_id = ?`, [userId]);
+
+      return {
+        status: "success",
+        message: `Successfully deleted ${reviews.length} reviews for user ${userId}`,
+        deletedReviews: reviews.length,
+      };
+    } catch (error) {
+      console.error("Error in User.hardDeleteReview:", error);
+      throw error;
+    }
+  }
+
+  // Add method to check table structure
   static async checkTableStructure(tableName) {
     try {
       const [columns] = await this.query(`DESCRIBE ${tableName}`);
@@ -243,7 +293,8 @@ class User extends BaseModel {
       pet_gallery:
         "SELECT COUNT(*) as count FROM pet_gallery WHERE user_id = ?",
       pet_post: "SELECT COUNT(*) as count FROM pet_posts WHERE author_id = ?",
-      report_by: "SELECT COUNT(*) as count FROM report_reasons WHERE reported_by = ?",
+      report_by:
+        "SELECT COUNT(*) as count FROM report_reasons WHERE reported_by = ?",
     };
 
     const results = {};

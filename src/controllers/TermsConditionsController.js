@@ -70,9 +70,12 @@ class TermsConditionsController {
     }
 
     const terms = await TermsConditionsService.toggleSoftDelete(req.params.id);
-    res.status(204).json({
+    res.status(200).json({
       status: "success",
-      message: "Soft delete version successful",
+      message: terms.is_deleted
+        ? "Soft delete version successful"
+        : "Restore version successful",
+      data: terms,
     });
   });
 
@@ -82,9 +85,8 @@ class TermsConditionsController {
     if (req.user.role !== "ADMIN") {
       throw new ApiError(403, "You are not authorized to perform this action");
     }
-
     await TermsConditionsService.hardDelete(req.params.id);
-    res.status(204).json({
+    res.status(200).json({
       status: "success",
       message: "Hard delete version successful",
     });

@@ -133,18 +133,20 @@ class UserService {
 
       // Check delete permission
       // Nếu không phải tự xóa tài khoản
-      if (currentUser.id != id) {
-        console.log("currentUser.id:", currentUser.id);
-        console.log("id:", id);
-        throw new ApiError(403, "Không thể xóa tài khoản ADMIN khác");
+      if (userToDelete.role == "ADMIN") {
+        if (currentUser.id !== parseInt(id)) {
+          console.log("currentUser.id:", currentUser.id);
+          console.log("id:", id);
+          throw new ApiError(403, "Không thể xóa tài khoản ADMIN khác");
+        }
       }
 
       // Kiểm tra số lượng admin còn lại
       const adminCount = await User.countAdmins();
-      if (adminCount <= 1) {
+      if (adminCount <= 2) {
         throw new ApiError(
           400,
-          "Không thể xóa tài khoản ADMIN khi chỉ còn 1 ADMIN trong hệ thống"
+          "Không thể xóa tài khoản ADMIN khi chỉ còn 2 ADMIN trong hệ thống"
         );
       }
 
