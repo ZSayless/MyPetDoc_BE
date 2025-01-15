@@ -13,6 +13,7 @@ const securityMiddleware = (app) => {
   const corsOptions = {
     origin: process.env.ALLOWED_ORIGINS?.split(",") || [
       "http://localhost:3000",
+      "https://www.mypetdoc.vn",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
