@@ -10,6 +10,7 @@ module.exports = async (connection) => {
         version BIGINT DEFAULT 1,
         address VARCHAR(255),
         phone VARCHAR(255),
+        slug VARCHAR(255),
         email VARCHAR(255),
         link_website VARCHAR(255),
         map_location VARCHAR(255),

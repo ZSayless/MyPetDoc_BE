@@ -1,6 +1,7 @@
 const BaseModel = require("./BaseModel");
 const convertBitToBoolean = require("../utils/convertBitToBoolean");
 const cloudinary = require("../config/cloudinary");
+const slugify = require("../utils/slugify");
 const Review = require("./Review");
 
 class Hospital extends BaseModel {
@@ -134,26 +135,45 @@ class Hospital extends BaseModel {
   }
 
   static async create(data) {
+
+      const hospitalData = {
+        name: data.name || null,
+        slug: slugify(data.name),
+        address: data.address || null,
+        department: data.department || null,
+        phone: data.phone || null,
+        email: data.email || null,
+        link_website: data.link_website || null,
+        operating_hours: data.operating_hours || null,
+        specialties: data.specialties || null,
+        staff_description: data.staff_description || null,
+        staff_credentials: data.staff_credentials || null,
+        map_location: data.map_location || null,
+        description: data.description || null,
+        created_by: data.created_by || null,
+      };
+
     const sql = `
       INSERT INTO ${this.tableName} 
-      (name, address, department ,phone ,email ,link_website, operating_hours, specialties, staff_description, staff_credentials, map_location, description, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (name, address, department ,phone ,email ,link_website, operating_hours, specialties, staff_description, staff_credentials, map_location, description, created_by, slug)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
-      data.name,
-      data.address,
-      data.department,
-      data.phone,
-      data.email,
-      data.link_website,
-      data.operating_hours,
-      data.specialties,
-      data.staff_description,
-      data.staff_credentials,
-      data.map_location,
-      data.description,
-      data.created_by,
+      hospitalData.name,
+      hospitalData.address,
+      hospitalData.department,
+      hospitalData.phone,
+      hospitalData.email,
+      hospitalData.link_website,
+      hospitalData.operating_hours,
+      hospitalData.specialties,
+      hospitalData.staff_description,
+      hospitalData.staff_credentials,
+      hospitalData.map_location,
+      hospitalData.description,
+      hospitalData.created_by,
+      hospitalData.slug,
     ];
 
     const result = await this.query(sql, params);
@@ -163,6 +183,9 @@ class Hospital extends BaseModel {
     // Convert boolean to bit before update
     if (data.is_deleted !== undefined) {
       data.is_deleted = data.is_deleted ? 1 : 0;
+    }
+    if (data.slug !== undefined) {
+      data.slug = slugify(data.name);
     }
     const hospitalData = await super.update(id, data);
     return new Hospital(hospitalData);
@@ -237,6 +260,14 @@ class Hospital extends BaseModel {
       console.error("Error in Hospital.hardDelete:", error);
       throw error;
     }
+  }
+  static async findBySlug(slug) {
+    const sql = `
+      SELECT * FROM ${this.tableName}
+      WHERE slug = ? AND is_deleted = 0
+    `;
+    const [result] = await this.query(sql, [slug]);
+    return result ? new Hospital(result) : null;
   }
 }
 

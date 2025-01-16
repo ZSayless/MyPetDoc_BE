@@ -394,6 +394,24 @@ class HospitalService {
       throw error;
     }
   }
+
+  async getHospitalBySlug(slug) {
+    try {
+      const hospital = await Hospital.findBySlug(slug);
+      if (!hospital) {
+        throw new ApiError(404, "Hospital not found");
+      }
+
+      // Get hospital images
+      const images = await hospitalImageService.getHospitalImages(hospital.id);
+      return {
+        ...hospital,
+        images: images || [],
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = new HospitalService();

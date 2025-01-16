@@ -3,11 +3,11 @@ module.exports = {
     {
       name: "pet-hospital-api",
       script: "./src/index.js",
-      instances: "max",
+      instances: 2,
       exec_mode: "cluster",
+      max_memory_restart: "200M",
       autorestart: true,
       watch: false,
-      max_memory_restart: "1G",
       env: {
         NODE_ENV: "production",
         PORT: 3000,

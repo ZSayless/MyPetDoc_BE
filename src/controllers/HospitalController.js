@@ -236,6 +236,12 @@ class HospitalController {
       next(error);
     }
   }
+
+  // Get hospital by slug
+  getHospitalBySlug = asyncHandler(async (req, res, next) => {
+    const hospital = await HospitalService.getHospitalBySlug(req.params.slug);
+    res.json(hospital);
+  });
 }
 
 module.exports = new HospitalController();

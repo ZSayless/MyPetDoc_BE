@@ -57,6 +57,9 @@ class BannerService {
 
       // Prepare banner data
       const bannerData = {
+        title: data.title,
+        subtitle: data.subtitle,
+        link: data.link,
         description: data.description,
         image_url: file.path,
         created_by: userId,
@@ -108,6 +111,9 @@ class BannerService {
           data.description !== undefined
             ? data.description
             : banner.description,
+        title: data.title !== undefined ? data.title : banner.title,
+        subtitle: data.subtitle !== undefined ? data.subtitle : banner.subtitle,
+        link: data.link !== undefined ? data.link : banner.link,
       };
 
       if (file) {
