@@ -13,13 +13,14 @@ const securityMiddleware = (app) => {
   const corsOptions = {
     origin: process.env.ALLOWED_ORIGINS?.split(",") || [
       "http://localhost:3000",
+      "https://mypetdoc.vn",
       "https://www.mypetdoc.vn",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
     exposedHeaders: ["Content-Range", "X-Content-Range"],
     credentials: true,
-    maxAge: 3600,
+    maxAge: 86400,
   };
   app.use(cors(corsOptions));
 
