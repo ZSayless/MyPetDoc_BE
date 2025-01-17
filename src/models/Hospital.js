@@ -135,7 +135,8 @@ class Hospital extends BaseModel {
   }
 
   static async create(data) {
-
+    try {
+      // Chuẩn bị dữ liệu
       const hospitalData = {
         name: data.name || null,
         slug: slugify(data.name),
@@ -153,31 +154,45 @@ class Hospital extends BaseModel {
         created_by: data.created_by || null,
       };
 
-    const sql = `
-      INSERT INTO ${this.tableName} 
-      (name, address, department ,phone ,email ,link_website, operating_hours, specialties, staff_description, staff_credentials, map_location, description, created_by, slug)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+      // Log để debug
+      console.log("Hospital Data:", hospitalData);
 
-    const params = [
-      hospitalData.name,
-      hospitalData.address,
-      hospitalData.department,
-      hospitalData.phone,
-      hospitalData.email,
-      hospitalData.link_website,
-      hospitalData.operating_hours,
-      hospitalData.specialties,
-      hospitalData.staff_description,
-      hospitalData.staff_credentials,
-      hospitalData.map_location,
-      hospitalData.description,
-      hospitalData.created_by,
-      hospitalData.slug,
-    ];
+      const sql = `
+        INSERT INTO hospitals 
+        (name, slug, address, department, phone, email, 
+         link_website, operating_hours, specialties, 
+         staff_description, staff_credentials, map_location, 
+         description, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
 
-    const result = await this.query(sql, params);
-    return result; // Return insert result to get insertId
+      const params = [
+        hospitalData.name,
+        hospitalData.slug,
+        hospitalData.address,
+        hospitalData.department,
+        hospitalData.phone,
+        hospitalData.email,
+        hospitalData.link_website,
+        hospitalData.operating_hours,
+        hospitalData.specialties,
+        hospitalData.staff_description,
+        hospitalData.staff_credentials,
+        hospitalData.map_location,
+        hospitalData.description,
+        hospitalData.created_by,
+      ];
+
+      // Log để debug
+      console.log("SQL:", sql);
+      console.log("Params:", params);
+
+      const result = await this.query(sql, params);
+      return result;
+    } catch (error) {
+      console.error("Create Hospital Error:", error);
+      throw error;
+    }
   }
   static async update(id, data) {
     // Convert boolean to bit before update
