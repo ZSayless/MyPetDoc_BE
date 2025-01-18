@@ -330,15 +330,6 @@ class AuthController {
     const randomPassword = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
-    console.log("User data before create:", {
-      email,
-      full_name,
-      google_id,
-      avatar,
-      role,
-      hashedPassword,
-    });
-
     // Create new user with default values for required fields
     let user = await User.create({
       email,

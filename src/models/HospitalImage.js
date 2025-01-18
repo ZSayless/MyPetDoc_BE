@@ -5,8 +5,6 @@ class HospitalImage extends BaseModel {
 
   static async create(data) {
     try {
-      console.log("Creating hospital image with data:", data);
-
       // Ensure required fields
       if (!data.hospital_id) {
         throw new Error("hospital_id is required");
@@ -31,7 +29,7 @@ class HospitalImage extends BaseModel {
       // console.log("Params:", params);
 
       const result = await this.query(sql, params);
-      console.log("Insert result:", result);
+      // console.log("Insert result:", result);
 
       return this.findById(result.insertId);
     } catch (error) {

@@ -155,7 +155,7 @@ class Hospital extends BaseModel {
       };
 
       // Log để debug
-      console.log("Hospital Data:", hospitalData);
+      // console.log("Hospital Data:", hospitalData);
 
       const sql = `
         INSERT INTO hospitals 
@@ -184,8 +184,8 @@ class Hospital extends BaseModel {
       ];
 
       // Log để debug
-      console.log("SQL:", sql);
-      console.log("Params:", params);
+      // console.log("SQL:", sql);
+      // console.log("Params:", params);
 
       const result = await this.query(sql, params);
       return result;
@@ -251,7 +251,6 @@ class Hospital extends BaseModel {
               const publicId = `hospitals/${filename}`;
 
               await cloudinary.uploader.destroy(publicId);
-              console.log(`Deleted image on Cloudinary: ${publicId}`);
             } catch (cloudinaryError) {
               console.error(
                 "Error deleting image on Cloudinary:",

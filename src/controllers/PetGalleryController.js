@@ -88,7 +88,6 @@ class PetGalleryController {
               urlParts[urlParts.length - 1].split(".")[0]
             }`;
             await cloudinary.uploader.destroy(publicId);
-            console.log("Đã xóa ảnh:", publicId);
           } catch (error) {
             console.error("Lỗi khi xóa ảnh:", error);
           }

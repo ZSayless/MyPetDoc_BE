@@ -15,7 +15,7 @@ class HospitalImageService {
 
       const images = [];
       for (const file of files) {
-        console.log("Processing file:", file);
+        // console.log("Processing file:", file);
 
         const imageData = {
           hospital_id: hospitalId,
@@ -65,12 +65,12 @@ class HospitalImageService {
 
       // Compare after converting data type
       if (imageHospitalId !== targetHospitalId) {
-        console.log(
-          "Image hospital ID:",
-          imageHospitalId,
-          "Target hospital ID:",
-          targetHospitalId
-        );
+        // console.log(
+        //   "Image hospital ID:",
+        //   imageHospitalId,
+        //   "Target hospital ID:",
+        //   targetHospitalId
+        // );
         throw new ApiError(
           403,
           "Cannot delete image not belong to this hospital"
@@ -86,7 +86,7 @@ class HospitalImageService {
 
         try {
           await cloudinary.uploader.destroy(publicId);
-          console.log(`Deleted image: ${publicId}`);
+          // console.log(`Deleted image: ${publicId}`);
         } catch (deleteError) {
           console.error("Error deleting image on Cloudinary:", deleteError);
         }

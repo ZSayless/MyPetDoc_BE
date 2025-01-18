@@ -33,7 +33,7 @@ class PetPost extends BaseModel {
         includeDeleted = false,
       } = options;
 
-      console.log("Query options:", options);
+      // console.log("Query options:", options);
 
       const offset = (page - 1) * limit;
       let conditions = [];
@@ -111,8 +111,8 @@ class PetPost extends BaseModel {
         LIMIT ${Number(limit)} OFFSET ${Number(offset)}
       `;
 
-      console.log("SQL Query:", sql);
-      console.log("Query params:", params);
+      // console.log("SQL Query:", sql);
+      // console.log("Query params:", params);
 
       const [posts, [countResult]] = await Promise.all([
         this.query(sql, params),
@@ -126,7 +126,7 @@ class PetPost extends BaseModel {
         ),
       ]);
 
-      console.log("Query results:", { posts, countResult });
+      // console.log("Query results:", { posts, countResult });
 
       return {
         posts: posts.map((post) => new PetPost(post)),

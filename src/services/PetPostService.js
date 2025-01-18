@@ -11,7 +11,7 @@ class PetPostService {
   // Create new post
   async createPost(data, userId) {
     try {
-      console.log(data);
+      // console.log(data);
       // Validate data
       await this.validatePostData(data);
 
@@ -114,7 +114,7 @@ class PetPostService {
           // Get public_id from cloudinary URL
           const publicId = imageUrl.split("/").pop().split(".")[0];
           await cloudinary.uploader.destroy(`petposts/${publicId}`);
-          console.log(`Deleted image: ${imageUrl}`);
+          // console.log(`Deleted image: ${imageUrl}`);
         } catch (err) {
           console.error(`Error deleting image ${imageUrl}:`, err);
         }

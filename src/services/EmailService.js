@@ -57,7 +57,7 @@ class EmailService {
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      console.log("Email sent: %s", info.messageId);
+      // console.log("Email sent: %s", info.messageId);
       return info;
     } catch (error) {
       console.error("Send verification email error:", error);

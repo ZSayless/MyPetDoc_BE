@@ -21,8 +21,8 @@ class PetPostComment extends BaseModel {
       const { page = 1, limit = 10 } = options;
       const offset = (page - 1) * limit;
 
-      console.log("Getting comments for postId:", postId);
-      console.log("Pagination:", { page, limit, offset });
+      // console.log("Getting comments for postId:", postId);
+      // console.log("Pagination:", { page, limit, offset });
 
       // Query chính
       const sql = `
@@ -44,8 +44,8 @@ class PetPostComment extends BaseModel {
         LIMIT ${limit} OFFSET ${offset}
       `;
 
-      console.log("Main SQL:", sql);
-      console.log("SQL params:", [postId, limit, offset]);
+      // console.log("Main SQL:", sql);
+      // console.log("SQL params:", [postId, limit, offset]);
 
       const countSql = `
         SELECT COUNT(*) as total
@@ -60,8 +60,8 @@ class PetPostComment extends BaseModel {
         this.query(countSql),
       ]);
 
-      console.log("Raw comments:", comments);
-      console.log("Count result:", countResult);
+      // console.log("Raw comments:", comments);
+      // console.log("Count result:", countResult);
 
       // Lấy replies cho mỗi comment
       const commentsWithReplies = await Promise.all(
@@ -78,9 +78,9 @@ class PetPostComment extends BaseModel {
             ORDER BY r.created_at ASC
           `;
 
-          console.log("Getting replies for comment:", comment.id);
+          // console.log("Getting replies for comment:", comment.id);
           const replies = await this.query(repliesSql);
-          console.log("Replies found:", replies.length);
+          // console.log("Replies found:", replies.length);
 
           return {
             ...comment,
@@ -93,7 +93,7 @@ class PetPostComment extends BaseModel {
         })
       );
 
-      console.log("Final comments with replies:", commentsWithReplies);
+      // console.log("Final comments with replies:", commentsWithReplies);
 
       const result = {
         comments: commentsWithReplies,
@@ -105,7 +105,7 @@ class PetPostComment extends BaseModel {
         },
       };
 
-      console.log("Final result:", result);
+      // console.log("Final result:", result);
       return result;
     } catch (error) {
       console.error("Get post comments error:", error);

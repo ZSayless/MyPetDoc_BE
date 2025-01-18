@@ -36,8 +36,8 @@ class Review extends BaseModel {
         false, // is_deleted
       ];
 
-      console.log("SQL:", sql);
-      console.log("Params:", params);
+      // console.log("SQL:", sql);
+      // console.log("Params:", params);
 
       const result = await this.query(sql, params);
       return result;

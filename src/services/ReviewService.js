@@ -29,10 +29,10 @@ class ReviewService {
         image_description: data.image_description || null,
       };
 
-      console.log("Creating review with data:", reviewData);
+      // console.log("Creating review with data:", reviewData);
 
       const result = await Review.create(reviewData);
-      console.log("Create result:", result);
+      // console.log("Create result:", result);
 
       // Get created review
       const review = await Review.findById(result.insertId);

@@ -38,7 +38,6 @@ const validateHospitalOwnership = async (req, res, next) => {
           try {
             const publicId = file.filename.split("/").pop().split(".")[0];
             await cloudinary.uploader.destroy(`hospitals/${publicId}`);
-            console.log("Đã xóa ảnh:", publicId);
           } catch (error) {
             console.error("Lỗi khi xóa ảnh:", error);
           }
@@ -54,7 +53,6 @@ const validateHospitalOwnership = async (req, res, next) => {
           try {
             const publicId = file.filename.split("/").pop().split(".")[0];
             await cloudinary.uploader.destroy(`hospitals/${publicId}`);
-            console.log("Đã xóa ảnh:", publicId);
           } catch (error) {
             console.error("Lỗi khi xóa ảnh:", error);
           }
@@ -73,7 +71,6 @@ const validateHospitalOwnership = async (req, res, next) => {
         try {
           const publicId = file.filename.split("/").pop().split(".")[0];
           await cloudinary.uploader.destroy(`hospitals/${publicId}`);
-          console.log("Đã xóa ảnh:", publicId);
         } catch (deleteError) {
           console.error("Lỗi khi xóa ảnh:", deleteError);
         }

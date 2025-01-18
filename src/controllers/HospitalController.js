@@ -53,7 +53,6 @@ class HospitalController {
           if (fs.existsSync(file.path)) {
             try {
               fs.unlinkSync(file.path);
-              console.log(`Đã xóa file ${file.path}`);
             } catch (unlinkError) {
               console.error(`Lỗi khi xóa file ${file.path}:`, unlinkError);
             }

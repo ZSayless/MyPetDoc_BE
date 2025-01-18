@@ -99,7 +99,7 @@ class BannerService {
 
         try {
           await cloudinary.uploader.destroy(publicId);
-          console.log(`Deleted old image: ${publicId}`);
+          // console.log(`Deleted old image: ${publicId}`);
         } catch (deleteError) {
           console.error("Error deleting old image:", deleteError);
           // Continue processing even if deleting old image fails
@@ -177,7 +177,7 @@ class BannerService {
 
         try {
           await cloudinary.uploader.destroy(publicId);
-          console.log(`Deleted banner image: ${publicId}`);
+          // console.log(`Deleted banner image: ${publicId}`);
         } catch (deleteError) {
           console.error("Error deleting image on Cloudinary:", deleteError);
           // Continue processing even if deleting image fails

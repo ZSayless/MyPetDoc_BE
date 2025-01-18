@@ -91,8 +91,8 @@ class PetGallery extends BaseModel {
         ${whereClause}
       `;
 
-      console.log("SQL Query:", sql);
-      console.log("Parameters:", params);
+      // console.log("SQL Query:", sql);
+      // console.log("Parameters:", params);
 
       const [posts, [countResult]] = await Promise.all([
         this.query(sql, params),

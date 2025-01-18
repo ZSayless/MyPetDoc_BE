@@ -178,12 +178,12 @@ class User extends BaseModel {
     ];
 
     // Log for debug
-    console.log("Deleting relations for user:", userId);
+    // console.log("Deleting relations for user:", userId);
 
     try {
       // First execute other queries in order
       for (const sql of queries) {
-        console.log("Executing query:", sql);
+        // console.log("Executing query:", sql);
         await this.query(sql, [userId]);
       }
       // Handle reviews deletion with special method
@@ -210,7 +210,7 @@ class User extends BaseModel {
             const publicId = `reviews/${filename}`;
 
             await cloudinary.uploader.destroy(publicId);
-            console.log(`Deleted image for review ${review.id}: ${publicId}`);
+            // console.log(`Deleted image for review ${review.id}: ${publicId}`);
           } catch (cloudinaryError) {
             console.error(
               `Error deleting image for review ${review.id}:`,
@@ -249,7 +249,7 @@ class User extends BaseModel {
   static async checkTableStructure(tableName) {
     try {
       const [columns] = await this.query(`DESCRIBE ${tableName}`);
-      console.log(`Structure of ${tableName}:`, columns);
+      // console.log(`Structure of ${tableName}:`, columns);
       return columns;
     } catch (error) {
       console.error(`Error checking table structure for ${tableName}:`, error);
@@ -308,7 +308,7 @@ class User extends BaseModel {
       }
     }
 
-    console.log("User relations check results:", results);
+    // console.log("User relations check results:", results);
     return results;
   }
 }

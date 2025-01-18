@@ -102,7 +102,7 @@ class UserService {
           urlParts[urlParts.length - 1].split(".")[0]
         }`;
         await cloudinary.uploader.destroy(publicId);
-        console.log(`Deleted old image: ${publicId}`);
+        // console.log(`Deleted old image: ${publicId}`);
       } catch (deleteError) {
         console.error("Error deleting old image:", deleteError);
       }
@@ -135,8 +135,8 @@ class UserService {
       // Nếu không phải tự xóa tài khoản
       if (userToDelete.role == "ADMIN") {
         if (currentUser.id !== parseInt(id)) {
-          console.log("currentUser.id:", currentUser.id);
-          console.log("id:", id);
+          // console.log("currentUser.id:", currentUser.id);
+          // console.log("id:", id);
           throw new ApiError(403, "Không thể xóa tài khoản ADMIN khác");
         }
       }
@@ -152,7 +152,7 @@ class UserService {
 
       // Kiểm tra các quan hệ trước khi xóa
       const relations = await User.checkUserRelations(id);
-      console.log("User relations:", relations);
+      // console.log("User relations:", relations);
 
       // 1. Update created_by to null for all banners of user
       const userBanners = await Banner.findByCreatedBy(id);
@@ -171,7 +171,7 @@ class UserService {
             urlParts[urlParts.length - 1].split(".")[0]
           }`;
           await cloudinary.uploader.destroy(publicId);
-          console.log(`Deleted avatar: ${publicId}`);
+          // console.log(`Deleted avatar: ${publicId}`);
         } catch (deleteError) {
           console.error("Error deleting image on Cloudinary:", deleteError);
         }
@@ -240,7 +240,7 @@ class UserService {
           urlParts[urlParts.length - 1].split(".")[0]
         }`;
         await cloudinary.uploader.destroy(publicId);
-        console.log(`Deleted old image: ${publicId}`);
+        // console.log(`Deleted old image: ${publicId}`);
       } catch (deleteError) {
         console.error("Error deleting old image:", deleteError);
       }
