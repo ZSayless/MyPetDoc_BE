@@ -14,7 +14,7 @@ router.get("/", BannerController.getBanners);
 router.post("/", handleUploadBannerImages, BannerController.createBanner);
 router.put("/:id", handleUploadBannerImages, BannerController.updateBanner);
 router.patch("/:id/toggle-active", BannerController.toggleActive);
-router.delete("/:id/soft", BannerController.softDelete);
+router.patch("/:id/soft", BannerController.softDelete);
 router.delete("/:id/hard", BannerController.hardDelete);
 
 module.exports = router;
