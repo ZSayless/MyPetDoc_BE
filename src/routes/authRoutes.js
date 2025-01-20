@@ -7,8 +7,8 @@ const {
   validateLogin,
 } = require("../middleware/validateAuth");
 const { handleUploadAvatar } = require("../middleware/uploadMiddleware");
-const crypto = require("crypto");
 const router = express.Router();
+const User = require("../models/User");
 
 router.post(
   "/register",
@@ -29,95 +29,80 @@ router.get(
   "/google",
   passport.authenticate("google", {
     scope: ["profile", "email"],
-    session: false,
   })
 );
 
 router.get(
   "/google/callback",
   passport.authenticate("google", { session: false }),
-  (req, res, next) => {
-    passport.authenticate("google", { session: false }, (err, user, info) => {
-      if (err) {
-        console.error("Google auth error:", err);
-        return res.send(`
-          <script>
-            window.opener.postMessage({
-              status: "error",
-              message: "Authentication error: " + ${JSON.stringify(err.message)}
-            }, "${process.env.CLIENT_URL}");
-            window.close();
-          </script>
-        `);
-      }
+  async (req, res) => {
+    try {
+      const userData = req.user;
+      console.log("User data in callback:", userData);
 
-      if (!user) {
-        console.error("No user data:", info);
-        return res.send(`
-          <script>
-            window.opener.postMessage({
-              status: "error",
-              message: "Authentication failed: " + ${JSON.stringify(
-                info?.message || "No user data"
-              )}
-            }, "${process.env.CLIENT_URL}");
-            window.close();
-          </script>
-        `);
-      }
-
-      try {
-        const token = user.generateAuthToken();
-        const userData = {
-          id: user.id,
-          email: user.email,
-          full_name: user.full_name,
-          role: user.role,
-          avatar: user.avatar,
+      // Kiểm tra xem có phải user mới không
+      if (userData.isNewUser) {
+        const responseData = {
+          status: "pending_role",
+          message: "Vui lòng chọn loại tài khoản",
+          data: {
+            profile: userData.profile
+          }
         };
-
-        console.log("Auth successful:", { userData });
-
-        res.send(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Authentication</title>
-          </head>
-          <body>
-            <script>
-              if (window.opener) {
-                window.opener.postMessage({
-                  status: "success",
-                  message: "Login successful", 
-                  data: {
-                    user: ${JSON.stringify(userData)},
-                    token: "${token}"
-                  }
-                }, "${process.env.CLIENT_URL}");
-                window.close();
-              } else {
-                document.body.innerHTML = 'Authentication successful. You can close this window.';
-              }
-            </script>
-          </body>
-          </html>
-        `);
-      } catch (error) {
-        console.error("Token generation error:", error);
-        res.send(`
-          <script>
-            window.opener.postMessage({
-              status: "error",
-              message: "Token generation failed: " + ${JSON.stringify(
-                error.message
-              )}
-            }, "${process.env.CLIENT_URL}");
-            window.close();
-          </script>
-        `);
+        return res.redirect(
+          `${process.env.CLIENT_URL}/auth/callback?data=${encodeURIComponent(
+            JSON.stringify(responseData)
+          )}`
+        );
       }
-    })(req, res, next);
+
+      // Kiểm tra trạng thái tài khoản
+      if (userData.is_locked) {
+        const errorData = {
+          status: "error",
+          message: "Tài khoản đã bị khóa"
+        };
+        return res.redirect(
+          `${process.env.CLIENT_URL}/auth/callback?data=${encodeURIComponent(
+            JSON.stringify(errorData)
+          )}`
+        );
+      }
+
+      // User hợp lệ
+      const token = userData.generateAuthToken();
+      const successData = {
+        status: "success",
+        message: "Đăng nhập thành công",
+        data: {
+          user: {
+            id: userData.id,
+            email: userData.email,
+            full_name: userData.full_name,
+            role: userData.role,
+            avatar: userData.avatar || null
+          },
+          token
+        }
+      };
+
+      return res.redirect(
+        `${process.env.CLIENT_URL}/auth/callback?data=${encodeURIComponent(
+          JSON.stringify(successData)
+        )}`
+      );
+    } catch (error) {
+      console.error("Google callback error:", error);
+      const errorData = {
+        status: "error",
+        message: error.message || "Xác thực thất bại"
+      };
+      return res.redirect(
+        `${process.env.CLIENT_URL}/auth/callback?data=${encodeURIComponent(
+          JSON.stringify(errorData)
+        )}`
+      );
+    }
   }
 );
 

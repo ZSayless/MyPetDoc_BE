@@ -41,12 +41,6 @@ class Banner extends BaseModel {
 
       const banners = await this.query(sql);
       return banners.map((banner) => {
-        console.log("Banner data before conversion:", {
-          id: banner.id,
-          is_deleted: banner.is_deleted,
-          is_active: banner.is_active,
-        });
-
         return new Banner(banner);
       });
     } catch (error) {
@@ -92,15 +86,15 @@ class Banner extends BaseModel {
         this.query(countSql),
       ]);
 
-      console.log("Query results:", {
-        includeDeleted,
-        totalBanners: banners.length,
-        banners: banners.map((b) => ({
-          id: b.id,
-          is_deleted: b.is_deleted,
-          is_active: b.is_active,
-        })),
-      });
+      // console.log("Query results:", {
+      //   includeDeleted,
+      //   totalBanners: banners.length,
+      //   banners: banners.map((b) => ({
+      //     id: b.id,
+      //     is_deleted: b.is_deleted,
+      //     is_active: b.is_active,
+      //   })),
+      // });
 
       return {
         banners: banners.map((banner) => new Banner(banner)),

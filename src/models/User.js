@@ -18,6 +18,7 @@ class User extends BaseModel {
     return jwt.sign(
       {
         id: this.id,
+        email: this.email,
         role: this.role,
       },
       process.env.JWT_SECRET,

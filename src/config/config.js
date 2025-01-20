@@ -10,6 +10,7 @@ module.exports = {
     port: process.env.PORT || 3000,
     env: process.env.NODE_ENV || "production",
     domain: process.env.DOMAIN || "https://api.mypetdoc.vn",
+    clientUrl: process.env.CLIENT_URL || "http://localhost:3000"
   },
   db: {
     host: process.env.DB_HOST,

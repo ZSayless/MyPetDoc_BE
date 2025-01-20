@@ -13,6 +13,7 @@ const securityMiddleware = (app) => {
   const corsOptions = {
     origin: process.env.ALLOWED_ORIGINS?.split(",") || [
       "http://localhost:3000",
+      "http://localhost:3001",
       "https://mypetdoc.vn",
       "https://www.mypetdoc.vn",
     ],
