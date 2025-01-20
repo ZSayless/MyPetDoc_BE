@@ -27,20 +27,8 @@ app.use(sanitizer());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Thêm session middleware trước passport
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
-
 // Passport middleware
 app.use(passport.initialize());
-app.use(passport.session());
 
 // Request timeout
 app.use(timeout(30000));
