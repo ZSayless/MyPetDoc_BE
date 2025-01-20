@@ -52,7 +52,10 @@ class PetPostService {
 
       // Check if user has permission to delete
       if (!isAdmin && !(await PetPost.isOwnedByUser(id, userId))) {
-        throw new ApiError(403, "You do not have permission to delete this post");
+        throw new ApiError(
+          403,
+          "You do not have permission to delete this post"
+        );
       }
 
       // Delete images
@@ -345,7 +348,9 @@ class PetPostService {
       if (error.message === "Comment not found") {
         throw new ApiError(404, error.message);
       }
-      if (error.message === "You do not have permission to delete this comment") {
+      if (
+        error.message === "You do not have permission to delete this comment"
+      ) {
         throw new ApiError(403, error.message);
       }
       throw error;
@@ -362,7 +367,10 @@ class PetPostService {
 
       // Kiểm tra quyền cập nhật
       if (!isAdmin && post.author_id !== userId) {
-        throw new ApiError(403, "You do not have permission to update this post");
+        throw new ApiError(
+          403,
+          "You do not have permission to update this post"
+        );
       }
 
       // Validate status
@@ -395,7 +403,10 @@ class PetPostService {
           await this.deleteImage(data.featured_image.path);
         if (data.thumbnail_image)
           await this.deleteImage(data.thumbnail_image.path);
-        throw new ApiError(403, "You do not have permission to update this post");
+        throw new ApiError(
+          403,
+          "You do not have permission to update this post"
+        );
       }
 
       await this.validatePostData(data, true);
@@ -529,7 +540,10 @@ class PetPostService {
 
       // Check if user has permission to delete
       if (!isAdmin && !(await PetPost.isOwnedByUser(id, userId))) {
-        throw new ApiError(403, "You do not have permission to delete this post");
+        throw new ApiError(
+          403,
+          "You do not have permission to delete this post"
+        );
       }
 
       await PetPost.softDelete(id);
@@ -550,7 +564,10 @@ class PetPostService {
 
       // Check if user has permission to delete
       if (!isAdmin && !(await PetPost.isOwnedByUser(id, userId))) {
-        throw new ApiError(403, "You do not have permission to delete this post");
+        throw new ApiError(
+          403,
+          "You do not have permission to delete this post"
+        );
       }
 
       // Delete images before deleting post
@@ -647,9 +664,7 @@ class PetPostService {
       const updatedPost = await PetPost.getDetail(id);
       return {
         is_deleted: updatedPost.is_deleted,
-        message: updatedPost.is_deleted
-          ? "Post deleted"
-          : "Post restored",
+        message: updatedPost.is_deleted ? "Post deleted" : "Post restored",
       };
     } catch (error) {
       throw error;

@@ -26,7 +26,7 @@ router.use("/contact-info", contactInformationRoutes);
 router.use("/banners", bannerRoutes);
 router.use("/faqs", faqRoutes);
 router.use("/community", petGalleryRoutes);
-router.use("/posts", petPostRoutes);
+router.use("/blog-posts", petPostRoutes);
 router.use("/favorites", favoriteRoutes);
 router.use("/reports", reportReasonRoutes);
 
