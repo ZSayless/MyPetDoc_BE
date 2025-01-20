@@ -36,59 +36,88 @@ router.get(
 router.get(
   "/google/callback",
   passport.authenticate("google", { session: false }),
-  (req, res) => {
-    try {
-      const token = req.user.generateAuthToken();
-      const user = {
-        id: req.user.id,
-        email: req.user.email,
-        full_name: req.user.full_name,
-        role: req.user.role,
-        avatar: req.user.avatar,
-      };
-
-      // Kiểm tra window.opener tồn tại
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Authentication</title>
-        </head>
-        <body>
+  (req, res, next) => {
+    passport.authenticate("google", { session: false }, (err, user, info) => {
+      if (err) {
+        console.error("Google auth error:", err);
+        return res.send(`
           <script>
-            if (window.opener) {
-              window.opener.postMessage({
-                status: "success",
-                message: "Login successful", 
-                data: {
-                  user: ${JSON.stringify(user)},
-                  token: "${token}"
-                }
-              }, "${process.env.CLIENT_URL}");
-              window.close();
-            } else {
-              // Fallback nếu không có opener
-              document.body.innerHTML = 'Authentication successful. You can close this window.';
-            }
-          </script>
-        </body>
-        </html>
-      `);
-    } catch (error) {
-      res.status(500).send(`
-        <script>
-          if (window.opener) {
             window.opener.postMessage({
               status: "error",
-              message: "Authentication failed"
+              message: "Authentication error: " + ${JSON.stringify(err.message)}
             }, "${process.env.CLIENT_URL}");
             window.close();
-          } else {
-            document.body.innerHTML = 'Authentication failed.';
-          }
-        </script>
-      `);
-    }
+          </script>
+        `);
+      }
+
+      if (!user) {
+        console.error("No user data:", info);
+        return res.send(`
+          <script>
+            window.opener.postMessage({
+              status: "error",
+              message: "Authentication failed: " + ${JSON.stringify(
+                info?.message || "No user data"
+              )}
+            }, "${process.env.CLIENT_URL}");
+            window.close();
+          </script>
+        `);
+      }
+
+      try {
+        const token = user.generateAuthToken();
+        const userData = {
+          id: user.id,
+          email: user.email,
+          full_name: user.full_name,
+          role: user.role,
+          avatar: user.avatar,
+        };
+
+        console.log("Auth successful:", { userData });
+
+        res.send(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Authentication</title>
+          </head>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({
+                  status: "success",
+                  message: "Login successful", 
+                  data: {
+                    user: ${JSON.stringify(userData)},
+                    token: "${token}"
+                  }
+                }, "${process.env.CLIENT_URL}");
+                window.close();
+              } else {
+                document.body.innerHTML = 'Authentication successful. You can close this window.';
+              }
+            </script>
+          </body>
+          </html>
+        `);
+      } catch (error) {
+        console.error("Token generation error:", error);
+        res.send(`
+          <script>
+            window.opener.postMessage({
+              status: "error",
+              message: "Token generation failed: " + ${JSON.stringify(
+                error.message
+              )}
+            }, "${process.env.CLIENT_URL}");
+            window.close();
+          </script>
+        `);
+      }
+    })(req, res, next);
   }
 );
 
