@@ -283,6 +283,43 @@ class Hospital extends BaseModel {
     const [result] = await this.query(sql, [slug]);
     return result ? new Hospital(result) : null;
   }
+  // Thêm phương thức getHospitalBySlug
+  static async getHospitalBySlug(slug) {
+    try {
+      const sql = `
+        SELECT h.*, 
+               COUNT(DISTINCT r.id) as review_count,
+               AVG(r.rating) as average_rating,
+               GROUP_CONCAT(DISTINCT hi.image_url) as images
+        FROM ${this.tableName} h
+        LEFT JOIN reviews r ON h.id = r.hospital_id AND r.is_deleted = 0
+        LEFT JOIN hospital_images hi ON h.id = hi.hospital_id
+        WHERE h.slug = ? AND h.is_deleted = 0
+        GROUP BY h.id
+      `;
+
+      const [result] = await this.query(sql, [slug]);
+
+      if (!result) return null;
+
+      // Chuyển đổi string images thành array
+      if (result.images) {
+        result.images = result.images.split(",");
+      } else {
+        result.images = [];
+      }
+
+      // Làm tròn average_rating
+      if (result.average_rating) {
+        result.average_rating = parseFloat(result.average_rating.toFixed(1));
+      }
+
+      return new Hospital(result);
+    } catch (error) {
+      console.error("Get hospital by slug error:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = Hospital;

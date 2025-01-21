@@ -4,8 +4,7 @@ const jwt = require("jsonwebtoken");
 const ApiError = require("../exceptions/ApiError");
 
 const validateRegister = (req, res, next) => {
-
-  if(!req.body){
+  if (!req.body) {
     throw new ApiError(400, "No data provided");
   }
 
@@ -59,7 +58,10 @@ const validateAuth = (allowedRoles = []) => {
 
       // Kiểm tra role
       if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-        throw new ApiError(403, "You do not have permission to perform this action");
+        throw new ApiError(
+          403,
+          "You do not have permission to perform this action"
+        );
       }
 
       // Lưu thông tin user vào request

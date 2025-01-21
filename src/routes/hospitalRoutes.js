@@ -22,6 +22,7 @@ router.get(
 router.get("/:id", cacheMiddleware(3600), HospitalController.getHospitalById);
 router.get("/:hospitalId/images", HospitalController.getImages);
 router.get("/slug/:slug", HospitalController.getHospitalBySlug);
+router.get("/by-slug/:slug", HospitalController.getHospitalBySlug);
 
 // Routes require admin or hospital admin permission
 router.use(validateAuth(["ADMIN", "HOSPITAL_ADMIN"]));

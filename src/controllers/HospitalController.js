@@ -237,9 +237,16 @@ class HospitalController {
   }
 
   // Get hospital by slug
-  getHospitalBySlug = asyncHandler(async (req, res, next) => {
-    const hospital = await HospitalService.getHospitalBySlug(req.params.slug);
-    res.json(hospital);
+  getHospitalBySlug = asyncHandler(async (req, res) => {
+    const { slug } = req.params;
+
+    const hospital = await HospitalService.getHospitalBySlug(slug);
+
+    res.json({
+      status: "success",
+      message: "Get hospital information successful",
+      data: hospital,
+    });
   });
 }
 

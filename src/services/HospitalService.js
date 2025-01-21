@@ -4,6 +4,8 @@ const hospitalImageService = require("./HospitalImageService");
 const cloudinary = require("../config/cloudinary");
 const User = require("../models/User");
 const HospitalImage = require("../models/HospitalImage");
+const Review = require("../models/Review");
+const convertBitToBoolean = require("../utils/convertBitToBoolean");
 
 class HospitalService {
   async createHospital(hospitalData, userId, files = []) {
@@ -397,18 +399,41 @@ class HospitalService {
 
   async getHospitalBySlug(slug) {
     try {
-      const hospital = await Hospital.findBySlug(slug);
+      const hospital = await Hospital.getHospitalBySlug(slug);
+
       if (!hospital) {
-        throw new ApiError(404, "Hospital not found");
+        throw new ApiError(404, "Cannot find hospital");
       }
 
-      // Get hospital images
-      const images = await hospitalImageService.getHospitalImages(hospital.id);
+      // check if hospital is deleted
+      if (hospital.is_deleted) {
+        throw new ApiError(404, "Hospital is deleted");
+      }
+
+      // Check if hospital is active
+      if (!convertBitToBoolean(hospital.is_active)) {
+        throw new ApiError(403, "Hospital is not active");
+      }
+
+      // Get more review information
+      const reviews = await Review.findAll(
+        {
+          hospital_id: hospital.id,
+          is_deleted: 0,
+        },
+        {
+          limit: 5,
+          sortBy: "created_at",
+          sortOrder: "DESC",
+        }
+      );
+
       return {
         ...hospital,
-        images: images || [],
+        recent_reviews: reviews,
       };
     } catch (error) {
+      console.error("Get hospital by slug service error:", error);
       throw error;
     }
   }
