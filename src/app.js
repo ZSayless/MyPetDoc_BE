@@ -9,7 +9,6 @@ const securityMiddleware = require("./middleware/security");
 const timeout = require("./middleware/timeout");
 const { sanitizer } = require("./middleware/sanitizer");
 const logger = require("./utils/logger");
-const session = require('express-session');
 
 const app = express();
 

@@ -40,27 +40,48 @@ router.get(
       const userData = req.user;
       console.log("User data in callback:", userData);
 
-      // Kiểm tra xem có phải user mới không
-      if (userData.isNewUser) {
-        const responseData = {
-          status: "pending_role",
-          message: "Vui lòng chọn loại tài khoản",
-          data: {
-            profile: userData.profile
-          }
+      // Chuyển đổi Buffer thành Boolean
+      const isActive = Buffer.isBuffer(userData.is_active)
+        ? userData.is_active[0] === 1
+        : Boolean(userData.is_active);
+      const isLocked = Buffer.isBuffer(userData.is_locked)
+        ? userData.is_locked[0] === 1
+        : Boolean(userData.is_locked);
+      const isDeleted = Buffer.isBuffer(userData.is_deleted)
+        ? userData.is_deleted[0] === 1
+        : Boolean(userData.is_deleted);
+
+      // Kiểm tra trạng thái tài khoản
+      if (isLocked) {
+        const errorData = {
+          status: "error",
+          message: "Account is locked",
+          code: "ACCOUNT_LOCKED",
         };
         return res.redirect(
           `${process.env.CLIENT_URL}/auth/callback?data=${encodeURIComponent(
-            JSON.stringify(responseData)
+            JSON.stringify(errorData)
+          )}`
+        );
+      }
+      if (isDeleted) {
+        const errorData = {
+          status: "error",
+          message: "Account is deleted",
+          code: "ACCOUNT_DELETED",
+        };
+        return res.redirect(
+          `${process.env.CLIENT_URL}/auth/callback?data=${encodeURIComponent(
+            JSON.stringify(errorData)
           )}`
         );
       }
 
-      // Kiểm tra trạng thái tài khoản
-      if (userData.is_locked) {
+      if (!isActive) {
         const errorData = {
           status: "error",
-          message: "Tài khoản đã bị khóa"
+          message: "Account is not active",
+          code: "ACCOUNT_INACTIVE",
         };
         return res.redirect(
           `${process.env.CLIENT_URL}/auth/callback?data=${encodeURIComponent(
@@ -73,17 +94,20 @@ router.get(
       const token = userData.generateAuthToken();
       const successData = {
         status: "success",
-        message: "Đăng nhập thành công",
+        message: "Login successful",
         data: {
           user: {
             id: userData.id,
             email: userData.email,
             full_name: userData.full_name,
             role: userData.role,
-            avatar: userData.avatar || null
+            avatar: userData.avatar || null,
+            is_locked: false,
+            is_deleted: false,
+            is_active: true,
           },
-          token
-        }
+          token,
+        },
       };
 
       return res.redirect(
@@ -95,7 +119,8 @@ router.get(
       console.error("Google callback error:", error);
       const errorData = {
         status: "error",
-        message: error.message || "Xác thực thất bại"
+        message: error.message || "Authentication failed",
+        code: "AUTH_ERROR",
       };
       return res.redirect(
         `${process.env.CLIENT_URL}/auth/callback?data=${encodeURIComponent(
