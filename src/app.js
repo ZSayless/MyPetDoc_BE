@@ -14,7 +14,6 @@ const app = express();
 
 // Basic middleware
 app.use(morgan("combined")); // Log requests
-app.use(cors());
 
 // Security middleware
 securityMiddleware(app);
