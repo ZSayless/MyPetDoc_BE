@@ -7,29 +7,22 @@ const express = require("express");
 
 const securityMiddleware = (app) => {
   // 1. Helmet - Protect HTTP headers
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+      crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    })
+  );
 
   // 2. CORS - Configure details
   const corsOptions = {
-    origin: process.env.ALLOWED_ORIGINS?.split(",") || [
+    origin: [
+      "https://mypetdoc.vn",
       "http://localhost:3000",
       "http://localhost:3001",
-      "https://mypetdoc.vn",
-      "https://www.mypetdoc.vn",
-      "https://api.mypetdoc.vn",
-      "https://api.mypetdoc.vn:8088",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Origin",
-      "X-Requested-With",
-      "Accept",
-      "X-Access-Token",
-      "X-Refresh-Token",
-    ],
-    exposedHeaders: ["Content-Range", "X-Content-Range"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     credentials: true,
     maxAge: 86400,
   };
