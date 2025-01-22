@@ -79,7 +79,6 @@ class AuthController {
         }
         throw error;
       }
-
     } catch (error) {
       // If there is an error and a file is uploaded, delete the file on Cloudinary
       if (req.uploadedFile) {
@@ -316,65 +315,90 @@ class AuthController {
 
   // Add new method to complete Google signup
   async completeGoogleSignup(req, res) {
-    const { email, full_name, google_id, avatar, role } = req.body;
+    try {
+      const { email, full_name, google_id, avatar, role } = req.body;
 
-    if (!["GENERAL_USER", "HOSPITAL_ADMIN"].includes(role)) {
-      throw new ApiError(400, "Invalid role");
+      console.log("Received signup data:", {
+        email,
+        full_name,
+        google_id,
+        avatar,
+        role,
+      });
+
+      // Validate required fields
+      if (!email || !full_name || !role) {
+        throw new ApiError(
+          400,
+          "Missing required fields: email, full_name, role"
+        );
+      }
+
+      if (!["GENERAL_USER", "HOSPITAL_ADMIN"].includes(role)) {
+        throw new ApiError(400, "Invalid role");
+      }
+
+      // Check if email already exists
+      const existingUser = await User.findByEmail(email);
+      if (existingUser) {
+        throw new ApiError(400, "Email already used");
+      }
+
+      const randomPassword = Math.random().toString(36).slice(-8);
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      // Create new user
+      const userData = {
+        email,
+        full_name,
+        google_id: google_id || null,
+        avatar: avatar || null,
+        role,
+        is_active: true,
+        is_locked: false,
+        password: hashedPassword,
+        verification_token: null,
+        verification_expires: null,
+        reset_password_token: null,
+        reset_password_expires: null,
+        hospital_id: null,
+      };
+
+      console.log("Creating user with data:", userData);
+
+      let user = await User.create(userData);
+
+      if (!user) {
+        throw new ApiError(500, "Error creating account");
+      }
+
+      // Get full user data
+      user = await User.findById(user.id);
+      const token = user.generateAuthToken();
+
+      // Remove sensitive information
+      const userResponse = {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+        avatar: user.avatar,
+        is_active: user.is_active,
+        created_at: user.created_at,
+      };
+
+      res.json({
+        status: "success",
+        message: "Register successful",
+        data: {
+          user: userResponse,
+          token,
+        },
+      });
+    } catch (error) {
+      console.error("Complete Google signup error:", error);
+      throw error;
     }
-
-    // Check if email already exists
-    if (await User.isEmailTaken(email)) {
-      throw new ApiError(400, "Email already used");
-    }
-
-    const randomPassword = Math.random().toString(36).slice(-8);
-    const hashedPassword = await bcrypt.hash(randomPassword, 10);
-
-    // Create new user with default values for required fields
-    let user = await User.create({
-      email,
-      full_name,
-      google_id: google_id || null, // Allow null if not provided
-      avatar: avatar || null, // Allow null if not provided
-      role,
-      is_active: true,
-      is_locked: false,
-      password: hashedPassword,
-      verification_token: null, // Add required fields
-      verification_expires: null,
-      reset_password_token: null,
-      reset_password_expires: null,
-      hospital_id: null, // If HOSPITAL_ADMIN, can update later
-    });
-
-    // Get full user information after creation
-    user = await User.findById(user.id);
-
-    if (!user) {
-      throw new ApiError(500, "Error creating account");
-    }
-
-    const token = user.generateAuthToken();
-
-    // Remove sensitive information
-    const userResponse = {
-      id: user.id,
-      email: user.email,
-      full_name: user.full_name,
-      role: user.role,
-      avatar: user.avatar,
-      is_active: user.is_active,
-      created_at: user.created_at,
-    };
-
-    res.json({
-      status: "success",
-      message: "Register successful",
-      data: {
-        user: userResponse,
-        token,
-      },
-    });
   }
 }
 

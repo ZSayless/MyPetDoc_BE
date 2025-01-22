@@ -40,7 +40,29 @@ router.get(
       const userData = req.user;
       console.log("User data in callback:", userData);
 
-      // Chuyển đổi Buffer thành Boolean
+      // Nếu là user mới
+      if (userData.isNewUser) {
+        const profileData = {
+          status: "pending_role",
+          data: {
+            profile: {
+              email: userData.email,
+              full_name: userData.full_name,
+              google_id: userData.google_id,
+              avatar: userData.avatar,
+            },
+          },
+        };
+
+        console.log("Redirecting new user with profile:", profileData);
+        return res.redirect(
+          `${process.env.CLIENT_URL}/auth/callback?data=${encodeURIComponent(
+            JSON.stringify(profileData)
+          )}`
+        );
+      }
+
+      // Kiểm tra trạng thái tài khoản cho user đã tồn tại
       const isActive = Buffer.isBuffer(userData.is_active)
         ? userData.is_active[0] === 1
         : Boolean(userData.is_active);
@@ -51,37 +73,19 @@ router.get(
         ? userData.is_deleted[0] === 1
         : Boolean(userData.is_deleted);
 
-      // Kiểm tra trạng thái tài khoản
-      if (isLocked) {
+      if (isLocked || isDeleted || !isActive) {
         const errorData = {
           status: "error",
-          message: "Account is locked",
-          code: "ACCOUNT_LOCKED",
-        };
-        return res.redirect(
-          `${process.env.CLIENT_URL}/auth/callback?data=${encodeURIComponent(
-            JSON.stringify(errorData)
-          )}`
-        );
-      }
-      if (isDeleted) {
-        const errorData = {
-          status: "error",
-          message: "Account is deleted",
-          code: "ACCOUNT_DELETED",
-        };
-        return res.redirect(
-          `${process.env.CLIENT_URL}/auth/callback?data=${encodeURIComponent(
-            JSON.stringify(errorData)
-          )}`
-        );
-      }
-
-      if (!isActive) {
-        const errorData = {
-          status: "error",
-          message: "Account is not active",
-          code: "ACCOUNT_INACTIVE",
+          message: isLocked
+            ? "Account is locked"
+            : isDeleted
+            ? "Account is deleted"
+            : "Account is not active",
+          code: isLocked
+            ? "ACCOUNT_LOCKED"
+            : isDeleted
+            ? "ACCOUNT_DELETED"
+            : "ACCOUNT_INACTIVE",
         };
         return res.redirect(
           `${process.env.CLIENT_URL}/auth/callback?data=${encodeURIComponent(
@@ -102,9 +106,9 @@ router.get(
             full_name: userData.full_name,
             role: userData.role,
             avatar: userData.avatar || null,
+            is_active: true,
             is_locked: false,
             is_deleted: false,
-            is_active: true,
           },
           token,
         },

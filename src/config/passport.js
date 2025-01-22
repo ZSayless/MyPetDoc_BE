@@ -45,26 +45,24 @@ passport.use(
           user = await User.findOne({ email: profile.emails[0].value });
 
           if (user) {
-            // Nếu email đã tồn tại (đăng ký thông thường)
+            // Nếu email đã tồn tại
             console.log("Found existing user:", user);
-
-            // Liên kết tài khoản hiện tại với Google
             user = await User.update(user.id, {
               google_id: profile.id,
               avatar: profile.photos[0]?.value || user.avatar,
             });
             return done(null, user);
           } else {
-            // Đây là user mới hoàn toàn
-            return done(null, {
+            // User mới hoàn toàn
+            const newUserData = {
               isNewUser: true,
-              profile: {
-                email: profile.emails[0].value,
-                full_name: profile.displayName,
-                google_id: profile.id,
-                avatar: profile.photos[0]?.value,
-              },
-            });
+              email: profile.emails[0].value,
+              full_name: profile.displayName,
+              google_id: profile.id,
+              avatar: profile.photos[0]?.value,
+            };
+            console.log("New user data:", newUserData);
+            return done(null, newUserData);
           }
         }
 
