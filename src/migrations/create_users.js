@@ -9,6 +9,7 @@ module.exports = async (connection) => {
         version BIGINT DEFAULT 1,
         email VARCHAR(100) UNIQUE NOT NULL,
         full_name VARCHAR(100) NOT NULL,
+        phone_number VARCHAR(20) NOT NULL,
         password VARCHAR(255) NOT NULL,
         google_id VARCHAR(255) NULL,
         avatar VARCHAR(255) NULL,
@@ -20,6 +21,10 @@ module.exports = async (connection) => {
         reset_password_token VARCHAR(255),
         reset_password_expires DATETIME,
         hospital_id BIGINT NULL,
+        pet_type ENUM('DOG', 'CAT', 'BIRD', 'RABBIT', 'FISH', 'HAMSTER', 'REPTILE', 'OTHER') NULL,
+        pet_age INT NULL,
+        pet_photo VARCHAR(255) NULL,
+        pet_notes TEXT NULL,
         FOREIGN KEY (hospital_id) REFERENCES hospitals(id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
