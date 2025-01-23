@@ -7,72 +7,72 @@ const validateHospitalOwnership = async (req, res, next) => {
     const hospitalId = req.params.id;
     const userId = req.user.id;
 
-    // Bỏ qua kiểm tra nếu là ADMIN
+    // Skip check if it's ADMIN
     if (req.user.role === "ADMIN") {
       const hospital = await Hospital.findById(hospitalId);
       if (!hospital) {
-        // Xóa ảnh đã upload nếu có
+        // Delete uploaded images if any
         if (req.files && req.files.length > 0) {
           for (const file of req.files) {
             try {
               const publicId = file.filename.split("/").pop().split(".")[0];
               await cloudinary.uploader.destroy(`hospitals/${publicId}`);
             } catch (error) {
-              console.error("Lỗi khi xóa ảnh:", error);
+              console.error("Error deleting image:", error);
             }
           }
         }
-        throw new ApiError(404, "Không tìm thấy bệnh viện");
+        throw new ApiError(404, "Hospital not found");
       }
       req.hospital = hospital;
       return next();
     }
 
-    // Kiểm tra quyền sở hữu
+    // Check ownership
     const hospital = await Hospital.findById(hospitalId);
 
     if (!hospital) {
-      // Xóa ảnh đã upload nếu có
+      // Delete uploaded images if any
       if (req.files && req.files.length > 0) {
         for (const file of req.files) {
           try {
             const publicId = file.filename.split("/").pop().split(".")[0];
             await cloudinary.uploader.destroy(`hospitals/${publicId}`);
           } catch (error) {
-            console.error("Lỗi khi xóa ảnh:", error);
+            console.error("Error deleting image:", error);
           }
         }
       }
-      throw new ApiError(404, "Không tìm thấy bệnh viện");
+      throw new ApiError(404, "Hospital not found");
     }
 
     if (hospital.created_by !== userId) {
-      // Xóa ảnh đã upload nếu không có quyền
+      // Delete uploaded images if no permission
       if (req.files && req.files.length > 0) {
         for (const file of req.files) {
           try {
             const publicId = file.filename.split("/").pop().split(".")[0];
             await cloudinary.uploader.destroy(`hospitals/${publicId}`);
           } catch (error) {
-            console.error("Lỗi khi xóa ảnh:", error);
+            console.error("Error deleting image:", error);
           }
         }
       }
-      throw new ApiError(403, "Bạn không có quyền cập nhật bệnh viện này");
+      throw new ApiError(403, "You don't have permission to update this hospital");
     }
 
-    // Lưu hospital vào request để sử dụng sau
+    // Save hospital to request for later use
     req.hospital = hospital;
     next();
   } catch (error) {
-    // Đảm bảo xóa ảnh trong mọi trường hợp lỗi
+    // Ensure images are deleted in all cases
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         try {
           const publicId = file.filename.split("/").pop().split(".")[0];
           await cloudinary.uploader.destroy(`hospitals/${publicId}`);
         } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh:", deleteError);
+          console.error("Error deleting image:", deleteError);
         }
       }
     }
@@ -85,7 +85,7 @@ const validateHospital = async (req, res, next) => {
     const hospitalId = req.params.id;
     const hospital = await Hospital.findById(hospitalId);
     if (!hospital) {
-      throw new ApiError(404, "Không tìm thấy bệnh viện");
+      throw new ApiError(404, "Hospital not found");
     }
     next();
   } catch (error) {

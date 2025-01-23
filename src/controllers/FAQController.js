@@ -49,34 +49,46 @@ class FAQController {
 
   // Update FAQ
   updateFAQ = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const faq = await FAQService.updateFAQ(parseInt(id), req.body);
-    res.json({
-      status: "success",
-      message: "Update FAQ successful",
-      data: faq,
-    });
+    try {
+      const { id } = req.params;
+      const faq = await FAQService.updateFAQ(parseInt(id), req.body);
+      res.json({
+        status: "success",
+        message: "Update FAQ successful",
+        data: faq,
+      });
+    } catch (error) {
+      throw new ApiError(500, "Internal server error");
+    }
   });
 
   // Soft delete/restore FAQ
   toggleSoftDelete = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const faq = await FAQService.toggleSoftDelete(parseInt(id));
-    res.json({
-      status: "success",
-      message: `FAQ has been ${faq.is_deleted ? "deleted" : "restored"}`,
-      data: faq,
-    });
+    try {
+      const { id } = req.params;
+      const faq = await FAQService.toggleSoftDelete(parseInt(id));
+      res.json({
+        status: "success",
+        message: `FAQ has been ${faq.is_deleted ? "deleted" : "restored"}`,
+        data: faq,
+      });
+    } catch (error) {
+      throw new ApiError(500, "Internal server error");
+    }
   });
 
   // Hard delete FAQ
   hardDelete = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    await FAQService.hardDelete(parseInt(id));
-    res.json({
-      status: "success",
-      message: "Permanently delete FAQ successful",
-    });
+    try {
+      const { id } = req.params;
+      await FAQService.hardDelete(parseInt(id));
+      res.json({
+        status: "success",
+        message: "Permanently delete FAQ successful",
+      });
+    } catch (error) {
+      throw new ApiError(500, "Internal server error");
+    }
   });
 }
 

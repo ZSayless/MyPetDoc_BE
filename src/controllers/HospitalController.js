@@ -42,7 +42,7 @@ class HospitalController {
 
       res.status(201).json({
         status: "success",
-        message: "Tạo bệnh viện thành công",
+        message: "Create hospital successful",
         data: result,
       });
     } catch (error) {
@@ -54,7 +54,7 @@ class HospitalController {
             try {
               fs.unlinkSync(file.path);
             } catch (unlinkError) {
-              console.error(`Lỗi khi xóa file ${file.path}:`, unlinkError);
+              console.error(`Error deleting file ${file.path}:`, unlinkError);
             }
           }
         });
@@ -78,7 +78,7 @@ class HospitalController {
           console.error("Error parsing imageIdsToDelete:", error);
           throw new ApiError(
             400,
-            "Định dạng danh sách ảnh cần xóa không hợp lệ"
+            "Invalid format of imageIdsToDelete"
           );
         }
       }
@@ -97,17 +97,17 @@ class HospitalController {
 
       res.json({
         status: "success",
-        message: "Cập nhật bệnh viện thành công",
+        message: "Update hospital successful",
         data: updatedHospital,
       });
     } catch (error) {
-      // Nếu có lỗi và đã upload files, xóa files
+      // If there is an error and files have been uploaded, delete files
       if (req.files) {
         for (const file of req.files) {
           try {
             await cloudinary.uploader.destroy(file.filename);
           } catch (deleteError) {
-            console.error("Lỗi khi xóa ảnh:", deleteError);
+            console.error("Error deleting image:", deleteError);
           }
         }
       }

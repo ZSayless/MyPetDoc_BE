@@ -9,28 +9,57 @@ class AuthController {
   // Register account
   register = async (req, res) => {
     try {
-      const { email, password, full_name, role = "GENERAL_USER" } = req.body;
+      const {
+        email,
+        password,
+        full_name,
+        phone_number,
+        role = "GENERAL_USER",
+        pet_type,
+        pet_age,
+        pet_notes,
+      } = req.body;
 
       // Validate data
-      await this.validateUserData({ email, password, full_name });
+      await this.validateUserData({ email, password, full_name, phone_number });
 
       // Check if email already exists
       if (await User.isEmailTaken(email)) {
-        // Nếu có ảnh đã upload, xóa ảnh
-        if (req.uploadedFile) {
+        // Xóa ảnh đã upload nếu có lỗi
+        if (req.uploadedFiles) {
           try {
-            await cloudinary.uploader.destroy(req.uploadedFile.publicId);
+            if (req.uploadedFiles.avatar) {
+              await cloudinary.uploader.destroy(
+                req.uploadedFiles.avatar.publicId
+              );
+            }
+            if (req.uploadedFiles.pet_photo) {
+              await cloudinary.uploader.destroy(
+                req.uploadedFiles.pet_photo.publicId
+              );
+            }
           } catch (error) {
-            console.error("Error deleting image:", error);
+            console.error("Error deleting images:", error);
           }
         }
         throw new ApiError(400, "Email already used");
       }
 
-      // Handle avatar
+      // Process avatar and pet_photo from req.uploadedFiles
+      console.log("Uploaded files:", req.uploadedFiles); // Debug log
+
       let userAvatar = "default-avatar.png";
-      if (req.uploadedFile) {
-        userAvatar = req.uploadedFile.path;
+      let petPhoto = null;
+
+      if (req.uploadedFiles) {
+        if (req.uploadedFiles.avatar) {
+          userAvatar = req.uploadedFiles.avatar.path;
+          console.log("Setting avatar path:", userAvatar); // Debug log
+        }
+        if (req.uploadedFiles.pet_photo) {
+          petPhoto = req.uploadedFiles.pet_photo.path;
+          console.log("Setting pet photo path:", petPhoto); // Debug log
+        }
       }
 
       // Hash password
@@ -42,50 +71,79 @@ class AuthController {
       const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       try {
-        // Create new user
+        // Create new user with correct image paths
         const user = await User.create({
           email,
           password: hashedPassword,
           full_name,
+          phone_number,
           role,
           is_active: false,
           verification_token: verificationToken,
           verification_expires: verificationExpires,
           avatar: userAvatar,
+          pet_type: role === "GENERAL_USER" ? pet_type : null,
+          pet_age: role === "GENERAL_USER" ? pet_age : null,
+          pet_photo: role === "GENERAL_USER" ? petPhoto : null,
+          pet_notes: role === "GENERAL_USER" ? pet_notes : null,
         });
 
         // Send verification email
         await emailService.sendVerificationEmail(email, verificationToken);
 
+        // Get full user data after creation
+        const createdUser = await User.findById(user.id);
+
         // Remove sensitive information
-        delete user.password;
-        delete user.verification_token;
-        delete user.verification_expires;
+        const userResponse = {
+          ...createdUser,
+          password: undefined,
+          verification_token: undefined,
+          verification_expires: undefined,
+        };
 
         res.status(201).json({
           status: "success",
           message:
             "Register successfully. Please check your email to verify your account.",
-          data: user,
+          data: userResponse,
         });
       } catch (error) {
-        // If creating user fails, delete uploaded image
-        if (req.uploadedFile) {
+        // If creating user fails, delete uploaded images
+        if (req.uploadedFiles) {
           try {
-            await cloudinary.uploader.destroy(req.uploadedFile.publicId);
+            if (req.uploadedFiles.avatar) {
+              await cloudinary.uploader.destroy(
+                req.uploadedFiles.avatar.publicId
+              );
+            }
+            if (req.uploadedFiles.pet_photo) {
+              await cloudinary.uploader.destroy(
+                req.uploadedFiles.pet_photo.publicId
+              );
+            }
           } catch (deleteError) {
-            console.error("Error deleting image:", deleteError);
+            console.error("Error deleting images:", deleteError);
           }
         }
         throw error;
       }
     } catch (error) {
-      // If there is an error and a file is uploaded, delete the file on Cloudinary
-      if (req.uploadedFile) {
+      // If there is an error and files were uploaded, delete them
+      if (req.uploadedFiles) {
         try {
-          await cloudinary.uploader.destroy(req.uploadedFile.publicId);
+          if (req.uploadedFiles.avatar) {
+            await cloudinary.uploader.destroy(
+              req.uploadedFiles.avatar.publicId
+            );
+          }
+          if (req.uploadedFiles.pet_photo) {
+            await cloudinary.uploader.destroy(
+              req.uploadedFiles.pet_photo.publicId
+            );
+          }
         } catch (deleteError) {
-          console.error("Error deleting image:", deleteError);
+          console.error("Error deleting images:", deleteError);
         }
       }
       throw error;
@@ -116,6 +174,13 @@ class AuthController {
     // Validate full name
     if (!data.full_name || data.full_name.trim().length < 2) {
       errors.push("Full name must be at least 2 characters");
+    }
+
+    // Validate phone number
+    if (!data.phone_number) {
+      errors.push("Phone number is required");
+    } else if (!/^[0-9]{10}$/.test(data.phone_number)) {
+      errors.push("Invalid phone number");
     }
 
     if (errors.length > 0) {
@@ -316,21 +381,68 @@ class AuthController {
   // Add new method to complete Google signup
   async completeGoogleSignup(req, res) {
     try {
-      const { email, full_name, google_id, avatar, role } = req.body;
+      console.log("Request body:", req.body);
+      console.log("Uploaded files:", req.uploadedFiles);
 
-      console.log("Received signup data:", {
+      const {
         email,
         full_name,
+        phone_number,
         google_id,
-        avatar,
         role,
-      });
+        pet_type,
+        pet_age,
+        pet_notes,
+        avatar: avatarUrl,
+      } = req.body;
 
       // Validate required fields
-      if (!email || !full_name || !role) {
+      if (!email || !full_name || !phone_number || !role) {
+        // Xóa ảnh đã upload nếu có lỗi
+        if (req.uploadedFiles) {
+          try {
+            if (req.uploadedFiles.avatar) {
+              await cloudinary.uploader.destroy(
+                req.uploadedFiles.avatar.publicId
+              );
+            }
+            if (req.uploadedFiles.pet_photo) {
+              await cloudinary.uploader.destroy(
+                req.uploadedFiles.pet_photo.publicId
+              );
+            }
+          } catch (error) {
+            console.error("Error deleting images:", error);
+          }
+        }
         throw new ApiError(
           400,
-          "Missing required fields: email, full_name, role"
+          "Missing required fields: email, full_name, phone_number, role"
+        );
+      }
+
+      // Validate role-specific fields
+      if (role === "GENERAL_USER" && (!pet_type || !pet_age || !pet_notes)) {
+        // Xóa ảnh đã upload nếu có lỗi
+        if (req.uploadedFiles) {
+          try {
+            if (req.uploadedFiles.avatar) {
+              await cloudinary.uploader.destroy(
+                req.uploadedFiles.avatar.publicId
+              );
+            }
+            if (req.uploadedFiles.pet_photo) {
+              await cloudinary.uploader.destroy(
+                req.uploadedFiles.pet_photo.publicId
+              );
+            }
+          } catch (error) {
+            console.error("Error deleting images:", error);
+          }
+        }
+        throw new ApiError(
+          400,
+          "For GENERAL_USER role, pet_type, pet_age, and pet_notes are required"
         );
       }
 
@@ -344,6 +456,11 @@ class AuthController {
         throw new ApiError(400, "Email already used");
       }
 
+      // Get avatar and pet photo paths from uploaded files
+      let avatarPath = req.uploadedFiles?.avatar?.path || null;
+      let petPhotoPath = req.uploadedFiles?.pet_photo?.path || null;
+
+      // Create random password for Google signup
       const randomPassword = Math.random().toString(36).slice(-8);
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
@@ -351,8 +468,9 @@ class AuthController {
       const userData = {
         email,
         full_name,
+        phone_number,
         google_id: google_id || null,
-        avatar: avatar || null,
+        avatar: avatarPath,
         role,
         is_active: true,
         is_locked: false,
@@ -362,6 +480,10 @@ class AuthController {
         reset_password_token: null,
         reset_password_expires: null,
         hospital_id: null,
+        pet_type: role === "GENERAL_USER" ? pet_type : null,
+        pet_age: role === "GENERAL_USER" ? pet_age : null,
+        pet_photo: role === "GENERAL_USER" ? petPhotoPath : null,
+        pet_notes: role === "GENERAL_USER" ? pet_notes : null,
       };
 
       console.log("Creating user with data:", userData);
@@ -385,6 +507,10 @@ class AuthController {
         avatar: user.avatar,
         is_active: user.is_active,
         created_at: user.created_at,
+        pet_type: user.pet_type,
+        pet_age: user.pet_age,
+        pet_photo: user.pet_photo,
+        pet_notes: user.pet_notes,
       };
 
       res.json({
@@ -396,6 +522,23 @@ class AuthController {
         },
       });
     } catch (error) {
+      // Delete uploaded images if there is an error
+      if (req.uploadedFiles) {
+        try {
+          if (req.uploadedFiles.avatar) {
+            await cloudinary.uploader.destroy(
+              req.uploadedFiles.avatar.publicId
+            );
+          }
+          if (req.uploadedFiles.pet_photo) {
+            await cloudinary.uploader.destroy(
+              req.uploadedFiles.pet_photo.publicId
+            );
+          }
+        } catch (deleteError) {
+          console.error("Error deleting images:", deleteError);
+        }
+      }
       console.error("Complete Google signup error:", error);
       throw error;
     }

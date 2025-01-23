@@ -40,7 +40,7 @@ class TermsConditionsController {
     let effectiveDate = date ? new Date(date) : new Date();
 
     if (isNaN(effectiveDate.getTime())) {
-      throw new ApiError(400, "Ngày không hợp lệ");
+      throw new ApiError(400, "Invalid date");
     }
 
     const terms = await TermsConditionsService.getEffectiveTerms(effectiveDate);
@@ -52,7 +52,7 @@ class TermsConditionsController {
     const { version1, version2 } = req.query;
 
     if (!version1 || !version2) {
-      throw new ApiError(400, "Vui lòng cung cấp đủ hai phiên bản để so sánh");
+      throw new ApiError(400, "Please provide both versions to compare");
     }
 
     const comparison = await TermsConditionsService.compareVersions(

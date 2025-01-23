@@ -280,10 +280,19 @@ const handleUploadReviewImages = (req, res, next) => {
 //     next();
 //   });
 // };
+const petPhotoStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "pets",
+    allowed_formats: ["jpg", "png", "jpeg", "gif"],
+    transformation: [{ width: 800, height: 600, crop: "fill" }],
+  },
+});
+
 const handleUploadAvatar = (req, res, next) => {
-  const upload = multer({
-    storage: avatarStorage,
-    limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  const uploadFields = multer({
+    storage: multer.diskStorage({}),
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
       const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
       if (!file) {
@@ -296,12 +305,15 @@ const handleUploadAvatar = (req, res, next) => {
         cb(new ApiError(400, "Only accept image files (jpg, png, gif)"));
       }
     },
-  }).single("avatar");
+  }).fields([
+    { name: "avatar", maxCount: 1 },
+    { name: "pet_photo", maxCount: 1 },
+  ]);
 
-  upload(req, res, async (err) => {
+  uploadFields(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === "LIMIT_FILE_SIZE") {
-        return next(new ApiError(400, "File size cannot exceed 2MB"));
+        return next(new ApiError(400, "File size cannot exceed 5MB"));
       }
       return next(new ApiError(400, `Upload error: ${err.message}`));
     }
@@ -310,20 +322,82 @@ const handleUploadAvatar = (req, res, next) => {
       return next(new ApiError(400, err.message));
     }
 
-    // Lưu thông tin file vào req để xử lý trong controller
-    if (req.file) {
-      req.uploadedFile = {
-        path: req.file.path,
-        filename: req.file.filename,
-        publicId: `avatars/${req.file.filename.split("/").pop().split(".")[0]}`,
-      };
-    }
+    try {
+      // Check if it's the register or create user route
+      if (req.path.includes("/register") || req.path.includes("/create")) {
+        // Check required fields for register/create user
+        if (req.body.pet_type && req.body.pet_age && req.body.pet_notes) {
+          req.body.role = "GENERAL_USER";
+        }
+        if (
+          !req.body.email ||
+          !req.body.full_name ||
+          !req.body.phone_number ||
+          !req.body.role
+        ) {
+          throw new ApiError(400, "Missing required fields");
+        }
+      }
+      // If it's update profile, no need to check required fields
 
-    next();
+      // Upload to Cloudinary and get URLs
+      if (req.files) {
+        req.uploadedFiles = {};
+
+        if (req.files.avatar && req.files.avatar[0]) {
+          const avatarResult = await cloudinary.uploader.upload(
+            req.files.avatar[0].path,
+            {
+              folder: "avatars",
+              transformation: [{ width: 400, height: 400, crop: "fill" }],
+            }
+          );
+          req.uploadedFiles.avatar = {
+            path: avatarResult.secure_url,
+            publicId: avatarResult.public_id,
+          };
+        }
+
+        if (req.files.pet_photo && req.files.pet_photo[0]) {
+          const petPhotoResult = await cloudinary.uploader.upload(
+            req.files.pet_photo[0].path,
+            {
+              folder: "pets",
+              transformation: [{ width: 800, height: 600, crop: "fill" }],
+            }
+          );
+          req.uploadedFiles.pet_photo = {
+            path: petPhotoResult.secure_url,
+            publicId: petPhotoResult.public_id,
+          };
+        }
+      }
+
+      next();
+    } catch (error) {
+      // Delete uploaded files if there's an error
+      if (req.uploadedFiles) {
+        try {
+          if (req.uploadedFiles.avatar) {
+            await cloudinary.uploader.destroy(
+              req.uploadedFiles.avatar.publicId
+            );
+          }
+          if (req.uploadedFiles.pet_photo) {
+            await cloudinary.uploader.destroy(
+              req.uploadedFiles.pet_photo.publicId
+            );
+          }
+        } catch (deleteError) {
+          console.error("Error deleting uploaded files:", deleteError);
+        }
+      }
+      return next(error);
+    }
   });
 };
 ////////////////////////////////////////////////////////////
-// Middleware xử lý upload hình ảnh pet post
+// Middleware for uploading pet post images
 const handleUploadPetPostImages = (req, res, next) => {
   const upload = multer({
     storage: petPostStorage,
@@ -355,7 +429,7 @@ const handleUploadPetPostImages = (req, res, next) => {
       return next(new ApiError(400, err.message));
     }
 
-    // Xử lý cleanup nếu có lỗi validate
+    // Handle cleanup if there's a validation error
     const cleanup = async () => {
       if (req.files) {
         for (const fieldname in req.files) {
@@ -373,7 +447,7 @@ const handleUploadPetPostImages = (req, res, next) => {
       }
     };
 
-    // Validate yêu cầu ảnh bắt buộc cho create post
+    // Validate required images for create post
     if (req.method === "POST") {
       if (
         !req.files ||
@@ -387,7 +461,7 @@ const handleUploadPetPostImages = (req, res, next) => {
       }
     }
 
-    // Chuyển đổi files thành dạng phù hợp cho service
+    // Convert files to the format suitable for the service
     if (req.files) {
       if (req.files.featured_image) {
         req.body.featured_image = req.files.featured_image[0];
@@ -401,7 +475,7 @@ const handleUploadPetPostImages = (req, res, next) => {
   });
 };
 
-// Middleware xử lý upload hình ảnh banner
+// Middleware for uploading banner images
 // const handleUploadBannerImages = (req, res, next) => {
 //   const upload = multer({
 //     storage: bannerStorage,
@@ -461,7 +535,7 @@ const handleUploadBannerImages = (req, res, next) => {
   });
 };
 ///////////////////////////////////////////////////////////////
-// Middleware xử lý upload hình ảnh bệnh viện
+// Middleware for uploading hospital images
 // const handleUploadHospitalImages = (req, res, next) => {
 //   console.log("Starting hospital image upload...");
 
@@ -519,9 +593,9 @@ const handleUploadHospitalImages = (req, res, next) => {
   });
 };
 ////////////////////////////////////////////////////////////
-// Thêm middleware xử lý upload hình ảnh pet gallery
+// Add middleware for uploading pet gallery images
 const handleUploadPetGalleryImages = (req, res, next) => {
-  // Kiểm tra nếu có nhiều file trong request
+  // Check if there are multiple files in the request
   if (req.files && Object.keys(req.files).length > 0) {
     return next(new ApiError(400, "Only upload 1 image"));
   }
@@ -530,7 +604,7 @@ const handleUploadPetGalleryImages = (req, res, next) => {
     storage: petGalleryStorage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
     fileFilter: (req, file, cb) => {
-      // Kiểm tra nếu đã có file được upload
+      // Check if there is a file uploaded
       if (req.file) {
         return cb(new ApiError(400, "Only upload 1 image"));
       }
