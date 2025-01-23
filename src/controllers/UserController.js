@@ -2,6 +2,7 @@ const UserService = require("../services/UserService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const bcrypt = require("bcrypt");
+const cloudinary = require("cloudinary");
 
 class UserController {
   getUsers = asyncHandler(async (req, res) => {
@@ -136,57 +137,91 @@ class UserController {
   });
 
   updateProfile = asyncHandler(async (req, res) => {
-    // Basic fields that any user can update
-    const baseFields = ["full_name", "phone_number"];
-    const updateData = {};
-
-    // Update basic fields
-    baseFields.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        updateData[field] = req.body[field];
+    try {
+      // check user try to update other user
+      if (req.body.id && parseInt(req.body.id) !== req.user.id) {
+        throw new ApiError(
+          403,
+          "You are not allowed to update other user's profile"
+        );
       }
-    });
 
-    // Handle avatar from uploadedFiles or URL
-    if (req.uploadedFiles?.avatar) {
-      updateData.avatar = req.uploadedFiles.avatar.path;
-    } else if (req.body.avatar && req.body.avatar.startsWith("https://")) {
-      updateData.avatar = req.body.avatar;
-    }
+      // Basic fields that any user can update
+      const baseFields = ["full_name", "phone_number"];
+      const updateData = {};
 
-    // Allow updating pet information regardless of role
-    const petFields = ["pet_type", "pet_age", "pet_notes"];
-    petFields.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        updateData[field] = req.body[field];
+      // Update basic fields
+      baseFields.forEach((field) => {
+        if (req.body[field] !== undefined) {
+          updateData[field] = req.body[field];
+        }
+      });
+
+      // Handle avatar from uploadedFiles or URL
+      if (req.uploadedFiles?.avatar) {
+        updateData.avatar = req.uploadedFiles.avatar.path;
+      } else if (req.body.avatar && req.body.avatar.startsWith("https://")) {
+        updateData.avatar = req.body.avatar;
       }
-    });
 
-    // Handle pet_photo from uploadedFiles or URL
-    if (req.uploadedFiles?.pet_photo) {
-      updateData.pet_photo = req.uploadedFiles.pet_photo.path;
-    } else if (
-      req.body.pet_photo &&
-      req.body.pet_photo.startsWith("https://")
-    ) {
-      updateData.pet_photo = req.body.pet_photo;
+      // Allow updating pet information regardless of role
+      const petFields = ["pet_type", "pet_age", "pet_notes"];
+      petFields.forEach((field) => {
+        if (req.body[field] !== undefined) {
+          updateData[field] = req.body[field];
+        }
+      });
+
+      // Handle pet_photo from uploadedFiles or URL
+      if (req.uploadedFiles?.pet_photo) {
+        updateData.pet_photo = req.uploadedFiles.pet_photo.path;
+      } else if (
+        req.body.pet_photo &&
+        req.body.pet_photo.startsWith("https://")
+      ) {
+        updateData.pet_photo = req.body.pet_photo;
+      }
+
+      // Check if there is data to update
+      if (Object.keys(updateData).length === 0) {
+        throw new ApiError(400, "No data to update");
+      }
+
+      const user = await UserService.updateProfile(req.user.id, updateData);
+      delete user.password;
+
+      res.json({
+        status: "success",
+        message: "Update profile successful",
+        data: user,
+      });
+    } catch (error) {
+      // Nếu có lỗi và có ảnh đã upload, xóa ảnh trên Cloudinary
+      if (req.uploadedFiles) {
+        try {
+          if (req.uploadedFiles.avatar) {
+            const urlParts = req.uploadedFiles.avatar.path.split("/");
+            const publicId = `avatars/${
+              urlParts[urlParts.length - 1].split(".")[0]
+            }`;
+            await cloudinary.uploader.destroy(publicId);
+            console.log("Deleted new avatar due to error:", publicId);
+          }
+
+          if (req.uploadedFiles.pet_photo) {
+            const urlParts = req.uploadedFiles.pet_photo.path.split("/");
+            const publicId = `pets/${
+              urlParts[urlParts.length - 1].split(".")[0]
+            }`;
+            await cloudinary.uploader.destroy(publicId);
+            console.log("Deleted new pet photo due to error:", publicId);
+          }
+        } catch (deleteError) {
+          console.error("Error deleting uploaded files:", deleteError);
+        }
+      }
+      throw error;
     }
-
-    // Check if there is data to update
-    if (Object.keys(updateData).length === 0) {
-      throw new ApiError(400, "No data to update");
-    }
-
-    const user = await UserService.updateProfile(req.user.id, updateData);
-
-    // Remove password field from response
-    delete user.password;
-
-    res.json({
-      status: "success",
-      message: "Update profile successful",
-      data: user,
-    });
   });
 }
 
