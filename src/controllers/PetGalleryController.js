@@ -2,8 +2,50 @@ const PetGalleryService = require("../services/PetGalleryService");
 const ApiError = require("../exceptions/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
 const cloudinary = require("cloudinary");
+const cache = require("../config/redis");
 
 class PetGalleryController {
+  // Method to clear cache
+  clearPostCache = async (postId = null) => {
+    try {
+      const keys = [
+        "cache:/api/pet-gallery/posts", // List of posts
+      ];
+
+      if (postId) {
+        keys.push(
+          `cache:/api/pet-gallery/posts/${postId}`, // Post details
+          `cache:/api/pet-gallery/posts/${postId}/comments` // Comments of post
+        );
+      }
+
+      // Clear cache
+      for (const key of keys) {
+        await cache.del(key);
+      }
+    } catch (error) {
+      console.error("Error clearing pet gallery cache:", error);
+    }
+  };
+
+  // Method to clear comment cache
+  clearCommentCache = async (postId, commentId = null) => {
+    try {
+      const keys = [`cache:/api/pet-gallery/posts/${postId}/comments`];
+
+      if (commentId) {
+        keys.push(`cache:/api/pet-gallery/comments/${commentId}/replies`);
+      }
+
+      // Clear cache
+      for (const key of keys) {
+        await cache.del(key);
+      }
+    } catch (error) {
+      console.error("Error clearing comment cache:", error);
+    }
+  };
+
   // Create new post
   createPost = asyncHandler(async (req, res) => {
     const userId = req.user.id;
@@ -20,6 +62,9 @@ class PetGalleryController {
     }
 
     const post = await PetGalleryService.createPost(req.body, userId, file);
+
+    // Clear cache after creating new post
+    await this.clearPostCache();
 
     res.status(201).json({
       success: true,
@@ -127,13 +172,16 @@ class PetGalleryController {
         file
       );
 
+      // Clear cache after updating post
+      await this.clearPostCache(postId);
+
       res.json({
         success: true,
         message: "Update post successful",
         data: post,
       });
     } catch (error) {
-      // Đảm bảo xóa ảnh trong mọi trường hợp lỗi
+      // Ensure to delete image in case of any error
       await deleteUploadedFiles(files || req.file);
       throw error;
     }
@@ -148,6 +196,9 @@ class PetGalleryController {
       const isAdmin = userRole === "ADMIN";
 
       await PetGalleryService.deletePost(postId, userId, isAdmin);
+
+      // Clear cache after deleting post
+      await this.clearPostCache(postId);
 
       res.json({
         success: true,
@@ -164,6 +215,9 @@ class PetGalleryController {
     const userId = req.user.id;
 
     const result = await PetGalleryService.toggleLike(postId, userId);
+
+    // Clear cache after like/unlike post
+    await this.clearPostCache(postId);
 
     res.json({
       success: true,
@@ -185,6 +239,9 @@ class PetGalleryController {
         content,
         parent_id,
       });
+
+      // Clear cache after adding new comment
+      await this.clearCommentCache(postId, parent_id);
 
       res.status(201).json({
         success: true,
@@ -253,7 +310,14 @@ class PetGalleryController {
         }
       }
 
-      await PetGalleryService.deleteComment(commentId, userId, isAdmin);
+      const comment = await PetGalleryService.deleteComment(
+        commentId,
+        userId,
+        isAdmin
+      );
+
+      // Clear cache after deleting comment
+      await this.clearCommentCache(comment.post_id, commentId);
 
       res.json({
         success: true,

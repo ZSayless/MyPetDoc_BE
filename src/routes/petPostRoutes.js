@@ -2,15 +2,24 @@ const express = require("express");
 const PetPostController = require("../controllers/PetPostController");
 const { validateAuth } = require("../middleware/validateAuth");
 const { handleUploadPetPostImages } = require("../middleware/uploadMiddleware");
+const cacheMiddleware = require("../middleware/cacheMiddleware");
 
 const router = express.Router();
 
 // Public routes (no need to login)
-router.get("/", PetPostController.getPosts);
-router.get("/:id", PetPostController.getPostDetail);
-router.get("/:id/comments", PetPostController.getComments);
-router.get("/:id/likes", PetPostController.getLikedUsers);
-router.get("/comments/:commentId/replies", PetPostController.getCommentReplies);
+router.get("/", cacheMiddleware(300), PetPostController.getPosts);
+router.get("/:id", cacheMiddleware(300), PetPostController.getPostDetail);
+router.get(
+  "/:id/comments",
+  cacheMiddleware(300),
+  PetPostController.getComments
+);
+router.get("/:id/likes", cacheMiddleware(300), PetPostController.getLikedUsers);
+router.get(
+  "/comments/:commentId/replies",
+  cacheMiddleware(300),
+  PetPostController.getCommentReplies
+);
 
 // Routes require login
 router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));

@@ -2,8 +2,52 @@ const ReviewService = require("../services/ReviewService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const HospitalService = require("../services/HospitalService");
+const cache = require("../config/redis");
 
 class ReviewController {
+  // Method to clear cache
+  clearReviewCache = async (hospitalId = null, reviewId = null) => {
+    try {
+      const keys = [
+        "cache:/api/reviews", // List of reviews
+      ];
+
+      if (hospitalId) {
+        keys.push(
+          `cache:/api/reviews/hospital/${hospitalId}`, // Reviews of hospital
+          `cache:/api/reviews/hospital/${hospitalId}/stats` // Stats of hospital
+        );
+      }
+
+      if (reviewId) {
+        keys.push(`cache:/api/reviews/${reviewId}`); // Details of review
+      }
+
+      // Clear cache
+      for (const key of keys) {
+        await cache.del(key);
+      }
+
+      // console.log(
+      //   "Cleared review cache",
+      //   hospitalId ? `for hospital ${hospitalId}` : "",
+      //   reviewId ? `and review ${reviewId}` : ""
+      // );
+    } catch (error) {
+      console.error("Error clearing review cache:", error);
+    }
+  };
+
+  // Method to clear user review cache
+  clearUserReviewCache = async (userId) => {
+    try {
+      await cache.del(`cache:/api/reviews/user/${userId}`);
+      console.log("Cleared user review cache for user:", userId);
+    } catch (error) {
+      console.error("Error clearing user review cache:", error);
+    }
+  };
+
   // Create new review
   createReview = asyncHandler(async (req, res) => {
     const file = req.file;
@@ -20,6 +64,11 @@ class ReviewController {
       req.user.id,
       file
     );
+
+    // Xóa cache sau khi tạo review mới
+    await this.clearReviewCache(req.body.hospital_id);
+    await this.clearUserReviewCache(req.user.id);
+
     res.status(201).json({
       status: "success",
       message: "Create review successful",
@@ -53,6 +102,10 @@ class ReviewController {
       req.body,
       req.user.id
     );
+
+    // Xóa cache sau khi report
+    await this.clearReviewCache(review.hospital_id, req.params.id);
+
     res.json({
       status: "success",
       message: "Report review successful",
@@ -70,23 +123,22 @@ class ReviewController {
   });
 
   // Toggle soft delete status of review
-  async toggleSoftDelete(req, res, next) {
-    try {
-      const { id } = req.params;
-      const review = await ReviewService.toggleSoftDelete(
-        id,
-        req.user.id,
-        req.user.role
-      );
+  toggleSoftDelete = asyncHandler(async (req, res) => {
+    const review = await ReviewService.toggleSoftDelete(
+      req.params.id,
+      req.user.id,
+      req.user.role
+    );
 
-      res.json({
-        status: "success",
-        data: review,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
+    // Clear cache after changing status
+    await this.clearReviewCache(review.hospital_id, req.params.id);
+    await this.clearUserReviewCache(review.user_id);
+
+    res.json({
+      status: "success",
+      data: review,
+    });
+  });
 
   // Update review
   updateReview = asyncHandler(async (req, res) => {
@@ -96,6 +148,11 @@ class ReviewController {
       req.user.id,
       req.file
     );
+
+    // Clear cache after updating
+    await this.clearReviewCache(review.hospital_id, req.params.id);
+    await this.clearUserReviewCache(req.user.id);
+
     res.json({
       status: "success",
       message: "Update review successful",
@@ -161,8 +218,16 @@ class ReviewController {
   });
 
   hardDeleteReview = asyncHandler(async (req, res) => {
-    const result = await ReviewService.hardDelete(req.params.id);
-    res.status(200).json(result);
+    const review = await ReviewService.hardDelete(req.params.id);
+
+    // Clear cache after hard delete
+    await this.clearReviewCache(review.hospital_id, req.params.id);
+    await this.clearUserReviewCache(review.user_id);
+
+    res.status(200).json({
+      status: "success",
+      message: "Review has been permanently deleted",
+    });
   });
 }
 

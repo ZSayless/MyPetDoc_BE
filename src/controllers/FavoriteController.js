@@ -1,8 +1,36 @@
 const FavoriteService = require("../services/FavoriteService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
+const cache = require("../config/redis");
 
 class FavoriteController {
+  // Method to clear cache
+  clearFavoriteCache = async (userId, hospitalId) => {
+    try {
+      const keys = [
+        `cache:/api/favorites/user/${userId}/hospitals`,
+        `cache:/api/favorites/user/${userId}/count`,
+        `cache:/api/favorites/hospital/${hospitalId}/users`,
+        `cache:/api/favorites/hospital/${hospitalId}/count`,
+        "cache:/api/favorites/latest",
+      ];
+
+      // Clear cache related to favorite
+      for (const key of keys) {
+        await cache.del(key);
+      }
+
+      // console.log(
+      //   "Cleared favorite cache for user:",
+      //   userId,
+      //   "hospital:",
+      //   hospitalId
+      // );
+    } catch (error) {
+      console.error("Error clearing favorite cache:", error);
+    }
+  };
+
   // Toggle favorite a hospital
   toggleFavorite = asyncHandler(async (req, res) => {
     try {
@@ -10,6 +38,9 @@ class FavoriteController {
       const userId = req.user.id;
 
       const result = await FavoriteService.toggleFavorite(userId, hospitalId);
+
+      // Clear cache after toggle favorite
+      await this.clearFavoriteCache(userId, hospitalId);
 
       res.json({
         status: "success",

@@ -3,6 +3,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const HospitalImageService = require("../services/HospitalImageService");
 const fs = require("fs");
+const cache = require("../config/redis");
 
 class HospitalController {
   // Get list of hospitals with filter and pagination
@@ -40,6 +41,9 @@ class HospitalController {
         req.files || [] // Pass files to service
       );
 
+      // Xóa cache sau khi tạo mới
+      await this.clearHospitalCache();
+
       res.status(201).json({
         status: "success",
         message: "Create hospital successful",
@@ -76,10 +80,7 @@ class HospitalController {
           imageIdsToDelete = JSON.parse(req.body.imageIdsToDelete);
         } catch (error) {
           console.error("Error parsing imageIdsToDelete:", error);
-          throw new ApiError(
-            400,
-            "Invalid format of imageIdsToDelete"
-          );
+          throw new ApiError(400, "Invalid format of imageIdsToDelete");
         }
       }
 
@@ -94,6 +95,12 @@ class HospitalController {
         imageIdsToDelete,
         req.user.id
       );
+
+      // Clear cache after updating
+      await this.clearHospitalCache();
+      // Clear cache of hospital details
+      await cache.del(`cache:/api/hospitals/${req.params.id}`);
+      await cache.del(`cache:/api/hospitals/slug/${updatedHospital.slug}`);
 
       res.json({
         status: "success",
@@ -118,12 +125,23 @@ class HospitalController {
   // Hard delete hospital
   hardDelete = asyncHandler(async (req, res, next) => {
     const result = await HospitalService.hardDelete(req.params.id);
+
+    // Clear cache after deleting
+    await this.clearHospitalCache();
+    await cache.del(`cache:/api/hospitals/${req.params.id}`);
+
     res.status(200).json(result);
   });
 
   // Toggle soft delete hospital
   toggleDelete = asyncHandler(async (req, res, next) => {
     const hospital = await HospitalService.toggleDelete(req.params.id);
+
+    // Clear cache after toggling delete
+    await this.clearHospitalCache();
+    await cache.del(`cache:/api/hospitals/${req.params.id}`);
+    await cache.del(`cache:/api/hospitals/slug/${hospital.slug}`);
+
     res.json(hospital);
   });
 
@@ -248,6 +266,22 @@ class HospitalController {
       data: hospital,
     });
   });
+
+  // Clear cache when data changes
+  clearHospitalCache = async () => {
+    try {
+      const keys = ["cache:/api/hospitals", "cache:/api/hospitals/search"];
+
+      // Clear cache for list and search
+      for (const key of keys) {
+        await cache.del(key);
+      }
+
+      console.log("Cleared hospital cache");
+    } catch (error) {
+      console.error("Error clearing hospital cache:", error);
+    }
+  };
 }
 
 module.exports = new HospitalController();

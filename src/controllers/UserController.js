@@ -3,8 +3,31 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const bcrypt = require("bcrypt");
 const cloudinary = require("cloudinary");
+const cache = require("../config/redis");
 
 class UserController {
+  // Method to clear cache
+  clearUserCache = async (userId = null) => {
+    try {
+      const keys = [
+        "cache:/api/users", // List of users
+      ];
+
+      if (userId) {
+        keys.push(`cache:/api/users/${userId}`); // Details of user
+      }
+
+      // Clear cache
+      for (const key of keys) {
+        await cache.del(key);
+      }
+
+      // console.log("Cleared user cache", userId ? `for user ${userId}` : "");
+    } catch (error) {
+      console.error("Error clearing user cache:", error);
+    }
+  };
+
   getUsers = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, ...filters } = req.query;
     const result = await UserService.getUsers(
@@ -26,12 +49,12 @@ class UserController {
       is_active: true,
     };
 
-    // Xử lý avatar từ uploadedFiles
+    // Handle avatar from uploadedFiles
     if (req.uploadedFiles?.avatar) {
       userData.avatar = req.uploadedFiles.avatar.path;
     }
 
-    // Xử lý pet_photo nếu role là GENERAL_USER hoặc có thông tin thú cưng
+    // Handle pet_photo if role is GENERAL_USER or has pet information
     if (
       (userData.role === "GENERAL_USER" || userData.pet_type) &&
       req.uploadedFiles?.pet_photo
@@ -41,6 +64,9 @@ class UserController {
 
     const user = await UserService.createUser(userData);
     delete user.password;
+
+    // Clear cache after creating new user
+    await this.clearUserCache();
 
     res.status(201).json({
       status: "success",
@@ -96,6 +122,9 @@ class UserController {
 
     const user = await UserService.updateUser(userId, updateData);
 
+    // Clear cache after updating
+    await this.clearUserCache(userId);
+
     res.json({
       status: "success",
       message: "Update user successful",
@@ -109,6 +138,9 @@ class UserController {
 
     await UserService.apsoluteDelete(userId, currentUser);
 
+    // Clear cache after hard delete
+    await this.clearUserCache(userId);
+
     res.json({
       status: "success",
       message: "Delete user successful",
@@ -117,6 +149,10 @@ class UserController {
 
   toggleDelete = asyncHandler(async (req, res) => {
     const user = await UserService.toggleDelete(req.params.id);
+
+    // Clear cache after changing status
+    await this.clearUserCache(req.params.id);
+
     res.status(200).json({
       status: "success",
       message: user.is_deleted
@@ -128,11 +164,19 @@ class UserController {
 
   toggleLock = asyncHandler(async (req, res) => {
     const user = await UserService.toggleUserStatus(req.params.id, "lock");
+
+    // Clear cache after changing status
+    await this.clearUserCache(req.params.id);
+
     res.json(user);
   });
 
   toggleActive = asyncHandler(async (req, res) => {
     const user = await UserService.toggleUserStatus(req.params.id, "activate");
+
+    // Clear cache after changing status
+    await this.clearUserCache(req.params.id);
+
     res.json(user);
   });
 
@@ -190,13 +234,16 @@ class UserController {
       const user = await UserService.updateProfile(req.user.id, updateData);
       delete user.password;
 
+      // Clear cache after updating profile
+      await this.clearUserCache(req.user.id);
+
       res.json({
         status: "success",
         message: "Update profile successful",
         data: user,
       });
     } catch (error) {
-      // Nếu có lỗi và có ảnh đã upload, xóa ảnh trên Cloudinary
+      // If there is an error and there is an uploaded image, delete the image on Cloudinary
       if (req.uploadedFiles) {
         try {
           if (req.uploadedFiles.avatar) {
