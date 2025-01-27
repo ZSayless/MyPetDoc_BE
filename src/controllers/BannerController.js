@@ -1,8 +1,25 @@
 const BannerService = require("../services/BannerService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
+const cache = require("../config/redis");
 
 class BannerController {
+  // Method to clear cache
+  clearBannerCache = async () => {
+    try {
+      const keys = ["cache:/api/banners", "cache:/api/banners/active"];
+
+      // Clear cache for list and active banner
+      for (const key of keys) {
+        await cache.del(key);
+      }
+
+      console.log("Cleared banner cache");
+    } catch (error) {
+      console.error("Error clearing banner cache:", error);
+    }
+  };
+
   // Get list of banners with pagination
   getBanners = asyncHandler(async (req, res) => {
     const {
@@ -56,6 +73,9 @@ class BannerController {
       req.file
     );
 
+    // Clear cache after creating new banner
+    await this.clearBannerCache();
+
     res.status(201).json({
       status: "success",
       message: "Create banner successful",
@@ -80,6 +100,10 @@ class BannerController {
       req.file || null
     );
 
+    // Clear cache after updating
+    await this.clearBannerCache();
+    await cache.del(`cache:/api/banners/${id}`);
+
     res.json({
       status: "success",
       message: "Update banner successful",
@@ -91,6 +115,10 @@ class BannerController {
   toggleActive = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const banner = await BannerService.toggleActive(parseInt(id));
+
+    // Clear cache after changing status
+    await this.clearBannerCache();
+    await cache.del(`cache:/api/banners/${id}`);
 
     res.json({
       status: "success",
@@ -106,6 +134,10 @@ class BannerController {
     const { id } = req.params;
     const banner = await BannerService.softDelete(parseInt(id));
 
+    // Clear cache after soft delete
+    await this.clearBannerCache();
+    await cache.del(`cache:/api/banners/${id}`);
+
     res.json({
       status: "success",
       message: `Banner has been ${banner.is_deleted ? "deleted" : "restored"}`,
@@ -117,6 +149,10 @@ class BannerController {
   hardDelete = asyncHandler(async (req, res) => {
     const { id } = req.params;
     await BannerService.hardDelete(parseInt(id));
+
+    // Clear cache after hard delete
+    await this.clearBannerCache();
+    await cache.del(`cache:/api/banners/${id}`);
 
     res.json({
       status: "success",

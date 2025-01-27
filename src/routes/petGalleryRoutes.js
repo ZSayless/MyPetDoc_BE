@@ -4,16 +4,25 @@ const { validateAuth } = require("../middleware/validateAuth");
 const {
   handleUploadPetGalleryImages,
 } = require("../middleware/uploadMiddleware");
-
+const cacheMiddleware = require("../middleware/cacheMiddleware");
 
 const router = express.Router();
 
 // Public routes (no need to login)
-router.get("/posts", PetGalleryController.getPosts);
-router.get("/posts/:slug", PetGalleryController.getPostDetail);
-router.get("/posts/:id/comments", PetGalleryController.getComments);
+router.get("/posts", cacheMiddleware(300), PetGalleryController.getPosts);
+router.get(
+  "/posts/:slug",
+  cacheMiddleware(300),
+  PetGalleryController.getPostDetail
+);
+router.get(
+  "/posts/:id/comments",
+  cacheMiddleware(300),
+  PetGalleryController.getComments
+);
 router.get(
   "/comments/:commentId/replies",
+  cacheMiddleware(300),
   PetGalleryController.getCommentReplies
 );
 

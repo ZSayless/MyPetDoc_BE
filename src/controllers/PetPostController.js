@@ -1,8 +1,55 @@
 const PetPostService = require("../services/PetPostService");
 const ApiError = require("../exceptions/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
+const cache = require("../config/redis");
 
 class PetPostController {
+  // Method to clear cache
+  clearPostCache = async (postId = null) => {
+    try {
+      const keys = [
+        "cache:/api/pet-posts", // List of posts
+      ];
+
+      if (postId) {
+        keys.push(
+          `cache:/api/pet-posts/${postId}`, // Post details
+          `cache:/api/pet-posts/${postId}/comments`, // Comments of post
+          `cache:/api/pet-posts/${postId}/likes` // Likes of post
+        );
+      }
+
+      // Clear cache
+      for (const key of keys) {
+        await cache.del(key);
+      }
+
+      console.log("Cleared pet post cache", postId ? `for post ${postId}` : "");
+    } catch (error) {
+      console.error("Error clearing pet post cache:", error);
+    }
+  };
+
+  // Method to clear comment cache
+  clearCommentCache = async (postId, commentId = null) => {
+    try {
+      const keys = [`cache:/api/pet-posts/${postId}/comments`];
+
+      if (commentId) {
+        keys.push(`cache:/api/pet-posts/comments/${commentId}/replies`);
+      }
+
+      // Clear cache
+      for (const key of keys) {
+        await cache.del(key);
+      }
+
+      // console.log("Cleared comment cache for post:", postId);
+    } catch (error) {
+      console.error("Error clearing comment cache:", error);
+    }
+  };
+
   // Create new post
   createPost = asyncHandler(async (req, res) => {
     const userId = req.user.id;
@@ -38,6 +85,9 @@ class PetPostController {
     };
 
     const post = await PetPostService.createPost(postData, userId);
+
+    // Clear cache after creating new post
+    await this.clearPostCache();
 
     res.status(201).json({
       success: true,
@@ -82,6 +132,9 @@ class PetPostController {
       files
     );
 
+    // Clear cache after updating post
+    await this.clearPostCache(postId);
+
     res.json({
       success: true,
       message: "Update post successful",
@@ -95,6 +148,9 @@ class PetPostController {
     const userId = req.user.id;
 
     const result = await PetPostService.toggleLike(postId, userId);
+
+    // Clear cache after like/unlike
+    await cache.del(`cache:/api/pet-posts/${postId}/likes`);
 
     res.json({
       success: true,
@@ -132,6 +188,9 @@ class PetPostController {
       content,
       parent_id,
     });
+
+    // Clear cache after adding new comment
+    await this.clearCommentCache(postId, parent_id);
 
     res.status(201).json({
       success: true,
@@ -180,7 +239,14 @@ class PetPostController {
     const userId = req.user.id;
     const isAdmin = req.user.role === "ADMIN";
 
-    await PetPostService.deleteComment(commentId, userId, isAdmin);
+    const comment = await PetPostService.deleteComment(
+      commentId,
+      userId,
+      isAdmin
+    );
+
+    // Clear cache after deleting comment
+    await this.clearCommentCache(comment.post_id, commentId);
 
     res.json({
       success: true,
@@ -201,6 +267,9 @@ class PetPostController {
       userId,
       isAdmin
     );
+
+    // Clear cache after updating status
+    await this.clearPostCache(postId);
 
     res.json({
       success: true,
@@ -232,6 +301,9 @@ class PetPostController {
 
     await PetPostService.softDeletePost(postId, userId, isAdmin);
 
+    // Clear cache after soft delete
+    await this.clearPostCache(postId);
+
     res.json({
       success: true,
       message: "Soft delete post successful",
@@ -245,6 +317,9 @@ class PetPostController {
     const isAdmin = req.user.role === "ADMIN";
 
     await PetPostService.hardDeletePost(postId, userId, isAdmin);
+
+    // Clear cache after hard delete
+    await this.clearPostCache(postId);
 
     res.json({
       success: true,

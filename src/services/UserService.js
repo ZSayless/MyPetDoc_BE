@@ -7,7 +7,7 @@ const Banner = require("../models/Banner");
 class UserService {
   async createUser(userData) {
     if (await User.isEmailTaken(userData.email)) {
-      // If there is a file uploaded, delete the file on Cloudinary
+      // Xóa cả avatar và pet_photo nếu có
       if (userData.avatar && !userData.avatar.includes("default-avatar")) {
         try {
           const urlParts = userData.avatar.split("/");
@@ -16,10 +16,25 @@ class UserService {
           }`;
           await cloudinary.uploader.destroy(publicId);
         } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+          console.error("Error deleting avatar on Cloudinary:", deleteError);
         }
       }
-      throw new ApiError(400, "Email đã được sử dụng");
+
+      if (userData.pet_photo) {
+        try {
+          const urlParts = userData.pet_photo.split("/");
+          const publicId = `pets/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error(
+            "Error deleting pet photo on Cloudinary:",
+            deleteError
+          );
+        }
+      }
+      throw new ApiError(400, "Email already used");
     }
 
     // If there is password, hash password
@@ -40,7 +55,7 @@ class UserService {
     try {
       return await User.create(userData);
     } catch (error) {
-      // If there is an error and the avatar is uploaded, delete the image on Cloudinary
+      // Delete both avatar and pet_photo if there is an error
       if (userData.avatar && !userData.avatar.includes("default-avatar")) {
         try {
           const urlParts = userData.avatar.split("/");
@@ -49,7 +64,22 @@ class UserService {
           }`;
           await cloudinary.uploader.destroy(publicId);
         } catch (deleteError) {
-          console.error("Lỗi khi xóa ảnh trên Cloudinary:", deleteError);
+          console.error("Error deleting avatar on Cloudinary:", deleteError);
+        }
+      }
+
+      if (userData.pet_photo) {
+        try {
+          const urlParts = userData.pet_photo.split("/");
+          const publicId = `pets/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error(
+            "Error deleting pet photo on Cloudinary:",
+            deleteError
+          );
         }
       }
       throw error;
@@ -75,7 +105,7 @@ class UserService {
   async getUserById(id) {
     const user = await User.findById(id);
     if (!user) {
-      throw new ApiError(404, "Không tìm thấy người dùng");
+      throw new ApiError(404, "User not found");
     }
     return user;
   }
@@ -132,27 +162,23 @@ class UserService {
       const userToDelete = await this.getUserById(id);
 
       // Check delete permission
-      // Nếu không phải tự xóa tài khoản
+      // If it's not self-delete account
       if (userToDelete.role == "ADMIN") {
         if (currentUser.id !== parseInt(id)) {
-          // console.log("currentUser.id:", currentUser.id);
-          // console.log("id:", id);
-          throw new ApiError(403, "Không thể xóa tài khoản ADMIN khác");
+          throw new ApiError(403, "Cannot delete other ADMIN account");
+        }
+        // Check admin count
+        const adminCount = await User.countAdmins();
+        if (adminCount <= 2) {
+          throw new ApiError(
+            400,
+            "Cannot delete ADMIN account when there are only 2 ADMIN in the system"
+          );
         }
       }
 
-      // Kiểm tra số lượng admin còn lại
-      const adminCount = await User.countAdmins();
-      if (adminCount <= 2) {
-        throw new ApiError(
-          400,
-          "Không thể xóa tài khoản ADMIN khi chỉ còn 2 ADMIN trong hệ thống"
-        );
-      }
-
-      // Kiểm tra các quan hệ trước khi xóa
+      // Check user relations before delete
       const relations = await User.checkUserRelations(id);
-      // console.log("User relations:", relations);
 
       // 1. Update created_by to null for all banners of user
       const userBanners = await Banner.findByCreatedBy(id);
@@ -160,10 +186,11 @@ class UserService {
         await Banner.update(banner.id, { created_by: null });
       }
 
-      // 2. Delete avatar on Cloudinary if there is
+      // 2. Delete avatar and pet_photo on Cloudinary if exists
       if (
         userToDelete.avatar &&
-        !userToDelete.avatar.includes("default-avatar")
+        !userToDelete.avatar.includes("default-avatar") &&
+        !userToDelete.avatar.startsWith("https://lh3.googleusercontent.com")
       ) {
         try {
           const urlParts = userToDelete.avatar.split("/");
@@ -171,13 +198,31 @@ class UserService {
             urlParts[urlParts.length - 1].split(".")[0]
           }`;
           await cloudinary.uploader.destroy(publicId);
-          // console.log(`Deleted avatar: ${publicId}`);
+          console.log(`Deleted avatar: ${publicId}`);
         } catch (deleteError) {
-          console.error("Error deleting image on Cloudinary:", deleteError);
+          console.error("Error deleting avatar on Cloudinary:", deleteError);
         }
       }
+
+      if (
+        userToDelete.pet_photo &&
+        !userToDelete.pet_photo.startsWith("https://lh3.googleusercontent.com")
+      ) {
+        try {
+          const urlParts = userToDelete.pet_photo.split("/");
+          const publicId = `pets/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+          console.log(`Deleted pet photo: ${publicId}`);
+        } catch (deleteError) {
+          console.error("Error deleting pet photo on Cloudinary:", deleteError);
+        }
+      }
+
       // 3. Delete user relations
       await User.deleteUserRelations(id);
+
       // 4. Delete user
       await User.hardDelete(id);
     } catch (error) {
@@ -222,31 +267,90 @@ class UserService {
 
   async updateProfile(userId, updateData) {
     const user = await this.getUserById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
 
-    // Validate dữ liệu cập nhật
+    // Validate update data
     if (updateData.full_name && updateData.full_name.trim().length < 2) {
       throw new ApiError(400, "Full name must be at least 2 characters");
     }
 
-    // Xóa ảnh cũ trên Cloudinary nếu có ảnh mới
     if (
-      updateData.avatar &&
-      user.avatar &&
-      !user.avatar.includes("default-avatar")
+      updateData.phone_number &&
+      !/^[0-9]{10}$/.test(updateData.phone_number)
     ) {
-      try {
-        const urlParts = user.avatar.split("/");
-        const publicId = `avatars/${
-          urlParts[urlParts.length - 1].split(".")[0]
-        }`;
-        await cloudinary.uploader.destroy(publicId);
-        // console.log(`Deleted old image: ${publicId}`);
-      } catch (deleteError) {
-        console.error("Error deleting old image:", deleteError);
-      }
+      throw new ApiError(400, "Invalid phone number format");
     }
 
-    return User.update(userId, updateData);
+    try {
+      // Handle old avatar deletion on Cloudinary
+      if (
+        updateData.avatar &&
+        user.avatar &&
+        !user.avatar.includes("default-avatar") &&
+        !user.avatar.startsWith("https://lh3.googleusercontent.com")
+      ) {
+        try {
+          const urlParts = user.avatar.split("/");
+          const publicId = `avatars/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+          console.log("Deleted old avatar:", publicId);
+        } catch (error) {
+          console.error("Error deleting old avatar:", error);
+        }
+      }
+
+      // Handle old pet_photo deletion on Cloudinary
+      if (
+        updateData.pet_photo &&
+        user.pet_photo &&
+        !user.pet_photo.startsWith("https://lh3.googleusercontent.com")
+      ) {
+        try {
+          const urlParts = user.pet_photo.split("/");
+          const publicId = `pets/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+          console.log("Deleted old pet photo:", publicId);
+        } catch (error) {
+          console.error("Error deleting old pet photo:", error);
+        }
+      }
+
+      // Update user information
+      const updatedUser = await User.update(userId, updateData);
+      return updatedUser;
+    } catch (error) {
+      // If update fails, delete new image (if any)
+      if (updateData.avatar && updateData.avatar !== user.avatar) {
+        try {
+          const urlParts = updateData.avatar.split("/");
+          const publicId = `avatars/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Error deleting new avatar:", deleteError);
+        }
+      }
+
+      if (updateData.pet_photo && updateData.pet_photo !== user.pet_photo) {
+        try {
+          const urlParts = updateData.pet_photo.split("/");
+          const publicId = `pets/${
+            urlParts[urlParts.length - 1].split(".")[0]
+          }`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Error deleting new pet photo:", deleteError);
+        }
+      }
+      throw error;
+    }
   }
 }
 

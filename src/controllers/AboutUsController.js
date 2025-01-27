@@ -1,8 +1,28 @@
 const AboutUsService = require("../services/AboutUsService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
+const cache = require("../config/redis");
 
 class AboutUsController {
+  // Method to clear cache
+  clearAboutUsCache = async () => {
+    try {
+      const keys = [
+        "cache:/api/about-us/current",
+        "cache:/api/about-us/history",
+      ];
+
+      // Clear cache for current and history
+      for (const key of keys) {
+        await cache.del(key);
+      }
+
+      console.log("Cleared About Us cache");
+    } catch (error) {
+      console.error("Error clearing About Us cache:", error);
+    }
+  };
+
   // Get current about us
   getCurrentAboutUs = asyncHandler(async (req, res) => {
     const aboutUs = await AboutUsService.getCurrentAboutUs();
@@ -15,6 +35,10 @@ class AboutUsController {
       req.body,
       req.user.id
     );
+
+    // Clear cache after creating new version
+    await this.clearAboutUsCache();
+
     res.status(201).json(aboutUs);
   });
 
@@ -35,29 +59,6 @@ class AboutUsController {
     res.json(aboutUs);
   });
 
-  // Soft delete version
-  toggleSoftDelete = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const aboutUs = await AboutUsService.toggleSoftDelete(parseInt(id));
-    res.status(200).json({
-      status: "success",
-      message: aboutUs.is_deleted
-        ? "Soft delete version successfully"
-        : "Restore version successfully",
-      data: aboutUs,
-    });
-  });
-
-  // Hard delete version
-  hardDeleteVersion = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    await AboutUsService.hardDelete(parseInt(id));
-    res.status(204).json({
-      status: "success",
-      message: "Hard delete version successfully",
-    });
-  });
-
   // Compare two versions
   compareVersions = asyncHandler(async (req, res) => {
     const { version1, version2 } = req.query;
@@ -71,6 +72,39 @@ class AboutUsController {
       parseInt(version2)
     );
     res.json(comparison);
+  });
+
+  // Soft delete version
+  toggleSoftDelete = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const aboutUs = await AboutUsService.toggleSoftDelete(parseInt(id));
+
+    // Clear cache after changing status
+    await this.clearAboutUsCache();
+    await cache.del(`cache:/api/about-us/version/${id}`);
+
+    res.status(200).json({
+      status: "success",
+      message: aboutUs.is_deleted
+        ? "Soft delete version successfully"
+        : "Restore version successfully",
+      data: aboutUs,
+    });
+  });
+
+  // Hard delete version
+  hardDeleteVersion = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    await AboutUsService.hardDelete(parseInt(id));
+
+    // Clear cache after hard delete
+    await this.clearAboutUsCache();
+    await cache.del(`cache:/api/about-us/version/${id}`);
+
+    res.status(204).json({
+      status: "success",
+      message: "Hard delete version successfully",
+    });
   });
 }
 

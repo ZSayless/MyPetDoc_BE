@@ -280,7 +280,8 @@ class User extends BaseModel {
       banners: "SELECT COUNT(*) as count FROM banners WHERE created_by = ?",
       hospital_images:
         "SELECT COUNT(*) as count FROM hospital_images WHERE created_by = ?",
-      petgallerys: "SELECT COUNT(*) as count FROM petgallery WHERE user_id = ?",
+      pet_gallerys:
+        "SELECT COUNT(*) as count FROM pet_gallery WHERE user_id = ?",
       reports_reasons:
         "SELECT COUNT(*) as count FROM report_reasons rr INNER JOIN reviews r ON rr.review_id = r.id WHERE r.user_id = ?",
       pet_gallery_comments:

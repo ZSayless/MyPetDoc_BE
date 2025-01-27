@@ -40,7 +40,7 @@ router.get(
       const userData = req.user;
       console.log("User data in callback:", userData);
 
-      // Nếu là user mới
+      // If it's a new user
       if (userData.isNewUser) {
         const profileData = {
           status: "pending_role",
@@ -62,7 +62,7 @@ router.get(
         );
       }
 
-      // Kiểm tra trạng thái tài khoản cho user đã tồn tại
+      // Check account status for existing user
       const isActive = Buffer.isBuffer(userData.is_active)
         ? userData.is_active[0] === 1
         : Boolean(userData.is_active);
@@ -94,7 +94,7 @@ router.get(
         );
       }
 
-      // User hợp lệ
+      // Valid user
       const token = userData.generateAuthToken();
       const successData = {
         status: "success",
@@ -137,6 +137,7 @@ router.get(
 
 router.post(
   "/complete-google-signup",
+  handleUploadAvatar,
   asyncHandler(authController.completeGoogleSignup)
 );
 

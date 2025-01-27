@@ -1,11 +1,52 @@
 const TermsConditionsService = require("../services/TermsConditionsService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
+const cache = require("../config/redis");
 
 class TermsConditionsController {
+  // Method to clear cache
+  clearTermsCache = async (versionId = null) => {
+    try {
+      const keys = [
+        "cache:/api/terms/current",
+        "cache:/api/terms/effective",
+        "cache:/api/terms/history",
+      ];
+
+      if (versionId) {
+        keys.push(`cache:/api/terms/version/${versionId}`);
+      }
+
+      // Clear cache
+      for (const key of keys) {
+        await cache.del(key);
+      }
+
+      console.log(
+        "Cleared terms & conditions cache",
+        versionId ? `for version ${versionId}` : ""
+      );
+    } catch (error) {
+      console.error("Error clearing terms & conditions cache:", error);
+    }
+  };
+
   // Get current terms
   getCurrentTerms = asyncHandler(async (req, res) => {
     const terms = await TermsConditionsService.getCurrentTerms();
+    res.json(terms);
+  });
+
+  // Get effective terms at a specific time
+  getEffectiveTerms = asyncHandler(async (req, res) => {
+    const { date } = req.query;
+    let effectiveDate = date ? new Date(date) : new Date();
+
+    if (isNaN(effectiveDate.getTime())) {
+      throw new ApiError(400, "Invalid date");
+    }
+
+    const terms = await TermsConditionsService.getEffectiveTerms(effectiveDate);
     res.json(terms);
   });
 
@@ -15,6 +56,10 @@ class TermsConditionsController {
       req.body,
       req.user.id
     );
+
+    // Clear cache after creating new version
+    await this.clearTermsCache();
+
     res.status(201).json(terms);
   });
 
@@ -34,25 +79,12 @@ class TermsConditionsController {
     res.json(terms);
   });
 
-  // Get effective terms at a specific time
-  getEffectiveTerms = asyncHandler(async (req, res) => {
-    const { date } = req.query;
-    let effectiveDate = date ? new Date(date) : new Date();
-
-    if (isNaN(effectiveDate.getTime())) {
-      throw new ApiError(400, "Ngày không hợp lệ");
-    }
-
-    const terms = await TermsConditionsService.getEffectiveTerms(effectiveDate);
-    res.json(terms);
-  });
-
   // Compare two versions
   compareVersions = asyncHandler(async (req, res) => {
     const { version1, version2 } = req.query;
 
     if (!version1 || !version2) {
-      throw new ApiError(400, "Vui lòng cung cấp đủ hai phiên bản để so sánh");
+      throw new ApiError(400, "Please provide both versions to compare");
     }
 
     const comparison = await TermsConditionsService.compareVersions(
@@ -70,6 +102,10 @@ class TermsConditionsController {
     }
 
     const terms = await TermsConditionsService.toggleSoftDelete(req.params.id);
+
+    // Clear cache after changing status
+    await this.clearTermsCache(req.params.id);
+
     res.status(200).json({
       status: "success",
       message: terms.is_deleted
@@ -81,11 +117,15 @@ class TermsConditionsController {
 
   // Hard delete
   hardDeleteVersion = asyncHandler(async (req, res) => {
-    // Check admin permission
     if (req.user.role !== "ADMIN") {
       throw new ApiError(403, "You are not authorized to perform this action");
     }
+
     await TermsConditionsService.hardDelete(req.params.id);
+
+    // Clear cache after hard delete
+    await this.clearTermsCache(req.params.id);
+
     res.status(200).json({
       status: "success",
       message: "Hard delete version successful",

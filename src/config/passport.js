@@ -11,7 +11,7 @@ const convertBitToBoolean = (bitField) => {
     : Boolean(bitField);
 };
 
-// Kiểm tra biến môi trường bắt buộc
+// Check required environment variables
 const requiredEnvVars = [
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
@@ -37,15 +37,15 @@ passport.use(
       try {
         console.log("Google Strategy Profile:", profile);
 
-        // Kiểm tra user có tồn tại với google_id không
+        // Check if user exists with google_id
         let user = await User.findOne({ google_id: profile.id });
 
         if (!user) {
-          // Kiểm tra email đã được sử dụng chưa
+          // Check if email is already used
           user = await User.findOne({ email: profile.emails[0].value });
 
           if (user) {
-            // Nếu email đã tồn tại
+            // If email is already used
             console.log("Found existing user:", user);
             user = await User.update(user.id, {
               google_id: profile.id,
@@ -53,7 +53,7 @@ passport.use(
             });
             return done(null, user);
           } else {
-            // User mới hoàn toàn
+            // New user
             const newUserData = {
               isNewUser: true,
               email: profile.emails[0].value,
@@ -66,7 +66,7 @@ passport.use(
           }
         }
 
-        // User đã tồn tại với google_id
+        // User already exists with google_id
         return done(null, user);
       } catch (error) {
         console.error("Passport Google Strategy Error:", error);

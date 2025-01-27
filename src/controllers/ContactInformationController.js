@@ -1,8 +1,25 @@
 const ContactInformationService = require("../services/ContactInformationService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
+const cache = require("../config/redis");
 
 class ContactInformationController {
+  // Method to clear cache
+  clearContactCache = async () => {
+    try {
+      const keys = ["cache:/api/contact/current", "cache:/api/contact/history"];
+
+      // Clear cache for current contact and history
+      for (const key of keys) {
+        await cache.del(key);
+      }
+
+      console.log("Cleared contact information cache");
+    } catch (error) {
+      console.error("Error clearing contact information cache:", error);
+    }
+  };
+
   // Get current contact information
   getCurrentContact = asyncHandler(async (req, res) => {
     const contact = await ContactInformationService.getCurrentContact();
@@ -15,6 +32,10 @@ class ContactInformationController {
       req.body,
       req.user.id
     );
+
+    // Clear cache after creating new version
+    await this.clearContactCache();
+
     res.status(201).json(contact);
   });
 
@@ -62,6 +83,11 @@ class ContactInformationController {
     const contact = await ContactInformationService.toggleSoftDelete(
       parseInt(id)
     );
+
+    // Clear cache after changing status
+    await this.clearContactCache();
+    await cache.del(`cache:/api/contact/version/${id}`);
+
     res.json(contact);
   });
 
@@ -73,6 +99,11 @@ class ContactInformationController {
     }
 
     await ContactInformationService.hardDelete(req.params.id);
+
+    // Clear cache after hard delete
+    await this.clearContactCache();
+    await cache.del(`cache:/api/contact/version/${req.params.id}`);
+
     res.status(200).json({
       status: "success",
       message: "Permanently delete version successful",

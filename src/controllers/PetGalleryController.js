@@ -2,8 +2,50 @@ const PetGalleryService = require("../services/PetGalleryService");
 const ApiError = require("../exceptions/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
 const cloudinary = require("cloudinary");
+const cache = require("../config/redis");
 
 class PetGalleryController {
+  // Method to clear cache
+  clearPostCache = async (postId = null) => {
+    try {
+      const keys = [
+        "cache:/api/pet-gallery/posts", // List of posts
+      ];
+
+      if (postId) {
+        keys.push(
+          `cache:/api/pet-gallery/posts/${postId}`, // Post details
+          `cache:/api/pet-gallery/posts/${postId}/comments` // Comments of post
+        );
+      }
+
+      // Clear cache
+      for (const key of keys) {
+        await cache.del(key);
+      }
+    } catch (error) {
+      console.error("Error clearing pet gallery cache:", error);
+    }
+  };
+
+  // Method to clear comment cache
+  clearCommentCache = async (postId, commentId = null) => {
+    try {
+      const keys = [`cache:/api/pet-gallery/posts/${postId}/comments`];
+
+      if (commentId) {
+        keys.push(`cache:/api/pet-gallery/comments/${commentId}/replies`);
+      }
+
+      // Clear cache
+      for (const key of keys) {
+        await cache.del(key);
+      }
+    } catch (error) {
+      console.error("Error clearing comment cache:", error);
+    }
+  };
+
   // Create new post
   createPost = asyncHandler(async (req, res) => {
     const userId = req.user.id;
@@ -20,6 +62,9 @@ class PetGalleryController {
     }
 
     const post = await PetGalleryService.createPost(req.body, userId, file);
+
+    // Clear cache after creating new post
+    await this.clearPostCache();
 
     res.status(201).json({
       success: true,
@@ -82,21 +127,25 @@ class PetGalleryController {
 
     // Hàm helper để xóa ảnh
     const deleteUploadedFiles = async (files) => {
-      if (!files) return;
+      try {
+        if (!files) return;
 
-      const filesToDelete = Array.isArray(files) ? files : [files];
-      for (const file of filesToDelete) {
-        if (file.path) {
-          try {
-            const urlParts = file.path.split("/");
-            const publicId = `petgallerys/${
-              urlParts[urlParts.length - 1].split(".")[0]
-            }`;
-            await cloudinary.uploader.destroy(publicId);
-          } catch (error) {
-            console.error("Lỗi khi xóa ảnh:", error);
+        const filesToDelete = Array.isArray(files) ? files : [files];
+        for (const file of filesToDelete) {
+          if (file.path) {
+            try {
+              const urlParts = file.path.split("/");
+              const publicId = `petgallerys/${
+                urlParts[urlParts.length - 1].split(".")[0]
+              }`;
+              await cloudinary.uploader.destroy(publicId);
+            } catch (error) {
+              console.error("Error deleting image:", error);
+            }
           }
         }
+      } catch (error) {
+        throw new ApiError(500, "Internal server error");
       }
     };
 
@@ -128,13 +177,16 @@ class PetGalleryController {
         file
       );
 
+      // Clear cache after updating post
+      await this.clearPostCache(postId);
+
       res.json({
         success: true,
         message: "Update post successful",
         data: post,
       });
     } catch (error) {
-      // Đảm bảo xóa ảnh trong mọi trường hợp lỗi
+      // Ensure to delete image in case of any error
       await deleteUploadedFiles(files || req.file);
       throw error;
     }
@@ -142,17 +194,24 @@ class PetGalleryController {
 
   // Delete post
   deletePost = asyncHandler(async (req, res, next) => {
-    const postId = req.params.id;
-    const userId = req.user.id;
-    const userRole = req.user.role;
-    const isAdmin = userRole === "ADMIN";
+    try {
+      const postId = req.params.id;
+      const userId = req.user.id;
+      const userRole = req.user.role;
+      const isAdmin = userRole === "ADMIN";
 
-    await PetGalleryService.deletePost(postId, userId, isAdmin);
+      await PetGalleryService.deletePost(postId, userId, isAdmin);
 
-    res.json({
-      success: true,
-      message: "Delete post successful",
-    });
+      // Clear cache after deleting post
+      await this.clearPostCache(postId);
+
+      res.json({
+        success: true,
+        message: "Delete post successful",
+      });
+    } catch (error) {
+      throw new ApiError(500, "Internal server error");
+    }
   });
 
   // Check if user has liked post
@@ -186,6 +245,9 @@ class PetGalleryController {
 
     const result = await PetGalleryService.toggleLike(postId, userId);
 
+    // Clear cache after like/unlike post
+    await this.clearPostCache(postId);
+
     res.json({
       success: true,
       message: result.message,
@@ -197,91 +259,121 @@ class PetGalleryController {
 
   // Add comment
   addComment = asyncHandler(async (req, res, next) => {
-    const postId = req.params.id;
-    const userId = req.user.id;
-    const { content, parent_id } = req.body;
+    try {
+      const postId = req.params.id;
+      const userId = req.user.id;
+      const { content, parent_id } = req.body;
 
-    const comment = await PetGalleryService.addComment(postId, userId, {
-      content,
-      parent_id,
-    });
+      const comment = await PetGalleryService.addComment(postId, userId, {
+        content,
+        parent_id,
+      });
 
-    res.status(201).json({
-      success: true,
-      message: "Add comment successful",
-      data: comment,
-    });
+      // Clear cache after adding new comment
+      await this.clearCommentCache(postId, parent_id);
+
+      res.status(201).json({
+        success: true,
+        message: "Add comment successful",
+        data: comment,
+      });
+    } catch (error) {
+      throw new ApiError(500, "Internal server error");
+    }
   });
 
   // Get comments of post
   getComments = asyncHandler(async (req, res, next) => {
-    const postId = req.params.id;
-    const { page = 1, limit = 10 } = req.query;
+    try {
+      const postId = req.params.id;
+      const { page = 1, limit = 10 } = req.query;
 
-    const result = await PetGalleryService.getPostComments(postId, {
-      page: parseInt(page),
-      limit: parseInt(limit),
-    });
+      const result = await PetGalleryService.getPostComments(postId, {
+        page: parseInt(page),
+        limit: parseInt(limit),
+      });
 
-    res.json({
-      success: true,
-      message: "Get comments successful",
-      data: result,
-    });
+      res.json({
+        success: true,
+        message: "Get comments successful",
+        data: result,
+      });
+    } catch (error) {
+      throw new ApiError(500, "Internal server error");
+    }
   });
 
   // Get replies of comment
   getCommentReplies = asyncHandler(async (req, res, next) => {
-    const commentId = req.params.commentId;
-    const { page = 1, limit = 10 } = req.query;
+    try {
+      const commentId = req.params.commentId;
+      const { page = 1, limit = 10 } = req.query;
 
-    const replies = await PetGalleryService.getCommentReplies(commentId, {
-      page: parseInt(page),
-      limit: parseInt(limit),
-    });
+      const replies = await PetGalleryService.getCommentReplies(commentId, {
+        page: parseInt(page),
+        limit: parseInt(limit),
+      });
 
-    res.json({
-      success: true,
-      message: "Get replies successful",
-      data: replies,
-    });
+      res.json({
+        success: true,
+        message: "Get replies successful",
+        data: replies,
+      });
+    } catch (error) {
+      throw new ApiError(500, "Internal server error");
+    }
   });
 
   // Delete comment
   deleteComment = asyncHandler(async (req, res, next) => {
-    const commentId = req.params.commentId;
-    const userId = req.user.id;
-    const userRole = req.user.role;
-    const isAdmin = userRole === "ADMIN";
+    try {
+      const commentId = req.params.commentId;
+      const userId = req.user.id;
+      const userRole = req.user.role;
+      const isAdmin = userRole === "ADMIN";
 
-    // If it is admin route
-    if (req.baseUrl.includes("/admin")) {
-      if (!isAdmin) {
-        throw new ApiError(403, "You are not allowed to access");
+      // If it is admin route
+      if (req.baseUrl.includes("/admin")) {
+        if (!isAdmin) {
+          throw new ApiError(403, "You are not allowed to access");
+        }
       }
+
+      const comment = await PetGalleryService.deleteComment(
+        commentId,
+        userId,
+        isAdmin
+      );
+
+      // Clear cache after deleting comment
+      await this.clearCommentCache(comment.post_id, commentId);
+
+      res.json({
+        success: true,
+        message: "Delete comment successful",
+      });
+    } catch (error) {
+      throw new ApiError(500, "Internal server error");
     }
-
-    await PetGalleryService.deleteComment(commentId, userId, isAdmin);
-
-    res.json({
-      success: true,
-      message: "Delete comment successful",
-    });
   });
 
   // Report comment
   reportComment = asyncHandler(async (req, res) => {
-    const commentId = req.params.commentId;
-    const userId = req.user.id;
-    const reportData = req.body;
+    try {
+      const commentId = req.params.commentId;
+      const userId = req.user.id;
+      const reportData = req.body;
 
-    const result = await PetGalleryService.reportComment(
-      commentId,
-      reportData,
-      userId
-    );
+      const result = await PetGalleryService.reportComment(
+        commentId,
+        reportData,
+        userId
+      );
 
-    res.json(result);
+      res.json(result);
+    } catch (error) {
+      throw new ApiError(500, "Internal server error");
+    }
   });
 }
 
