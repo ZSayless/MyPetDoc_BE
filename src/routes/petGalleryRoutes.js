@@ -10,7 +10,7 @@ const router = express.Router();
 
 // Public routes (no need to login)
 router.get("/posts", PetGalleryController.getPosts);
-router.get("/posts/:id", PetGalleryController.getPostDetail);
+router.get("/posts/:slug", PetGalleryController.getPostDetail);
 router.get("/posts/:id/comments", PetGalleryController.getComments);
 router.get(
   "/comments/:commentId/replies",
@@ -23,6 +23,8 @@ router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));
 // Basic interactions - for all logged in users
 router.post("/posts/:id/like", PetGalleryController.toggleLike);
 router.post("/posts/:id/comments", PetGalleryController.addComment);
+// Check if user has liked post
+router.get("/posts/:id/like/check", PetGalleryController.checkUserLikedPost);
 // Add report comment route
 router.post("/comments/:commentId/report", PetGalleryController.reportComment);
 

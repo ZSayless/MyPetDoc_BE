@@ -6,16 +6,24 @@ class PetGalleryLike extends BaseModel {
   // Check if user has liked post
   static async hasUserLiked(userId, galleryId) {
     try {
+      // Check input parameters
+      if (!userId || !galleryId) {
+        throw new Error("userId and galleryId is required");
+      }
+
       const sql = `
         SELECT COUNT(*) as count
         FROM ${this.tableName}
         WHERE user_id = ? AND gallery_id = ?
       `;
 
-      const [result] = await this.query(sql, [userId, galleryId]);
+      // Convert to number
+      const params = [Number(userId), Number(galleryId)];
+      const [result] = await this.query(sql, params);
       return result.count > 0;
     } catch (error) {
       console.error("Check user like error:", error);
+      console.error("Parameters:", { userId, galleryId });
       throw error;
     }
   }
@@ -23,6 +31,15 @@ class PetGalleryLike extends BaseModel {
   // Toggle like
   static async toggleLike(userId, galleryId) {
     try {
+      // Check input parameters
+      if (!userId || !galleryId) {
+        throw new Error("userId and galleryId is required");
+      }
+
+      // Convert to number
+      userId = Number(userId);
+      galleryId = Number(galleryId);
+
       const hasLiked = await this.hasUserLiked(userId, galleryId);
 
       if (hasLiked) {
@@ -44,6 +61,7 @@ class PetGalleryLike extends BaseModel {
       return !hasLiked;
     } catch (error) {
       console.error("Toggle like error:", error);
+      console.error("Parameters:", { userId, galleryId });
       throw error;
     }
   }

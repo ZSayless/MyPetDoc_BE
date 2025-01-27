@@ -1,4 +1,5 @@
 const BaseModel = require("./BaseModel");
+const slugify = require("../utils/slugify");
 const convertBitToBoolean = require("../utils/convertBitToBoolean");
 
 class PetGallery extends BaseModel {
@@ -119,6 +120,7 @@ class PetGallery extends BaseModel {
     try {
       const postData = await super.create({
         ...data,
+        slug: slugify(data.caption),
         likes_count: 0,
         comments_count: 0,
       });
@@ -132,46 +134,87 @@ class PetGallery extends BaseModel {
   // Update like and comment counts
   static async updateCounts(id) {
     try {
+      if (!id) {
+        throw new Error("ID is required");
+      }
+
       const [[likesResult], [commentsResult]] = await Promise.all([
         this.query(
           "SELECT COUNT(*) as count FROM pet_gallery_likes WHERE gallery_id = ?",
-          [id]
+          [Number(id)]
         ),
         this.query(
-          "SELECT COUNT(*) as count FROM pet_gallery_comments WHERE gallery_id = ?",
-          [id]
+          "SELECT COUNT(*) as count FROM pet_gallery_comments WHERE gallery_id = ? AND is_deleted = 0",
+          [Number(id)]
         ),
       ]);
 
-      await this.update(id, {
-        likes_count: likesResult.count,
-        comments_count: commentsResult.count,
+      // Đảm bảo các giá trị không undefined
+      const updateData = {
+        likes_count: likesResult.count || 0,
+        comments_count: commentsResult.count || 0
+      };
+
+      // Log để debug
+      console.log("Update counts data:", {
+        id,
+        updateData,
+        likesResult,
+        commentsResult
       });
+
+      const sql = `
+        UPDATE ${this.tableName}
+        SET likes_count = ?, comments_count = ?
+        WHERE id = ?
+      `;
+
+      const params = [updateData.likes_count, updateData.comments_count, Number(id)];
+      
+      // Log câu query và tham số
+      console.log("Update SQL:", sql);
+      console.log("Update params:", params);
+
+      await this.query(sql, params);
+
+      return true;
     } catch (error) {
       console.error("Update counts error:", error);
+      console.error("Update counts params:", { id });
       throw error;
     }
   }
 
-  // Get post detail with user information
   static async getDetail(id) {
+    const sql = `SELECT * FROM ${this.tableName} WHERE id = ?`;
+    const [post] = await this.query(sql, [id]);
+    return post ? new PetGallery(post) : null;
+  }
+
+  // Get post detail with user information by slug
+  static async getDetailBySlug(slug) {
     try {
+      if (!slug) {
+        throw new Error("Slug is required");
+      }
+
       const sql = `
         SELECT g.*, 
                u.full_name as user_name,
                u.avatar as user_avatar,
+               g.slug,
                (SELECT COUNT(*) FROM pet_gallery_likes WHERE gallery_id = g.id) as likes_count,
                (SELECT COUNT(*) FROM pet_gallery_comments WHERE gallery_id = g.id AND is_deleted = 0) as comments_count
         FROM ${this.tableName} g
         LEFT JOIN users u ON g.user_id = u.id
-        WHERE g.id = ?
+        WHERE g.slug = ?
       `;
 
-      const [post] = await this.query(sql, [id]);
+      const [post] = await this.query(sql, [slug]);
       if (!post) return null;
       return new PetGallery(post);
     } catch (error) {
-      console.error("Get post detail error:", error);
+      console.error("Get post detail by slug error:", error);
       throw error;
     }
   }
@@ -179,10 +222,14 @@ class PetGallery extends BaseModel {
   // Update post
   static async update(id, data) {
     try {
-      const updateData = { ...data };
-      delete updateData.id;
+      if (!id) {
+        throw new Error("ID is required");
+      }
 
-      // Filter out undefined/null fields
+      // Đảm bảo data không undefined
+      const updateData = { ...data };
+      
+      // Lọc bỏ các giá trị undefined/null
       const filteredData = Object.fromEntries(
         Object.entries(updateData).filter(
           ([_, value]) => value !== undefined && value !== null
@@ -190,10 +237,10 @@ class PetGallery extends BaseModel {
       );
 
       if (Object.keys(filteredData).length === 0) {
-        throw new Error("Không có dữ liệu để cập nhật");
+        throw new Error("No data to update");
       }
 
-      // Create dynamic SET clause from valid fields
+      // Tạo câu SQL động
       const setFields = Object.keys(filteredData)
         .map((key) => `${key} = ?`)
         .join(", ");
@@ -204,19 +251,22 @@ class PetGallery extends BaseModel {
         WHERE id = ?
       `;
 
-      const params = [...Object.values(filteredData), id];
+      const params = [...Object.values(filteredData), Number(id)];
+
+      // Log để debug
+      console.log("Update SQL:", sql);
+      console.log("Update params:", params);
 
       const result = await this.query(sql, params);
 
-      // Check update result
       if (result.affectedRows === 0) {
         return null;
       }
 
-      // Get and return post after update
       return await this.getDetail(id);
     } catch (error) {
       console.error("Update post error:", error);
+      console.error("Update params:", { id, data });
       throw error;
     }
   }

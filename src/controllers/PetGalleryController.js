@@ -59,8 +59,13 @@ class PetGalleryController {
 
   // Get post details
   getPostDetail = asyncHandler(async (req, res, next) => {
-    const postId = req.params.id;
-    const post = await PetGalleryService.getPostDetail(postId);
+    const slug = req.params.slug;
+
+    const post = await PetGalleryService.getPostDetailBySlug(slug);
+
+    if (!post) {
+      return next(new ApiError(404, "Post not found"));
+    }
 
     res.json({
       success: true,
@@ -150,10 +155,34 @@ class PetGalleryController {
     });
   });
 
+  // Check if user has liked post
+  checkUserLikedPost = asyncHandler(async (req, res, next) => {
+    const postId = req.params.id;
+    const userId = req.user.id;
+
+    // Kiểm tra tham số
+    if (!postId || !userId) {
+      throw new ApiError(400, "Missing required parameters");
+    }
+
+    const result = await PetGalleryService.checkUserLikedPost(postId, userId);
+
+    res.json({
+      success: true,
+      message: "Check user liked post successful",
+      data: result,
+    });
+  });
+
   // Like/Unlike post
   toggleLike = asyncHandler(async (req, res, next) => {
     const postId = req.params.id;
     const userId = req.user.id;
+
+    // Kiểm tra tham số
+    if (!postId || !userId) {
+      throw new ApiError(400, "Missing required parameters");
+    }
 
     const result = await PetGalleryService.toggleLike(postId, userId);
 
