@@ -163,12 +163,6 @@ class PetGalleryController {
         throw new ApiError(404, "Post not found");
       }
 
-      // Check permission to edit
-      if (existingPost.user_id !== userId) {
-        await deleteUploadedFiles(files || req.file);
-        throw new ApiError(403, "You are not allowed to edit this post");
-      }
-
       const file = req.file;
       const post = await PetGalleryService.updatePost(
         postId,
@@ -304,24 +298,20 @@ class PetGalleryController {
   });
 
   // Get replies of comment
-  getCommentReplies = asyncHandler(async (req, res, next) => {
-    try {
-      const commentId = req.params.commentId;
-      const { page = 1, limit = 10 } = req.query;
+  getCommentReplies = asyncHandler(async (req, res) => {
+    const commentId = req.params.commentId;
+    const { page = 1, limit = 10 } = req.query;
 
-      const replies = await PetGalleryService.getCommentReplies(commentId, {
-        page: parseInt(page),
-        limit: parseInt(limit),
-      });
+    const result = await PetGalleryService.getCommentReplies(commentId, {
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
 
-      res.json({
-        success: true,
-        message: "Get replies successful",
-        data: replies,
-      });
-    } catch (error) {
-      throw new ApiError(500, "Internal server error");
-    }
+    res.json({
+      success: true,
+      message: "Get replies successful",
+      data: result
+    });
   });
 
   // Delete comment

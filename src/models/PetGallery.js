@@ -76,8 +76,8 @@ class PetGallery extends BaseModel {
         SELECT g.*, 
                u.full_name as user_name,
                u.avatar as user_avatar,
-               (SELECT COUNT(*) FROM pet_gallery_likes WHERE gallery_id = g.id) as likes_count,
-               (SELECT COUNT(*) FROM pet_gallery_comments WHERE gallery_id = g.id AND is_deleted = 0) as comments_count
+               (SELECT COUNT(1) FROM pet_gallery_likes l WHERE l.gallery_id = g.id) as likes_count,
+               (SELECT COUNT(1) FROM pet_gallery_comments c WHERE c.gallery_id = g.id AND c.is_deleted = 0) as comments_count
         FROM ${this.tableName} g
         LEFT JOIN users u ON g.user_id = u.id
         ${whereClause}
@@ -149,19 +149,11 @@ class PetGallery extends BaseModel {
         ),
       ]);
 
-      // Đảm bảo các giá trị không undefined
+      // Ensure values are not undefined
       const updateData = {
         likes_count: likesResult.count || 0,
         comments_count: commentsResult.count || 0
       };
-
-      // Log để debug
-      console.log("Update counts data:", {
-        id,
-        updateData,
-        likesResult,
-        commentsResult
-      });
 
       const sql = `
         UPDATE ${this.tableName}
@@ -171,9 +163,6 @@ class PetGallery extends BaseModel {
 
       const params = [updateData.likes_count, updateData.comments_count, Number(id)];
       
-      // Log câu query và tham số
-      console.log("Update SQL:", sql);
-      console.log("Update params:", params);
 
       await this.query(sql, params);
 
@@ -226,10 +215,10 @@ class PetGallery extends BaseModel {
         throw new Error("ID is required");
       }
 
-      // Đảm bảo data không undefined
+      // Ensure data is not undefined
       const updateData = { ...data };
       
-      // Lọc bỏ các giá trị undefined/null
+      // Filter out undefined/null values
       const filteredData = Object.fromEntries(
         Object.entries(updateData).filter(
           ([_, value]) => value !== undefined && value !== null
@@ -240,7 +229,7 @@ class PetGallery extends BaseModel {
         throw new Error("No data to update");
       }
 
-      // Tạo câu SQL động
+      // Create dynamic SQL SET clause
       const setFields = Object.keys(filteredData)
         .map((key) => `${key} = ?`)
         .join(", ");
@@ -252,10 +241,6 @@ class PetGallery extends BaseModel {
       `;
 
       const params = [...Object.values(filteredData), Number(id)];
-
-      // Log để debug
-      console.log("Update SQL:", sql);
-      console.log("Update params:", params);
 
       const result = await this.query(sql, params);
 

@@ -22,12 +22,14 @@ class PetGalleryComment extends BaseModel {
       const limit = Number(options.limit || 10);
       const offset = (page - 1) * limit;
 
-      // Use string interpolation for LIMIT and OFFSET
       const sql = `
         SELECT c.*, 
                u.full_name as user_name,
                u.avatar as user_avatar,
-               (SELECT COUNT(*) FROM ${this.tableName} WHERE parent_id = c.id AND is_deleted = 0) as replies_count
+               (SELECT COUNT(*) 
+                FROM ${this.tableName} 
+                WHERE parent_id = c.id 
+                AND is_deleted = 0) as replies_count  -- Kiểm tra câu query đếm replies
         FROM ${this.tableName} c
         LEFT JOIN users u ON c.user_id = u.id
         WHERE c.gallery_id = ? 
@@ -37,24 +39,20 @@ class PetGalleryComment extends BaseModel {
         LIMIT ${limit} OFFSET ${offset}
       `;
 
-      const countSql = `
-        SELECT COUNT(*) as total
-        FROM ${this.tableName}
-        WHERE gallery_id = ? 
-        AND parent_id IS NULL 
-        AND is_deleted = 0
-      `;
-
-      // Only use prepared statement for gallery_id
       const [comments, [countResult]] = await Promise.all([
         this.query(sql, [Number(galleryId)]),
-        this.query(countSql, [Number(galleryId)]),
+        this.query(
+          `SELECT COUNT(*) as total FROM ${this.tableName} WHERE gallery_id = ? AND parent_id IS NULL AND is_deleted = 0`,
+          [Number(galleryId)]
+        ),
       ]);
 
       return {
         comments: comments.map((comment) => ({
           ...comment,
-          is_deleted: Boolean(comment.is_deleted),
+          is_deleted: convertBitToBoolean(comment.is_deleted),
+          is_reported: convertBitToBoolean(comment.is_reported),
+          replies_count: Number(comment.replies_count)
         })),
         pagination: {
           page: page,
@@ -65,12 +63,6 @@ class PetGalleryComment extends BaseModel {
       };
     } catch (error) {
       console.error("Get post comments error:", error);
-      console.error("Error details:", {
-        galleryId,
-        options,
-        message: error.message,
-        stack: error.stack,
-      });
       throw error;
     }
   }
@@ -79,23 +71,44 @@ class PetGalleryComment extends BaseModel {
   static async getReplies(commentId, options = {}) {
     try {
       const { page = 1, limit = 10, includeDeleted = false } = options;
-
       const offset = (page - 1) * limit;
 
       const sql = `
         SELECT c.*, 
                u.full_name as user_name,
-               u.avatar_url as user_avatar
+               u.avatar as user_avatar
         FROM ${this.tableName} c
         LEFT JOIN users u ON c.user_id = u.id
         WHERE c.parent_id = ?
         ${!includeDeleted ? "AND c.is_deleted = 0" : ""}
         ORDER BY c.created_at ASC
-        LIMIT ? OFFSET ?
+        LIMIT ${limit} OFFSET ${offset}
       `;
 
-      const replies = await this.query(sql, [commentId, limit, offset]);
-      return replies.map((reply) => new PetGalleryComment(reply));
+      // Lấy danh sách replies - chỉ truyền commentId
+      const replies = await this.query(sql, [Number(commentId)]);
+
+      // Đếm tổng số replies
+      const [countResult] = await this.query(
+        `SELECT COUNT(*) as total 
+         FROM ${this.tableName} 
+         WHERE parent_id = ? ${!includeDeleted ? "AND is_deleted = 0" : ""}`,
+        [Number(commentId)]
+      );
+
+      return {
+        replies: replies.map((reply) => ({
+          ...reply,
+          is_deleted: convertBitToBoolean(reply.is_deleted),
+          is_reported: convertBitToBoolean(reply.is_reported)
+        })),
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total: countResult.total,
+          totalPages: Math.ceil(countResult.total / limit),
+        },
+      };
     } catch (error) {
       console.error("Get comment replies error:", error);
       throw error;

@@ -94,11 +94,6 @@ class PetGalleryService {
         throw new ApiError(404, "Post not found");
       }
 
-      // Check if user has permission to edit
-      if (post.user_id !== userId) {
-        throw new ApiError(403, "You do not have permission to edit this post");
-      }
-
       const updateData = {};
       if (data.caption) updateData.caption = data.caption;
       if (data.description) updateData.description = data.description;
@@ -364,67 +359,26 @@ class PetGalleryService {
   // Get replies of comment
   async getCommentReplies(commentId, options = {}) {
     try {
-      const page = Number(options.page || 1);
-      const limit = Number(options.limit || 10);
-      const offset = (page - 1) * limit;
-      
-      // Check if comment exists
-      const [comment] = await PetGalleryComment.query(
-        "SELECT * FROM pet_gallery_comments WHERE id = ? AND is_deleted = 0",
-        [Number(commentId)]
-      );
+      // Check input parameters
+      if (!commentId) {
+        throw new ApiError(400, "Comment ID is required");
+      }
 
+      // Check if comment exists
+      const comment = await PetGalleryComment.getDetail(commentId);
       if (!comment) {
         throw new ApiError(404, "Comment not found");
       }
-
-      // Use string interpolation for LIMIT and OFFSET
-      const sql = `
-        SELECT c.*, 
-               u.full_name as user_name,
-               u.avatar as user_avatar
-        FROM pet_gallery_comments c
-        LEFT JOIN users u ON c.user_id = u.id
-        WHERE c.parent_id = ? 
-        AND c.is_deleted = 0
-        ORDER BY c.created_at ASC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
-
-      const countSql = `
-        SELECT COUNT(*) as total
-        FROM pet_gallery_comments
-        WHERE parent_id = ? 
-        AND is_deleted = 0
-      `;
-
-      // Only use prepared statement for parent_id
-      const [replies, [countResult]] = await Promise.all([
-        PetGalleryComment.query(sql, [Number(commentId)]),
-        PetGalleryComment.query(countSql, [Number(commentId)]),
-      ]);
-
+  
+      // Call model to get data
+      const result = await PetGalleryComment.getReplies(commentId, options);
+  
       return {
         comment_id: commentId,
-        replies: replies.map((reply) => ({
-          ...reply,
-          is_deleted: Boolean(reply.is_deleted),
-        })),
-        pagination: {
-          page: page,
-          limit: limit,
-          total: countResult.total,
-          totalPages: Math.ceil(countResult.total / limit),
-        },
+        ...result
       };
     } catch (error) {
-      console.error("Get comment replies error:", error);
-      console.error("Error details:", {
-        commentId,
-        options,
-        message: error.message,
-        stack: error.stack,
-      });
+      console.error("Get replies service error:", error);
       throw error;
     }
   }

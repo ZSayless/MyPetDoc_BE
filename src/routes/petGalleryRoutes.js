@@ -17,12 +17,12 @@ router.get(
 );
 router.get(
   "/posts/:id/comments",
-  cacheMiddleware(300),
+  cacheMiddleware(30),
   PetGalleryController.getComments
 );
 router.get(
   "/comments/:commentId/replies",
-  cacheMiddleware(300),
+  cacheMiddleware(30),
   PetGalleryController.getCommentReplies
 );
 
@@ -45,12 +45,6 @@ router.post(
 );
 
 // Only allow users to edit/delete their own posts
-// (Controller will check user_id)
-router.put(
-  "/posts/:id",
-  handleUploadPetGalleryImages,
-  PetGalleryController.updatePost
-);
 
 router.delete("/posts/:id", PetGalleryController.deletePost);
 
