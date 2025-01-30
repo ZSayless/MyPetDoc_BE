@@ -267,6 +267,38 @@ class HospitalController {
     });
   });
 
+  // Toggle like image
+  toggleImageLike = asyncHandler(async (req, res) => {
+    const { imageId } = req.params;
+    const userId = req.user.id;
+
+    const result = await HospitalImageService.toggleLike(imageId, userId);
+
+    // Clear cache
+    await this.clearHospitalCache();
+
+    res.json({
+      status: "success",
+      message: result.message,
+      data: {
+        hasLiked: result.hasLiked
+      }
+    });
+  });
+
+  // Check if user has liked image
+  checkImageLike = asyncHandler(async (req, res) => {
+    const { imageId } = req.params;
+    const userId = req.user.id;
+
+    const result = await HospitalImageService.checkUserLikedImage(imageId, userId);
+
+    res.json({
+      status: "success",
+      data: result
+    });
+  });
+
   // Clear cache when data changes
   clearHospitalCache = async () => {
     try {

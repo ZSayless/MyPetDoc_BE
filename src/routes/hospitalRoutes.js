@@ -76,4 +76,11 @@ router.patch(
   HospitalController.toggleDelete
 );
 
+// Routes require login (all roles)
+router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));
+
+// Like/unlike image routes
+router.post("/:hospitalId/images/:imageId/like", HospitalController.toggleImageLike);
+router.get("/:hospitalId/images/:imageId/like/check", HospitalController.checkImageLike);
+
 module.exports = router;

@@ -40,9 +40,13 @@ class HospitalImage extends BaseModel {
 
   static async findByHospitalId(hospitalId) {
     const sql = `
-      SELECT * FROM ${this.tableName}
-      WHERE hospital_id = ?
-      ORDER BY created_at DESC
+      SELECT hi.*, 
+             COUNT(DISTINCT hil.id) as likes_count
+      FROM ${this.tableName} hi
+      LEFT JOIN hospital_image_likes hil ON hi.id = hil.image_id
+      WHERE hi.hospital_id = ?
+      GROUP BY hi.id
+      ORDER BY hi.created_at DESC
     `;
     return await this.query(sql, [hospitalId]);
   }
@@ -76,6 +80,44 @@ class HospitalImage extends BaseModel {
     const params = Object.values(conditions);
     const [result] = await this.query(sql, params);
     return result || null;
+  }
+
+  static async hasUserLiked(imageId, userId) {
+    const sql = `
+      SELECT COUNT(*) as count 
+      FROM hospital_image_likes
+      WHERE image_id = ? AND user_id = ?
+    `;
+    const [result] = await this.query(sql, [imageId, userId]);
+    return result.count > 0;
+  }
+
+  static async addLike(imageId, userId) {
+    const sql = `
+      INSERT INTO hospital_image_likes (image_id, user_id)
+      VALUES (?, ?)
+    `;
+    await this.query(sql, [imageId, userId]);
+    return true;
+  }
+
+  static async removeLike(imageId, userId) {
+    const sql = `
+      DELETE FROM hospital_image_likes 
+      WHERE image_id = ? AND user_id = ?
+    `;
+    await this.query(sql, [imageId, userId]);
+    return true;
+  }
+
+  static async getLikesCount(imageId) {
+    const sql = `
+      SELECT COUNT(*) as count 
+      FROM hospital_image_likes
+      WHERE image_id = ?
+    `;
+    const [result] = await this.query(sql, [imageId]);
+    return result.count;
   }
 }
 

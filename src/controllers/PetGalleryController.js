@@ -125,7 +125,7 @@ class PetGalleryController {
     const userId = req.user.id;
     const files = req.files;
 
-    // Hàm helper để xóa ảnh
+    // Helper function to delete images
     const deleteUploadedFiles = async (files) => {
       try {
         if (!files) return;
@@ -213,7 +213,7 @@ class PetGalleryController {
     const postId = req.params.id;
     const userId = req.user.id;
 
-    // Kiểm tra tham số
+    // Check parameters
     if (!postId || !userId) {
       throw new ApiError(400, "Missing required parameters");
     }
@@ -232,7 +232,7 @@ class PetGalleryController {
     const postId = req.params.id;
     const userId = req.user.id;
 
-    // Kiểm tra tham số
+    // Check parameters
     if (!postId || !userId) {
       throw new ApiError(400, "Missing required parameters");
     }

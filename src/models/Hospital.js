@@ -290,21 +290,37 @@ class Hospital extends BaseModel {
         SELECT h.*, 
                COUNT(DISTINCT r.id) as review_count,
                AVG(r.rating) as average_rating,
-               GROUP_CONCAT(DISTINCT hi.image_url) as images
+               GROUP_CONCAT(DISTINCT CONCAT(
+                 hi.id, '::::', 
+                 hi.image_url, '::::', 
+                 hi.created_at, '::::', 
+                 (SELECT COUNT(*) FROM hospital_image_likes hil WHERE hil.image_id = hi.id)
+               )) as images
         FROM ${this.tableName} h
         LEFT JOIN reviews r ON h.id = r.hospital_id AND r.is_deleted = 0
         LEFT JOIN hospital_images hi ON h.id = hi.hospital_id
         WHERE h.slug = ? AND h.is_deleted = 0
-        GROUP BY h.id
+        GROUP BY h.id, h.created_at, h.updated_at, h.is_deleted, h.is_active, 
+                 h.version, h.address, h.phone, h.slug, h.email, h.link_website,
+                 h.map_location, h.description, h.name, h.department, h.operating_hours,
+                 h.specialties, h.staff_description, h.staff_credentials, h.created_by
       `;
 
       const [result] = await this.query(sql, [slug]);
 
       if (!result) return null;
 
-      // Chuyển đổi string images thành array
+      // Chuyển đổi string images thành array với cả id, url, createdAt và likesCount
       if (result.images) {
-        result.images = result.images.split(",");
+        result.images = result.images.split(',').map(img => {
+          const [id, url, createdAt, likesCount] = img.split('::::');
+          return {
+            id: parseInt(id),
+            url: url,
+            createdAt: createdAt,
+            likesCount: parseInt(likesCount) || 0
+          };
+        });
       } else {
         result.images = [];
       }

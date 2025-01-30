@@ -85,10 +85,10 @@ class PetGalleryComment extends BaseModel {
         LIMIT ${limit} OFFSET ${offset}
       `;
 
-      // Lấy danh sách replies - chỉ truyền commentId
+      // Get list of replies - only pass commentId
       const replies = await this.query(sql, [Number(commentId)]);
 
-      // Đếm tổng số replies
+      // Count total replies
       const [countResult] = await this.query(
         `SELECT COUNT(*) as total 
          FROM ${this.tableName} 

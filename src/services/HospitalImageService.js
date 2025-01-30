@@ -106,11 +106,56 @@ class HospitalImageService {
       const images = await HospitalImage.findByHospitalId(hospitalId);
       return images.map((image) => ({
         id: image.id,
-        url: image.image_url, // URL Cloudinary
+        url: image.image_url,
         createdAt: image.created_at,
+        likesCount: parseInt(image.likes_count) || 0
       }));
     } catch (error) {
       console.error("Error getting hospital images:", error);
+      throw error;
+    }
+  }
+
+  async toggleLike(imageId, userId) {
+    try {
+      // Kiểm tra ảnh có tồn tại
+      const image = await HospitalImage.findById(imageId);
+      if (!image) {
+        throw new ApiError(404, "Image not found");
+      }
+
+      // Kiểm tra xem user đã like chưa
+      const hasLiked = await HospitalImage.hasUserLiked(imageId, userId);
+
+      if (hasLiked) {
+        // Unlike
+        await HospitalImage.removeLike(imageId, userId);
+        return {
+          message: "Unliked image successfully",
+          hasLiked: false
+        };
+      } else {
+        // Like
+        await HospitalImage.addLike(imageId, userId);
+        return {
+          message: "Liked image successfully", 
+          hasLiked: true
+        };
+      }
+    } catch (error) {
+      console.error("Toggle like error:", error);
+      throw error;
+    }
+  }
+
+  async checkUserLikedImage(imageId, userId) {
+    try {
+      const hasLiked = await HospitalImage.hasUserLiked(imageId, userId);
+      return {
+        hasLiked
+      };
+    } catch (error) {
+      console.error("Check user liked image error:", error);
       throw error;
     }
   }
