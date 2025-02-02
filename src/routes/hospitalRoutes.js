@@ -25,11 +25,7 @@ router.get(
   cacheMiddleware(1800),
   HospitalController.getImages
 );
-router.get(
-  "/slug/:slug",
-  cacheMiddleware(1800),
-  HospitalController.getHospitalBySlug
-);
+
 router.get(
   "/by-slug/:slug",
   cacheMiddleware(1800),

@@ -7,6 +7,7 @@ const createHospitals = require("./create_hospitals");
 const createFavorites = require("./create_favorites");
 const createReportReasons = require("./create_report_reasons");
 const createFaqs = require("./create_faqs");
+const createHospitalImageLikes = require("./create_hospital_image_likes");
 const createAboutUs = require("./create_about_us");
 const createPetPosts = require("./create_pet_posts");
 const createPetGallery = require("./create_pet_gallery");
@@ -61,6 +62,7 @@ const runMigrations = async () => {
     await createPetGallery(connection);
     await createPetGalleryComments(connection);
     await createPetGalleryLikes(connection);
+    await createHospitalImageLikes(connection);
     await createPrivacyPolicy(connection);
     await createTermsAndConditions(connection);
     await createReviews(connection);

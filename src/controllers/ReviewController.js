@@ -229,6 +229,31 @@ class ReviewController {
       message: "Review has been permanently deleted",
     });
   });
+
+  replyToReview = asyncHandler(async (req, res) => {
+    // Kiểm tra role HOSPITAL_ADMIN hoặc ADMIN
+    if (!['HOSPITAL_ADMIN', 'ADMIN'].includes(req.user.role)) {
+      throw new ApiError(403, "Bạn không có quyền trả lời đánh giá");
+    }
+
+    const { id } = req.params;
+    const { reply } = req.body;
+    
+    const review = await ReviewService.replyToReview(
+      id,
+      req.user.id,
+      reply
+    );
+
+    // Clear cache
+    await this.clearReviewCache(review.hospital_id, id);
+
+    res.json({
+      status: "success",
+      message: "Trả lời đánh giá thành công",
+      data: review
+    });
+  });
 }
 
 module.exports = new ReviewController();

@@ -415,22 +415,37 @@ class HospitalService {
         throw new ApiError(403, "Hospital is not active");
       }
 
-      // Get more review information
-      const reviews = await Review.findAll(
+      // Get more review information with user details
+      const reviewsData = await Review.search(
         {
           hospital_id: hospital.id,
           is_deleted: 0,
         },
         {
+          offset: 0,
           limit: 5,
           sortBy: "created_at",
           sortOrder: "DESC",
         }
       );
 
+      // Get hospital stats
+      const stats = await Review.getHospitalStats(hospital.id);
+
       return {
         ...hospital,
-        recent_reviews: reviews,
+        stats: {
+          total_reviews: stats.total_reviews,
+          average_rating: parseFloat(stats.average_rating) || 0,
+          rating_counts: {
+            five_star: stats.five_star,
+            four_star: stats.four_star,
+            three_star: stats.three_star,
+            two_star: stats.two_star,
+            one_star: stats.one_star,
+          }
+        },
+        recent_reviews: reviewsData.reviews || [],
       };
     } catch (error) {
       console.error("Get hospital by slug service error:", error);

@@ -52,12 +52,17 @@ class Review extends BaseModel {
       const sql = `
         SELECT r.*, 
                u.full_name as user_name,
+               u.avatar as user_avatar,
                h.name as hospital_name,
-               COUNT(DISTINCT rr.id) as report_count
+               COUNT(DISTINCT rr.id) as report_count,
+               ru.full_name as replied_by_name,
+               ru.avatar as replied_by_avatar,
+               r.replied_at
         FROM ${this.tableName} r
         LEFT JOIN users u ON r.user_id = u.id
         LEFT JOIN hospitals h ON r.hospital_id = h.id
         LEFT JOIN report_reasons rr ON r.id = rr.review_id
+        LEFT JOIN users ru ON r.replied_by = ru.id
         WHERE r.id = ?
         GROUP BY r.id
       `;
@@ -117,12 +122,16 @@ class Review extends BaseModel {
       const sql = `
         SELECT r.*, 
                u.full_name as user_name,
+               u.avatar as user_avatar,
                h.name as hospital_name,
-               COUNT(DISTINCT rr.id) as report_count
+               COUNT(DISTINCT rr.id) as report_count,
+               ru.full_name as replied_by_name,
+               ru.avatar as replied_by_avatar
         FROM ${this.tableName} r
         LEFT JOIN users u ON r.user_id = u.id
         LEFT JOIN hospitals h ON r.hospital_id = h.id
         LEFT JOIN report_reasons rr ON r.id = rr.review_id
+        LEFT JOIN users ru ON r.replied_by = ru.id
         WHERE ${conditions.join(" AND ")}
         GROUP BY r.id
         ORDER BY r.created_at DESC
@@ -394,6 +403,30 @@ class Review extends BaseModel {
   static async deleteByUserId(userId) {
     const sql = "DELETE FROM reviews WHERE user_id = ?";
     return this.query(sql, [userId]);
+  }
+
+  static async reply(reviewId, hospitalAdminId, replyContent) {
+    try {
+      // Kiểm tra review tồn tại
+      const review = await this.findById(reviewId);
+      if (!review) {
+        throw new ApiError(404, "Không tìm thấy đánh giá");
+      }
+
+      const sql = `
+        UPDATE ${this.tableName}
+        SET reply = ?,
+            replied_by = ?,
+            replied_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `;
+
+      await this.query(sql, [replyContent, hospitalAdminId, reviewId]);
+      return await this.findById(reviewId);
+    } catch (error) {
+      console.error("Reply to review error:", error);
+      throw error;
+    }
   }
 }
 

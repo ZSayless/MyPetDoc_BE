@@ -10,12 +10,15 @@ module.exports = async (connection) => {
         is_reported BIT(1) DEFAULT 0,
         rating INT,
         reply TEXT NULL,
+        replied_by BIGINT NULL,
+        replied_at DATETIME NULL,
         image_url TEXT NULL,
         image_description TEXT NULL,
         hospital_id BIGINT,
         user_id BIGINT,
         FOREIGN KEY (hospital_id) REFERENCES hospitals(id),
         FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (replied_by) REFERENCES users(id),
         UNIQUE KEY unique_user_hospital (user_id, hospital_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);

@@ -2,6 +2,7 @@ const Review = require("../models/Review");
 const Hospital = require("../models/Hospital");
 const ApiError = require("../exceptions/ApiError");
 const cloudinary = require("../config/cloudinary");
+const User = require("../models/User");
 
 class ReviewService {
   // Create new review
@@ -395,6 +396,40 @@ class ReviewService {
       };
     } catch (error) {
       console.error("Delete review error:", error);
+      throw error;
+    }
+  }
+
+  async replyToReview(reviewId, userId, replyContent) {
+    try {
+      // Validate reply content
+      if (!replyContent || replyContent.trim().length < 10) {
+        throw new ApiError(400, "Nội dung trả lời phải có ít nhất 10 ký tự");
+      }
+
+      // Get review information
+      const review = await Review.findById(reviewId);
+      if (!review) {
+        throw new ApiError(404, "Không tìm thấy đánh giá");
+      }
+
+      // Get user information
+      const user = await User.findById(userId);
+      if (!user) {
+        throw new ApiError(404, "Không tìm thấy người dùng");
+      }
+
+      // Check permission
+      if (user.role === 'HOSPITAL_ADMIN' && user.hospital_id !== review.hospital_id) {
+        throw new ApiError(403, "Bạn không có quyền trả lời đánh giá này");
+      }
+
+      // Add reply
+      const updatedReview = await Review.reply(reviewId, userId, replyContent);
+
+      return updatedReview;
+    } catch (error) {
+      console.error("Reply to review error:", error);
       throw error;
     }
   }

@@ -44,4 +44,11 @@ router.get("/user/me", cacheMiddleware(60), ReviewController.getUserReviews);
 router.use(validateAuth(["ADMIN"]));
 router.delete("/:id/hard", ReviewController.hardDeleteReview);
 
+// Route dành cho HOSPITAL_ADMIN và ADMIN
+router.post(
+  '/:id/reply', 
+  validateAuth(['HOSPITAL_ADMIN', 'ADMIN']),
+  ReviewController.replyToReview
+);
+
 module.exports = router;

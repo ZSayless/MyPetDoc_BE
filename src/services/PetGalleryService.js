@@ -301,7 +301,7 @@ class PetGalleryService {
       errors.push("Pet type is required");
     } else if (
       data.pet_type &&
-      !["DOG", "CAT", "OTHER"].includes(data.pet_type)
+      !["DOG", "CAT","BIRD", "OTHER"].includes(data.pet_type)
     ) {
       errors.push("Invalid pet type (DOG, CAT, OTHER)");
     }

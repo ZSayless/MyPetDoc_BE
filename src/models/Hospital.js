@@ -289,7 +289,7 @@ class Hospital extends BaseModel {
       const sql = `
         SELECT h.*, 
                COUNT(DISTINCT r.id) as review_count,
-               AVG(r.rating) as average_rating,
+               CAST(AVG(r.rating) AS DECIMAL(10,1)) as average_rating,
                GROUP_CONCAT(DISTINCT CONCAT(
                  hi.id, '::::', 
                  hi.image_url, '::::', 
@@ -300,17 +300,14 @@ class Hospital extends BaseModel {
         LEFT JOIN reviews r ON h.id = r.hospital_id AND r.is_deleted = 0
         LEFT JOIN hospital_images hi ON h.id = hi.hospital_id
         WHERE h.slug = ? AND h.is_deleted = 0
-        GROUP BY h.id, h.created_at, h.updated_at, h.is_deleted, h.is_active, 
-                 h.version, h.address, h.phone, h.slug, h.email, h.link_website,
-                 h.map_location, h.description, h.name, h.department, h.operating_hours,
-                 h.specialties, h.staff_description, h.staff_credentials, h.created_by
+        GROUP BY h.id
       `;
 
       const [result] = await this.query(sql, [slug]);
 
       if (!result) return null;
 
-      // Chuyển đổi string images thành array với cả id, url, createdAt và likesCount
+      // Chuyển đổi string images thành array với đầy đủ thông tin
       if (result.images) {
         result.images = result.images.split(',').map(img => {
           const [id, url, createdAt, likesCount] = img.split('::::');
@@ -325,9 +322,9 @@ class Hospital extends BaseModel {
         result.images = [];
       }
 
-      // Làm tròn average_rating
-      if (result.average_rating) {
-        result.average_rating = parseFloat(result.average_rating.toFixed(1));
+      // Xử lý average_rating
+      if (result.average_rating !== null) {
+        result.average_rating = parseFloat(result.average_rating);
       }
 
       return new Hospital(result);
