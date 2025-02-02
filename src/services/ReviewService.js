@@ -17,7 +17,7 @@ class ReviewService {
         data.hospital_id
       );
       if (hasReviewed) {
-        throw new ApiError(400, "Bạn đã đánh giá bệnh viện này rồi");
+        throw new ApiError(400, "You have already reviewed this hospital");
       }
 
       // Prepare review data
@@ -132,12 +132,12 @@ class ReviewService {
   async validateReviewData(data, file = null, isUpdate = false) {
     const errors = [];
 
-    // Validate hospital_id (chỉ bắt buộc khi tạo mới)
+    // Validate hospital_id (required when creating)
     if (!isUpdate && !data.hospital_id) {
       errors.push("Hospital ID is required");
     }
 
-    // Validate rating nếu có
+    // Validate rating if exists
     if (data.rating !== undefined) {
       const rating = parseInt(data.rating);
       if (isNaN(rating) || rating < 1 || rating > 5) {
@@ -151,12 +151,12 @@ class ReviewService {
       errors.push("Review must have at least comment or image");
     }
 
-    // Validate comment nếu có
+    // Validate comment if exists
     if (data.comment && data.comment.trim().length < 10) {
       errors.push("Comment must be at least 10 characters");
     }
 
-    // Validate image_description nếu có ảnh mới
+    // Validate image_description if new image exists
     if (file && !data.image_description) {
       errors.push("Please add a description for the image");
     }
@@ -187,7 +187,7 @@ class ReviewService {
         throw new ApiError(404, "Review not found");
       }
 
-      // Kiểm tra quyền xóa
+      // Check delete permission
       if (userRole !== "ADMIN" && review.user_id !== userId) {
         throw new ApiError(403, "You do not have permission to perform this action");
       }
@@ -404,24 +404,24 @@ class ReviewService {
     try {
       // Validate reply content
       if (!replyContent || replyContent.trim().length < 10) {
-        throw new ApiError(400, "Nội dung trả lời phải có ít nhất 10 ký tự");
+        throw new ApiError(400, "Reply content must be at least 10 characters");
       }
 
       // Get review information
       const review = await Review.findById(reviewId);
       if (!review) {
-        throw new ApiError(404, "Không tìm thấy đánh giá");
+        throw new ApiError(404, "Review not found");
       }
 
       // Get user information
       const user = await User.findById(userId);
       if (!user) {
-        throw new ApiError(404, "Không tìm thấy người dùng");
+        throw new ApiError(404, "User not found");
       }
 
       // Check permission
       if (user.role === 'HOSPITAL_ADMIN' && user.hospital_id !== review.hospital_id) {
-        throw new ApiError(403, "Bạn không có quyền trả lời đánh giá này");
+        throw new ApiError(403, "You do not have permission to reply to this review");
       }
 
       // Add reply
