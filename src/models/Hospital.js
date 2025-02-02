@@ -136,7 +136,7 @@ class Hospital extends BaseModel {
 
   static async create(data) {
     try {
-      // Chuẩn bị dữ liệu
+      // Prepare data
       const hospitalData = {
         name: data.name || null,
         slug: slugify(data.name),
@@ -154,7 +154,7 @@ class Hospital extends BaseModel {
         created_by: data.created_by || null,
       };
 
-      // Log để debug
+      // Log for debug
       // console.log("Hospital Data:", hospitalData);
 
       const sql = `
@@ -183,7 +183,7 @@ class Hospital extends BaseModel {
         hospitalData.created_by,
       ];
 
-      // Log để debug
+      // Log for debug
       // console.log("SQL:", sql);
       // console.log("Params:", params);
 
@@ -283,7 +283,7 @@ class Hospital extends BaseModel {
     const [result] = await this.query(sql, [slug]);
     return result ? new Hospital(result) : null;
   }
-  // Thêm phương thức getHospitalBySlug
+  // Add method getHospitalBySlug
   static async getHospitalBySlug(slug) {
     try {
       const sql = `
@@ -307,7 +307,7 @@ class Hospital extends BaseModel {
 
       if (!result) return null;
 
-      // Chuyển đổi string images thành array với đầy đủ thông tin
+      // Convert string images to array with full information
       if (result.images) {
         result.images = result.images.split(',').map(img => {
           const [id, url, createdAt, likesCount] = img.split('::::');
@@ -322,7 +322,7 @@ class Hospital extends BaseModel {
         result.images = [];
       }
 
-      // Xử lý average_rating
+      // Process average_rating
       if (result.average_rating !== null) {
         result.average_rating = parseFloat(result.average_rating);
       }
