@@ -65,7 +65,7 @@ class ReviewController {
       file
     );
 
-    // Xóa cache sau khi tạo review mới
+    // Clear cache after creating new review
     await this.clearReviewCache(req.body.hospital_id);
     await this.clearUserReviewCache(req.user.id);
 
@@ -103,7 +103,7 @@ class ReviewController {
       req.user.id
     );
 
-    // Xóa cache sau khi report
+    // Clear cache after reporting
     await this.clearReviewCache(review.hospital_id, req.params.id);
 
     res.json({
@@ -231,9 +231,9 @@ class ReviewController {
   });
 
   replyToReview = asyncHandler(async (req, res) => {
-    // Kiểm tra role HOSPITAL_ADMIN hoặc ADMIN
-    if (!['HOSPITAL_ADMIN', 'ADMIN'].includes(req.user.role)) {
-      throw new ApiError(403, "Bạn không có quyền trả lời đánh giá");
+    // Check role HOSPITAL_ADMIN or ADMIN
+    if (!["HOSPITAL_ADMIN", "ADMIN"].includes(req.user.role)) {
+      throw new ApiError(403, "You are not authorized to reply to this review");
     }
 
     const { id } = req.params;
@@ -250,7 +250,7 @@ class ReviewController {
 
     res.json({
       status: "success",
-      message: "Trả lời đánh giá thành công",
+      message: "Reply to review successful",
       data: review
     });
   });
