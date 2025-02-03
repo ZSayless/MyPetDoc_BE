@@ -41,6 +41,10 @@ class ReviewController {
   // Method to clear user review cache
   clearUserReviewCache = async (userId) => {
     try {
+      if (!userId) {
+        console.error('Cannot clear cache: userId is undefined');
+        return;
+      }
       await cache.del(`cache:/api/reviews/user/${userId}`);
       console.log("Cleared user review cache for user:", userId);
     } catch (error) {
@@ -124,20 +128,42 @@ class ReviewController {
 
   // Toggle soft delete status of review
   toggleSoftDelete = asyncHandler(async (req, res) => {
-    const review = await ReviewService.toggleSoftDelete(
-      req.params.id,
-      req.user.id,
-      req.user.role
-    );
+    // console.log('=== Toggle Delete Controller ===');
+    // console.log('User from token:', {
+    //   id: req.user.id,
+    //   role: req.user.role,
+    //   email: req.user.email,
+    //   fullName: req.user.full_name
+    // });
 
-    // Clear cache after changing status
-    await this.clearReviewCache(review.hospital_id, req.params.id);
-    await this.clearUserReviewCache(review.user_id);
+    try {
+      const result = await ReviewService.toggleSoftDelete(
+        req.params.id,
+        req.user.id,
+        req.user.role
+      );
 
-    res.json({
-      status: "success",
-      data: review,
-    });
+      // Clear cache after toggling delete status
+      if (result && result.hospital_id) {
+        await this.clearReviewCache(result.hospital_id, req.params.id);
+      }
+      
+      if (req.user && req.user.id) {
+        await this.clearUserReviewCache(req.user.id);
+      }
+
+      res.json({
+        status: "success",
+        message: result.is_deleted ? "Review deleted" : "Review restored",
+        data: result
+      });
+    } catch (error) {
+      console.error('Controller error:', {
+        error: error.message,
+        stack: error.stack
+      });
+      throw error;
+    }
   });
 
   // Update review
