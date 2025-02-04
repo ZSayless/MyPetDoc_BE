@@ -147,14 +147,37 @@ class UserService {
     return User.update(id, updateData);
   }
 
-  async toggleDelete(id) {
-    const user = await this.getUserById(id);
+  async toggleDelete(id, currentUser) {
+    try {
+      const userToDelete = await this.getUserById(id);
 
-    const updateData = {
-      is_deleted: !user.is_deleted,
-    };
+      // Check delete permission
+      // If it's not self-delete account
+      if (userToDelete.role === "ADMIN") {
+        // Check if it's not self-delete account
+        if (currentUser.id !== parseInt(id)) {
+          throw new ApiError(403, "Cannot delete other ADMIN account");
+        }
 
-    return User.update(id, updateData);
+        // Check admin count
+        const adminCount = await User.countAdmins();
+        if (adminCount <= 2) {
+          throw new ApiError(
+            400,
+            "Cannot delete ADMIN account when there are only 2 ADMIN in the system"
+          );
+        }
+      }
+
+      const updateData = {
+        is_deleted: !userToDelete.is_deleted,
+      };
+
+      return User.update(id, updateData);
+    } catch (error) {
+      console.error("Toggle delete user error:", error);
+      throw error;
+    }
   }
 
   async apsoluteDelete(id, currentUser) {
@@ -233,17 +256,40 @@ class UserService {
     }
   }
 
-  async toggleUserStatus(id, action) {
-    const user = await this.getUserById(id);
-    const updateData = {};
+  async toggleUserStatus(id, action, currentUser) {
+    try {
+      const userToUpdate = await this.getUserById(id);
+      const updateData = {};
 
-    if (action === "lock") {
-      updateData.is_locked = !user.is_locked;
-    } else if (action === "activate") {
-      updateData.is_active = !user.is_active;
+      // Check update permission
+      if (userToUpdate.role === "ADMIN") {
+        // Check if it's not self-update account
+        if (currentUser.id !== parseInt(id)) {
+          throw new ApiError(403, "Cannot change status of other ADMIN account");
+        }
+
+        // Check admin count
+        const adminCount = await User.countAdmins();
+        if (adminCount <= 2) {
+          throw new ApiError(
+            400,
+            "Cannot change status of ADMIN account when there are only 2 ADMIN in the system"
+          );
+        }
+      }
+
+      // Update status
+      if (action === "lock") {
+        updateData.is_locked = !userToUpdate.is_locked;
+      } else if (action === "activate") {
+        updateData.is_active = !userToUpdate.is_active;
+      }
+
+      return User.update(id, updateData);
+    } catch (error) {
+      console.error("Toggle user status error:", error);
+      throw error;
     }
-
-    return User.update(id, updateData);
   }
 
   async validateUserData(data) {
@@ -351,6 +397,29 @@ class UserService {
       }
       throw error;
     }
+  }
+
+  async getDeletedUsers(filters = {}, page = 1, limit = 10) {
+    const offset = (page - 1) * limit;
+    
+    // Đảm bảo chỉ lấy những user đã bị xóa mềm
+    const deletedFilters = {
+      ...filters,
+      is_deleted: 1
+    };
+
+    const users = await User.findAllDeleted(deletedFilters, { offset, limit });
+    const total = await User.countDeleted(deletedFilters);
+
+    return {
+      users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }
 

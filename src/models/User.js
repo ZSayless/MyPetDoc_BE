@@ -313,6 +313,61 @@ class User extends BaseModel {
     // console.log("User relations check results:", results);
     return results;
   }
+
+  static async findAllDeleted(filters = {}, options = {}) {
+    try {
+      const { offset = 0, limit = 10 } = options;
+      const entries = Object.entries(filters);
+      const where = entries.length > 0
+        ? entries.map(([key]) => `${key} = ?`).join(" AND ")
+        : "1=1";
+      const values = entries.map(([_, value]) => value);
+
+      const sql = `
+        SELECT * FROM ${this.tableName} 
+        WHERE ${where}
+        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
+      `;
+
+      const users = await this.query(sql, values);
+
+      // Convert bit fields to boolean for each user
+      return users.map(
+        (userData) =>
+          new User({
+            ...userData,
+            is_active: convertBitToBoolean(userData.is_active),
+            is_locked: convertBitToBoolean(userData.is_locked),
+            is_deleted: convertBitToBoolean(userData.is_deleted),
+          })
+      );
+    } catch (error) {
+      console.error("FindAllDeleted error:", error);
+      throw error;
+    }
+  }
+
+  static async countDeleted(filters = {}) {
+    try {
+      const entries = Object.entries(filters);
+      const where = entries.length > 0
+        ? entries.map(([key]) => `${key} = ?`).join(" AND ")
+        : "1=1";
+      const values = entries.map(([_, value]) => value);
+
+      const sql = `
+        SELECT COUNT(*) as total 
+        FROM ${this.tableName} 
+        WHERE ${where}
+      `;
+
+      const [result] = await this.query(sql, values);
+      return result.total;
+    } catch (error) {
+      console.error("CountDeleted error:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = User;

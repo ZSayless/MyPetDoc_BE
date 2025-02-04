@@ -35,7 +35,11 @@ class UserController {
       parseInt(page),
       parseInt(limit)
     );
-    res.json(result);
+    res.json({
+      status: "success",
+      message: "Get users successful",
+      data: result,
+    });
   });
 
   getUserById = asyncHandler(async (req, res) => {
@@ -163,21 +167,37 @@ class UserController {
   });
 
   toggleLock = asyncHandler(async (req, res) => {
-    const user = await UserService.toggleUserStatus(req.params.id, "lock");
+    const user = await UserService.toggleUserStatus(req.params.id, "lock", req.user);
 
     // Clear cache after changing status
     await this.clearUserCache(req.params.id);
 
-    res.json(user);
+    res.json({
+      status: "success",
+      message: user.is_locked
+        ? "Lock user successful"
+        : "Unlock user successful",
+      data: user,
+    });
   });
 
   toggleActive = asyncHandler(async (req, res) => {
-    const user = await UserService.toggleUserStatus(req.params.id, "activate");
+    const user = await UserService.toggleUserStatus(
+      req.params.id,
+      "activate",
+      req.user
+    );
 
     // Clear cache after changing status
     await this.clearUserCache(req.params.id);
 
-    res.json(user);
+    res.json({
+      status: "success",
+      message: user.is_active
+        ? "Activate user successful"
+        : "Deactivate user successful",
+      data: user,
+    });
   });
 
   updateProfile = asyncHandler(async (req, res) => {
@@ -269,6 +289,20 @@ class UserController {
       }
       throw error;
     }
+  });
+
+  getDeletedUsers = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 10, ...filters } = req.query;
+    const result = await UserService.getDeletedUsers(
+      filters,
+      parseInt(page),
+      parseInt(limit)
+    );
+    res.json({
+      status: "success",
+      message: "Get deleted users successful",
+      data: result,
+    });
   });
 }
 

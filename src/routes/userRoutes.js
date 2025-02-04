@@ -15,7 +15,7 @@ router.put(
 
 // Routes require admin permission
 router.use(validateAuth(["ADMIN"]));
-
+router.get("/deleted/list", UserController.getDeletedUsers);
 router.get("/", UserController.getUsers);
 router.get("/:id", UserController.getUserById);
 router.post("/create", handleUploadAvatar, UserController.createUser);
