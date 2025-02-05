@@ -111,40 +111,34 @@ class UserService {
   }
 
   async updateUser(id, updateData) {
-    const user = await this.getUserById(id);
+    try {
+      const user = await this.getUserById(id);
 
-    // Check if the new email is taken
-    if (updateData.email && updateData.email !== user.email) {
-      if (await User.isEmailTaken(updateData.email, id)) {
-        throw new ApiError(400, "Email already used");
+      // Convert string boolean to actual boolean
+      if (updateData.is_active !== undefined) {
+        updateData.is_active = updateData.is_active === 'true' || updateData.is_active === true ? 1 : 0;
       }
-    }
 
-    // Delete old image on Cloudinary if there is a new image
-    if (
-      updateData.avatar &&
-      user.avatar &&
-      !user.avatar.includes("default-avatar")
-    ) {
-      try {
-        const urlParts = user.avatar.split("/");
-        const publicId = `avatars/${
-          urlParts[urlParts.length - 1].split(".")[0]
-        }`;
-        await cloudinary.uploader.destroy(publicId);
-        // console.log(`Deleted old image: ${publicId}`);
-      } catch (deleteError) {
-        console.error("Error deleting old image:", deleteError);
+      if (updateData.is_locked !== undefined) {
+        updateData.is_locked = updateData.is_locked === 'true' || updateData.is_locked === true ? 1 : 0;
       }
-    }
 
-    // If there is an update password, hash new password
-    if (updateData.password) {
-      const salt = await bcrypt.genSalt(10);
-      updateData.password = await bcrypt.hash(updateData.password, salt);
-    }
+      if (updateData.is_deleted !== undefined) {
+        updateData.is_deleted = updateData.is_deleted === 'true' || updateData.is_deleted === true ? 1 : 0;
+      }
 
-    return User.update(id, updateData);
+      // Remove empty password
+      if (updateData.password === '') {
+        delete updateData.password;
+      }
+
+      const updatedUser = await User.update(id, updateData);
+
+      return updatedUser;
+    } catch (error) {
+      console.error('Update User Error:', error);
+      throw error;
+    }
   }
 
   async toggleDelete(id, currentUser) {
@@ -152,11 +146,10 @@ class UserService {
       const userToDelete = await this.getUserById(id);
 
       // Check delete permission
-      // If it's not self-delete account
       if (userToDelete.role === "ADMIN") {
         // Check if it's not self-delete account
-        if (currentUser.id !== parseInt(id)) {
-          throw new ApiError(403, "Cannot delete other ADMIN account");
+        if (currentUser.id === parseInt(id)) {
+          throw new ApiError(403, "Cannot delete your own ADMIN account");
         }
 
         // Check admin count
@@ -182,13 +175,13 @@ class UserService {
 
   async apsoluteDelete(id, currentUser) {
     try {
-      const userToDelete = await this.getUserById(id);
+      const userToDelete = await this.getDeletedUsers(id);
 
       // Check delete permission
       // If it's not self-delete account
       if (userToDelete.role == "ADMIN") {
-        if (currentUser.id !== parseInt(id)) {
-          throw new ApiError(403, "Cannot delete other ADMIN account");
+        if (currentUser.id === parseInt(id)) {
+          throw new ApiError(403, "Cannot delete your own ADMIN account");
         }
         // Check admin count
         const adminCount = await User.countAdmins();
@@ -221,7 +214,6 @@ class UserService {
             urlParts[urlParts.length - 1].split(".")[0]
           }`;
           await cloudinary.uploader.destroy(publicId);
-          console.log(`Deleted avatar: ${publicId}`);
         } catch (deleteError) {
           console.error("Error deleting avatar on Cloudinary:", deleteError);
         }
@@ -237,7 +229,6 @@ class UserService {
             urlParts[urlParts.length - 1].split(".")[0]
           }`;
           await cloudinary.uploader.destroy(publicId);
-          console.log(`Deleted pet photo: ${publicId}`);
         } catch (deleteError) {
           console.error("Error deleting pet photo on Cloudinary:", deleteError);
         }
@@ -343,7 +334,6 @@ class UserService {
             urlParts[urlParts.length - 1].split(".")[0]
           }`;
           await cloudinary.uploader.destroy(publicId);
-          console.log("Deleted old avatar:", publicId);
         } catch (error) {
           console.error("Error deleting old avatar:", error);
         }
@@ -361,7 +351,6 @@ class UserService {
             urlParts[urlParts.length - 1].split(".")[0]
           }`;
           await cloudinary.uploader.destroy(publicId);
-          console.log("Deleted old pet photo:", publicId);
         } catch (error) {
           console.error("Error deleting old pet photo:", error);
         }

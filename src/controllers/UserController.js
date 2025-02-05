@@ -92,11 +92,14 @@ class UserController {
       "pet_age",
       "pet_notes",
       "is_active",
-      "is_locked",
+      "is_locked"
     ];
 
+    console.log('Request body:', req.body);
+
+    // Chỉ lấy những trường được gửi đi và được phép cập nhật
     allowedFields.forEach((field) => {
-      if (req.body[field] !== undefined && req.body[field] !== "") {
+      if (req.body[field] !== undefined) {  // Bỏ điều kiện !== ""
         updateData[field] = req.body[field];
       }
     });
@@ -111,14 +114,7 @@ class UserController {
       updateData.pet_photo = req.uploadedFiles.pet_photo.path;
     }
 
-    if (
-      updateData.role === "GENERAL_USER" &&
-      updateData.pet_type &&
-      updateData.pet_age &&
-      updateData.pet_photo
-    ) {
-      updateData.role = "GENERAL_USER";
-    }
+    console.log('Update data to be sent:', updateData);
 
     if (Object.keys(updateData).length === 0) {
       throw new ApiError(400, "No data to update");
@@ -152,12 +148,12 @@ class UserController {
   });
 
   toggleDelete = asyncHandler(async (req, res) => {
-    const user = await UserService.toggleDelete(req.params.id);
+    const user = await UserService.toggleDelete(req.params.id, req.user);
 
-    // Clear cache after changing status
+    // Clear cache after toggling delete status
     await this.clearUserCache(req.params.id);
 
-    res.status(200).json({
+    res.json({
       status: "success",
       message: user.is_deleted
         ? "Soft delete user successful"
