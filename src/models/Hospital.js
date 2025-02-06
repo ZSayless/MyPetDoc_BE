@@ -61,9 +61,18 @@ class Hospital extends BaseModel {
        WHERE ${conditions.join(" AND ")}
      `;
       const [countResult] = await this.query(countSql, params);
+
+       // Convert bit fields to boolean for each hospital
+    const convertedHospitals = hospitals.map(hospital => ({
+      ...hospital,
+      is_active: convertBitToBoolean(hospital.is_active),
+      is_deleted: convertBitToBoolean(hospital.is_deleted),
+      is_verified: convertBitToBoolean(hospital.is_verified)
+    }));
+
       const total = countResult.total;
       return {
-        data: hospitals.map((hospital) => new Hospital(hospital)),
+        data: convertedHospitals,
       };
     } catch (error) {
       console.error("Search hospitals error:", error);
@@ -126,12 +135,26 @@ class Hospital extends BaseModel {
     return new Hospital(hospitalData);
   }
   static async findById(id) {
-    const sql = `
-      SELECT * FROM ${this.tableName}
-      WHERE id = ?
-    `;
-    const [result] = await this.query(sql, [id]);
-    return result ? new Hospital(result) : null;
+    try {
+      const sql = `
+        SELECT * FROM ${this.tableName}
+        WHERE id = ?
+      `;
+      
+      const [hospital] = await this.query(sql, [id]);
+      
+      if (!hospital) return null;
+
+      // Convert bit fields to boolean
+      return {
+        ...hospital,
+        is_active: convertBitToBoolean(hospital.is_active),
+        is_deleted: convertBitToBoolean(hospital.is_deleted)
+      };
+    } catch (error) {
+      console.error("Find hospital by id error:", error);
+      throw error;
+    }
   }
 
   static async create(data) {
@@ -195,19 +218,61 @@ class Hospital extends BaseModel {
     }
   }
   static async update(id, data) {
-    // Convert boolean to bit before update
-    if (data.is_deleted !== undefined) {
-      data.is_deleted = data.is_deleted ? 1 : 0;
+    try {
+      // Convert boolean to bit before update
+      if (data.is_active !== undefined) {
+        data.is_active = data.is_active ? 1 : 0;
+      }
+      if (data.is_deleted !== undefined) {
+        data.is_deleted = data.is_deleted ? 1 : 0;
+      }
+
+      const updateFields = Object.keys(data)
+        .map((key) => `${key} = ?`)
+        .join(", ");
+
+      const sql = `
+        UPDATE ${this.tableName}
+        SET ${updateFields}
+        WHERE id = ?
+      `;
+
+      const values = [...Object.values(data), id];
+      await this.query(sql, values);
+
+      return this.findById(id);
+    } catch (error) {
+      console.error("Update hospital error:", error);
+      throw error;
     }
-    if (data.slug !== undefined) {
-      data.slug = slugify(data.name);
-    }
-    const hospitalData = await super.update(id, data);
-    return new Hospital(hospitalData);
   }
   static async findAll(filters = {}, options = {}) {
-    const hospitals = await super.findAll(filters, options);
-    return hospitals.map((hospitalData) => new Hospital(hospitalData));
+    try {
+      const { offset = 0, limit = 10 } = options;
+      const entries = Object.entries(filters);
+      const where = entries.length > 0
+        ? entries.map(([key]) => `${key} = ?`).join(" AND ")
+        : "1=1";
+      const values = entries.map(([_, value]) => value);
+
+      const sql = `
+        SELECT * FROM ${this.tableName} 
+        WHERE ${where}
+        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
+      `;
+
+      const hospitals = await this.query(sql, values);
+
+      // Convert bit fields to boolean for each hospital
+      return hospitals.map(hospital => ({
+        ...hospital,
+        is_active: convertBitToBoolean(hospital.is_active),
+        is_deleted: convertBitToBoolean(hospital.is_deleted)
+      }));
+    } catch (error) {
+      console.error("Find all hospitals error:", error);
+      throw error;
+    }
   }
   // Soft delete method
   static async softDelete(id) {

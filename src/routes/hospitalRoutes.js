@@ -79,4 +79,11 @@ router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));
 router.post("/:hospitalId/images/:imageId/like", HospitalController.toggleImageLike);
 router.get("/:hospitalId/images/:imageId/like/check", HospitalController.checkImageLike);
 
+// Route toggle active
+router.patch(
+  "/:id/toggle-active",
+  validateAuth(["ADMIN"]),
+  HospitalController.toggleActive
+);
+
 module.exports = router;

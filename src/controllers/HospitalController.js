@@ -299,6 +299,22 @@ class HospitalController {
     });
   });
 
+  // Toggle active hospital
+  toggleActive = asyncHandler(async (req, res) => {
+    const hospital = await HospitalService.toggleActive(req.params.id);
+
+    // Clear cache after changing status
+    await this.clearHospitalCache(req.params.id);
+
+    res.json({
+      status: "success",
+      message: hospital.is_active
+        ? "Activate hospital successful"
+        : "Deactivate hospital successful",
+      data: hospital,
+    });
+  });
+
   // Clear cache when data changes
   clearHospitalCache = async () => {
     try {

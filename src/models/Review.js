@@ -256,13 +256,20 @@ class Review extends BaseModel {
     }
   }
 
-  // Get hospital stats
+  // Get hospital stats with adjusted rating
   static async getHospitalStats(hospitalId) {
     try {
       const sql = `
         SELECT 
           COUNT(*) as total_reviews,
-          AVG(rating) as average_rating,
+          AVG(rating) as raw_rating,
+          ROUND(
+            CASE 
+              WHEN COUNT(*) = 0 THEN 4.9
+              ELSE (COUNT(*) * COALESCE(AVG(rating), 0) + 10 * 4.9) / (COUNT(*) + 10)
+            END, 
+            1
+          ) as average_rating,
           COUNT(CASE WHEN rating = 5 THEN 1 END) as five_star,
           COUNT(CASE WHEN rating = 4 THEN 1 END) as four_star,
           COUNT(CASE WHEN rating = 3 THEN 1 END) as three_star,
@@ -273,8 +280,24 @@ class Review extends BaseModel {
       `;
 
       const [stats] = await this.query(sql, [hospitalId]);
+
+      // Make sure average_rating is a number
+      if (stats) {
+        stats.average_rating = parseFloat(stats.average_rating) || 4.9;
+        stats.raw_rating = parseFloat(stats.raw_rating) || 0;
+        
+        // Convert counts to numbers
+        stats.total_reviews = parseInt(stats.total_reviews);
+        stats.five_star = parseInt(stats.five_star);
+        stats.four_star = parseInt(stats.four_star);
+        stats.three_star = parseInt(stats.three_star);
+        stats.two_star = parseInt(stats.two_star);
+        stats.one_star = parseInt(stats.one_star);
+      }
+
       return stats;
     } catch (error) {
+      console.error("Get hospital stats error:", error);
       throw error;
     }
   }

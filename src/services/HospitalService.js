@@ -242,8 +242,19 @@ class HospitalService {
         })
       );
 
+      // Get stats for each hospital
+      const hospitalsWithStats = await Promise.all(
+        hospitalsWithImages.map(async (hospital) => {
+          const stats = await Review.getHospitalStats(hospital.id);
+          return {
+            ...hospital,
+            stats
+          };
+        })
+      );
+
       return {
-        hospitals: hospitalsWithImages,
+        hospitals: hospitalsWithStats,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -300,8 +311,19 @@ class HospitalService {
         })
       );
 
+      // Get stats for each hospital
+      const hospitalsWithStats = await Promise.all(
+        hospitalsWithImages.map(async (hospital) => {
+          const stats = await Review.getHospitalStats(hospital.id);
+          return {
+            ...hospital,
+            stats
+          };
+        })
+      );
+
       return {
-        hospitals: hospitalsWithImages,
+        hospitals: hospitalsWithStats,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -449,6 +471,41 @@ class HospitalService {
       };
     } catch (error) {
       console.error("Get hospital by slug service error:", error);
+      throw error;
+    }
+  }
+
+  async toggleActive(id) {
+    try {
+      const hospital = await Hospital.findById(id);
+      if (!hospital) {
+        throw new ApiError(404, "Hospital not found");
+      }
+
+      // Check if there is a HOSPITAL_ADMIN managing the hospital
+      const adminCount = await User.count({
+        role: "HOSPITAL_ADMIN",
+        hospital_id: id,
+        is_active: 1,
+        is_deleted: 0
+      });
+
+      // If hospital is active and has admin managing
+      if (hospital.is_active && adminCount > 0) {
+        throw new ApiError(
+          400,
+          "Cannot deactivate hospital that has active administrators"
+        );
+      }
+
+      const updateData = {
+        is_active: !hospital.is_active,
+        updated_at: new Date()
+      };
+
+      return await Hospital.update(id, updateData);
+    } catch (error) {
+      console.error("Toggle hospital active error:", error);
       throw error;
     }
   }
