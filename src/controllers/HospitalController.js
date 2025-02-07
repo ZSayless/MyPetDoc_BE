@@ -142,7 +142,13 @@ class HospitalController {
     await cache.del(`cache:/api/hospitals/${req.params.id}`);
     await cache.del(`cache:/api/hospitals/slug/${hospital.slug}`);
 
-    res.json(hospital);
+    res.status(200).json({
+      status: "success",
+      message: hospital.is_deleted
+        ? "Delete hospital successful"
+        : "Restore hospital successful",
+      data: hospital,
+    });
   });
 
   // Advanced search hospitals
@@ -318,7 +324,7 @@ class HospitalController {
   // Clear cache when data changes
   clearHospitalCache = async () => {
     try {
-      const keys = ["cache:/api/hospitals", "cache:/api/hospitals/search"];
+      const keys = ["cache:/api/hospitals", "cache:/api/hospitals/search", "cache:/api/hospitals/deleted/list", "cache:/api/hospitals/slug"];
 
       // Clear cache for list and search
       for (const key of keys) {
@@ -330,6 +336,21 @@ class HospitalController {
       console.error("Error clearing hospital cache:", error);
     }
   };
+
+  getDeletedHospitals = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 10, ...filters } = req.query;
+    const result = await HospitalService.getDeletedHospitals(
+      filters,
+      parseInt(page),
+      parseInt(limit)
+    );
+
+    res.status(200).json({
+      status: "success",
+      message: "Get deleted hospitals successful",
+      data: result,
+    });
+  });
 }
 
 module.exports = new HospitalController();

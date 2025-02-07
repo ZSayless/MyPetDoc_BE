@@ -191,78 +191,45 @@ class HospitalService {
     }
   }
 
-  async getHospitals(searchParams = {}, page = 1, limit = 10) {
+  async getHospitals(filters = {}, page = 1, limit = 10) {
     try {
       const offset = (page - 1) * limit;
-      const {
-        name,
-        address,
-        department,
-        specialties,
-        fromDate,
-        toDate,
-        ...otherFilters
-      } = searchParams;
+      const hospitals = await Hospital.findAll(filters, { offset, limit });
+      const total = await Hospital.count(filters);
 
-      // Search hospitals with conditions
-      const hospitals = await Hospital.search(
-        {
-          name,
-          address,
-          department,
-          specialties,
-          fromDate,
-          toDate,
-          ...otherFilters,
-        },
-        { offset, limit }
-      );
-
-      // Count total results
-      const total = await Hospital.countSearch({
-        name,
-        address,
-        department,
-        specialties,
-        fromDate,
-        toDate,
-        ...otherFilters,
-      });
-
-      // Get images for each hospital
-      const hospitalsWithImages = await Promise.all(
-        hospitals.data.map(async (hospital) => {
-          const images = await hospitalImageService.getHospitalImages(
-            hospital.id
-          );
-          return {
-            ...hospital,
-            images: images || [],
-          };
-        })
-      );
-
-      // Get stats for each hospital
-      const hospitalsWithStats = await Promise.all(
-        hospitalsWithImages.map(async (hospital) => {
+      // Get additional data for each hospital
+      const hospitalsWithData = await Promise.all(
+        hospitals.map(async (hospital) => {
+          // Get review stats
           const stats = await Review.getHospitalStats(hospital.id);
+          
+          // Get images
+          const images = await HospitalImage.findByHospitalId(hospital.id);
+          
           return {
             ...hospital,
-            stats
+            stats,
+            images: images.map(img => ({
+              id: img.id,
+              url: img.image_url,
+              createdAt: img.created_at,
+              likesCount: parseInt(img.likes_count) || 0
+            }))
           };
         })
       );
 
       return {
-        hospitals: hospitalsWithStats,
+        hospitals: hospitalsWithData,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          totalPages: Math.ceil(total / limit),
-        },
+          totalPages: Math.ceil(total / limit)
+        }
       };
     } catch (error) {
+      console.error("Get hospitals error:", error);
       throw error;
     }
   }
@@ -506,6 +473,45 @@ class HospitalService {
       return await Hospital.update(id, updateData);
     } catch (error) {
       console.error("Toggle hospital active error:", error);
+      throw error;
+    }
+  }
+
+  async getDeletedHospitals(filters = {}, page = 1, limit = 10) {
+    try {
+      const offset = (page - 1) * limit;
+      
+      // Đảm bảo chỉ lấy những hospital đã bị xóa mềm
+      const deletedFilters = {
+        ...filters,
+        is_deleted: 1
+      };
+
+      const hospitals = await Hospital.findAllDeleted(deletedFilters, { offset, limit });
+      const total = await Hospital.countDeleted(deletedFilters);
+
+      // Get stats for each hospital
+      const hospitalsWithStats = await Promise.all(
+        hospitals.map(async (hospital) => {
+          const stats = await Review.getHospitalStats(hospital.id);
+          return {
+            ...hospital,
+            stats
+          };
+        })
+      );
+
+      return {
+        hospitals: hospitalsWithStats,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      console.error("Get deleted hospitals error:", error);
       throw error;
     }
   }

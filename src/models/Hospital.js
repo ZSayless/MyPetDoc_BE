@@ -249,25 +249,54 @@ class Hospital extends BaseModel {
   static async findAll(filters = {}, options = {}) {
     try {
       const { offset = 0, limit = 10 } = options;
-      const entries = Object.entries(filters);
-      const where = entries.length > 0
-        ? entries.map(([key]) => `${key} = ?`).join(" AND ")
-        : "1=1";
-      const values = entries.map(([_, value]) => value);
-
+      
+      // Build base query với JOIN user
       const sql = `
-        SELECT * FROM ${this.tableName} 
-        WHERE ${where}
+        SELECT 
+          h.*,
+          u.id as creator_id,
+          u.full_name as creator_name,
+          u.email as creator_email,
+          u.phone_number as creator_phone,
+          u.avatar as creator_avatar
+        FROM ${this.tableName} h
+        LEFT JOIN users u ON h.created_by = u.id
+        WHERE h.is_deleted = 0
+        ORDER BY h.created_at DESC
         LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
       `;
 
-      const hospitals = await this.query(sql, values);
+      const hospitals = await this.query(sql);
 
-      // Convert bit fields to boolean for each hospital
+      // Convert bit fields và format dữ liệu
       return hospitals.map(hospital => ({
-        ...hospital,
+        id: hospital.id,
+        name: hospital.name,
+        slug: hospital.slug,
+        address: hospital.address,
+        phone: hospital.phone,
+        email: hospital.email,
+        link_website: hospital.link_website,
+        map_location: hospital.map_location,
+        description: hospital.description,
+        department: hospital.department,
+        operating_hours: hospital.operating_hours,
+        specialties: hospital.specialties,
+        staff_description: hospital.staff_description,
+        staff_credentials: hospital.staff_credentials,
         is_active: convertBitToBoolean(hospital.is_active),
-        is_deleted: convertBitToBoolean(hospital.is_deleted)
+        is_deleted: convertBitToBoolean(hospital.is_deleted),
+        version: hospital.version,
+        created_at: hospital.created_at,
+        updated_at: hospital.updated_at,
+        // Thông tin người tạo
+        creator: hospital.creator_id ? {
+          id: hospital.creator_id,
+          full_name: hospital.creator_name,
+          email: hospital.creator_email,
+          phone_number: hospital.creator_phone,
+          avatar: hospital.creator_avatar
+        } : null
       }));
     } catch (error) {
       console.error("Find all hospitals error:", error);
@@ -395,6 +424,58 @@ class Hospital extends BaseModel {
       return new Hospital(result);
     } catch (error) {
       console.error("Get hospital by slug error:", error);
+      throw error;
+    }
+  }
+  static async findAllDeleted(filters = {}, options = {}) {
+    try {
+      const { offset = 0, limit = 10 } = options;
+      const entries = Object.entries(filters);
+      const where = entries.length > 0
+        ? entries.map(([key]) => `${key} = ?`).join(" AND ")
+        : "1=1";
+      const values = entries.map(([_, value]) => value);
+
+      const sql = `
+        SELECT * FROM ${this.tableName} 
+        WHERE ${where}
+        ORDER BY updated_at DESC
+        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
+      `;
+
+      const hospitals = await this.query(sql, values);
+
+      // Convert bit fields to boolean
+      return hospitals.map(hospital => ({
+        ...hospital,
+        is_active: convertBitToBoolean(hospital.is_active),
+        is_deleted: convertBitToBoolean(hospital.is_deleted),
+        is_verified: convertBitToBoolean(hospital.is_verified)
+      }));
+    } catch (error) {
+      console.error("Find all deleted hospitals error:", error);
+      throw error;
+    }
+  }
+
+  static async countDeleted(filters = {}) {
+    try {
+      const entries = Object.entries(filters);
+      const where = entries.length > 0
+        ? entries.map(([key]) => `${key} = ?`).join(" AND ")
+        : "1=1";
+      const values = entries.map(([_, value]) => value);
+
+      const sql = `
+        SELECT COUNT(*) as total 
+        FROM ${this.tableName} 
+        WHERE ${where}
+      `;
+
+      const [result] = await this.query(sql, values);
+      return result.total;
+    } catch (error) {
+      console.error("Count deleted hospitals error:", error);
       throw error;
     }
   }
