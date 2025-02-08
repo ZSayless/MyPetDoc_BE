@@ -40,8 +40,6 @@ router.patch("/:id/toggle-delete", ReviewController.toggleSoftDelete);
 // Get reviews of current user
 router.get("/user/me", cacheMiddleware(60), ReviewController.getUserReviews);
 
-// Admin routes
-router.use(validateAuth(["ADMIN"]));
 router.delete("/:id/hard", ReviewController.hardDeleteReview);
 
 // Route dành cho HOSPITAL_ADMIN và ADMIN

@@ -44,6 +44,18 @@ class ReportReasonController {
       ...result,
     });
   });
+
+  // Force delete report
+  forceDeleteReport = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    await ReportReasonService.forceDeleteReport(parseInt(id));
+
+    res.json({
+      status: "success",
+      message: "Report permanently deleted"
+    });
+  });
 }
 
 module.exports = new ReportReasonController();

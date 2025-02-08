@@ -208,45 +208,35 @@ class ReviewService {
   }
 
   // Hard delete review
-  async hardDelete(id) {
+  async hardDelete(reviewId) {
     try {
-      // Get review information before deleting
-      const review = await Review.findById(id);
+      // Kiểm tra review tồn tại
+      const review = await Review.findById(reviewId);
       if (!review) {
         throw new ApiError(404, "Review not found");
       }
 
-      // Delete image on Cloudinary if exists
-      if (review.photo.image_url) {
+      // Xóa ảnh trên Cloudinary nếu có
+      if (review.image_url) {
         try {
-          const imageUrl = review.photo.image_url;
-
-          const urlParts = imageUrl.split("/");
-          const filename = urlParts[urlParts.length - 1].split(".")[0];
-          const publicId = `reviews/${filename}`;
-
-          await cloudinary.uploader.destroy(publicId);
-        } catch (cloudinaryError) {
-          console.error("Error deleting image on Cloudinary:", cloudinaryError);
+          const publicId = review.image_url.split("/").pop().split(".")[0];
+          await cloudinary.uploader.destroy(`reviews/${publicId}`);
+        } catch (deleteError) {
+          console.error("Error deleting image from Cloudinary:", deleteError);
+          // Tiếp tục xóa review ngay cả khi xóa ảnh thất bại
         }
-      } else {
-        console.log("No image URL found to delete");
       }
 
-      // Delete related reports
-      await Review.query("DELETE FROM report_reasons WHERE review_id = ?", [
-        id,
-      ]);
-
-      // Delete review
-      await Review.hardDelete(id);
+      // Xóa review trong database
+      await Review.hardDelete(reviewId);
 
       return {
-        status: "success",
-        message: "Review deleted successfully",
+        message: "Review permanently deleted",
+        reviewId
       };
+
     } catch (error) {
-      console.error("Error in ReviewService.hardDelete:", error);
+      console.error("Hard delete review error:", error);
       throw error;
     }
   }
@@ -268,50 +258,44 @@ class ReviewService {
       // Validate new data (with isUpdate = true)
       await this.validateReviewData(data, file, true);
 
-      // If there is a new image and there is an old image, delete the old image on Cloudinary
-      if (file && existingReview.photo && existingReview.photo.image_url) {
-        try {
-          const urlParts = existingReview.photo.image_url.split("/");
-          const publicId = `reviews/${
-            urlParts[urlParts.length - 1].split(".")[0]
-          }`;
-          await cloudinary.uploader.destroy(publicId);
-        } catch (deleteError) {
-          console.error("Error deleting old image on Cloudinary:", deleteError);
-        }
+      // Prepare update data - chỉ lấy các field được gửi lên
+      const updateData = {};
+      
+      // Chỉ cập nhật rating nếu có
+      if (data.rating !== undefined) {
+        updateData.rating = parseInt(data.rating);
+      }
+      
+      // Chỉ cập nhật comment nếu có
+      if (data.comment !== undefined) {
+        updateData.comment = data.comment;
       }
 
-      // Prepare update data
-      const updateData = {
-        rating: data.rating ? parseInt(data.rating) : existingReview.rating,
-        comment:
-          data.comment !== undefined ? data.comment : existingReview.comment,
-        image_url: file
-          ? file.path
-          : existingReview.photo
-          ? existingReview.photo.image_url
-          : null,
-        image_description:
-          data.image_description !== undefined
-            ? data.image_description
-            : existingReview.photo
-            ? existingReview.photo.description
-            : null,
-      };
+      // Chỉ cập nhật image và image_description nếu có file mới
+      if (file) {
+        // Xóa ảnh cũ nếu có
+        if (existingReview.image_url) {
+          try {
+            const publicId = existingReview.image_url.split("/").pop().split(".")[0];
+            await cloudinary.uploader.destroy(`reviews/${publicId}`);
+          } catch (deleteError) {
+            console.error("Error deleting old image on Cloudinary:", deleteError);
+          }
+        }
+        updateData.image_url = file.path;
+        updateData.image_description = data.image_description;
+      }
 
       // Update review
       const updatedReview = await Review.update(id, updateData);
 
-      // console.log("Review updated:", updatedReview);
       return updatedReview;
     } catch (error) {
-      // If there is an error and a new image has been uploaded, delete the new image on Cloudinary
+      // If there is an error and a new image has been uploaded, delete the new image
       if (file && file.path) {
         try {
           const urlParts = file.path.split("/");
-          const publicId = `reviews/${
-            urlParts[urlParts.length - 1].split(".")[0]
-          }`;
+          const publicId = `reviews/${urlParts[urlParts.length - 1].split(".")[0]}`;
           await cloudinary.uploader.destroy(publicId);
         } catch (deleteError) {
           console.error("Error deleting new image on Cloudinary:", deleteError);

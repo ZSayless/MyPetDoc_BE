@@ -180,25 +180,42 @@ class Review extends BaseModel {
   // Update review
   static async update(id, data) {
     try {
+      // Lọc bỏ các giá trị undefined và null
+      const validData = {};
+      for (const [key, value] of Object.entries(data)) {
+        if (value !== undefined && value !== null) {
+          validData[key] = value;
+        }
+      }
+
+      // Kiểm tra nếu không có dữ liệu hợp lệ để update
+      if (Object.keys(validData).length === 0) {
+        throw new ApiError(400, "No valid data to update");
+      }
+
+      // Build câu SQL động dựa trên các field có giá trị
+      const fields = Object.keys(validData)
+        .map(key => `${key} = ?`)
+        .join(", ");
+      
+      const values = Object.values(validData);
+
       const sql = `
         UPDATE ${this.tableName}
-        SET rating = ?,
-            comment = ?,
-            image_url = ?,
-            image_description = ?,
-            updated_at = CURRENT_TIMESTAMP
+        SET ${fields}, updated_at = NOW()
         WHERE id = ?
       `;
 
-      const params = [
-        data.rating,
-        data.comment,
-        data.image_url,
-        data.image_description,
-        id,
-      ];
+      // Thêm id vào cuối mảng values
+      values.push(id);
 
-      await this.query(sql, params);
+      const result = await this.query(sql, values);
+
+      if (result.affectedRows === 0) {
+        throw new ApiError(404, "Review not found");
+      }
+
+      // Lấy review đã update
       return await this.findById(id);
     } catch (error) {
       console.error("Error in update method:", error);

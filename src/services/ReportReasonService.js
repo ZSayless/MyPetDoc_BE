@@ -7,88 +7,24 @@ class ReportReasonService {
     try {
       const offset = (page - 1) * limit;
 
-      // Extend query to get detailed information
-      let sql = `
-        SELECT 
-          rr.*,
-          u.full_name as reporter_name,
-          r.comment as review_content,
-          r.rating as review_rating,
-          r.hospital_id as review_hospital_id,
-          h.name as hospital_name,
-          pgc.content as gallery_comment_content,
-          pg.caption as gallery_caption,
-          ppc.content as post_comment_content,
-          pp.title as post_title,
-          CAST(rr.resolved AS UNSIGNED) as resolved
-        FROM report_reasons rr
-        LEFT JOIN users u ON rr.reported_by = u.id
-        LEFT JOIN reviews r ON rr.review_id = r.id
-        LEFT JOIN hospitals h ON r.hospital_id = h.id
-        LEFT JOIN pet_gallery_comments pgc ON rr.pet_gallery_comment_id = pgc.id
-        LEFT JOIN pet_gallery pg ON pgc.gallery_id = pg.id
-        LEFT JOIN pet_post_comments ppc ON rr.pet_post_comment_id = ppc.id
-        LEFT JOIN pet_posts pp ON ppc.post_id = pp.id
-      `;
+      // Get reports with details
+      const reports = await ReportReason.findAllWithDetails(filters, { offset, limit });
+      const total = await ReportReason.countReports(filters);
 
-      // Build WHERE conditions based on filters
-      const whereConditions = [];
-      const params = [];
-
-      if (filters.resolved !== undefined) {
-        whereConditions.push("rr.resolved = ?");
-        params.push(filters.resolved);
-      }
-
-      if (filters.reportType) {
-        switch (filters.reportType) {
-          case "review":
-            whereConditions.push("rr.review_id IS NOT NULL");
-            break;
-          case "gallery_comment":
-            whereConditions.push("rr.pet_gallery_comment_id IS NOT NULL");
-            break;
-          case "post_comment":
-            whereConditions.push("rr.pet_post_comment_id IS NOT NULL");
-            break;
-        }
-      }
-
-      if (whereConditions.length > 0) {
-        sql += ` WHERE ${whereConditions.join(" AND ")}`;
-      }
-
-      // Add ORDER BY and LIMIT
-      sql += `
-        ORDER BY rr.id DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
-      params.push(limit, offset);
-
-      // Query to count total reports
-      let countSql = `
-        SELECT COUNT(*) as total 
-        FROM report_reasons rr
-      `;
-      if (whereConditions.length > 0) {
-        countSql += ` WHERE ${whereConditions.join(" AND ")}`;
-      }
-
-      // Perform both queries
-      const [reports, [countResult]] = await Promise.all([
-        ReportReason.query(sql, params),
-        ReportReason.query(countSql, params.slice(0, -2)),
-      ]);
-
-      // Format result with more detailed information
-      const formattedReports = reports.map((report) => ({
+      // Format reports
+      const formattedReports = reports.map(report => ({
         id: report.id,
         reason: report.reason,
         resolved: Boolean(report.resolved),
         created_at: report.created_at,
         reporter: {
-          id: report.reported_by,
-          name: report.reporter_name,
+          id: report.reporter_id,
+          full_name: report.reporter_name,
+          email: report.reporter_email,
+          phone: report.reporter_phone,
+          avatar: report.reporter_avatar,
+          role: report.reporter_role,
+          created_at: report.reporter_created_at
         },
         reported_content: {
           type: report.review_id
@@ -96,14 +32,8 @@ class ReportReasonService {
             : report.pet_gallery_comment_id
             ? "gallery_comment"
             : "post_comment",
-          id:
-            report.review_id ||
-            report.pet_gallery_comment_id ||
-            report.pet_post_comment_id,
-          content:
-            report.review_content ||
-            report.gallery_comment_content ||
-            report.post_comment_content,
+          id: report.review_id || report.pet_gallery_comment_id || report.pet_post_comment_id,
+          content: report.review_content || report.gallery_comment_content || report.post_comment_content,
           details: report.review_id
             ? {
                 rating: report.review_rating,
@@ -131,13 +61,13 @@ class ReportReasonService {
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total: countResult.total,
-          totalPages: Math.ceil(countResult.total / limit),
+          total,
+          totalPages: Math.ceil(total / limit),
         },
       };
     } catch (error) {
       console.error("Get all reports error:", error);
-      throw new ApiError(500, "Error fetching reports", error.message);
+      throw error;
     }
   }
 
@@ -220,6 +150,33 @@ class ReportReasonService {
       };
     } catch (error) {
       console.error("Get report detail error:", error);
+      throw error;
+    }
+  }
+
+  // Force delete report
+  async forceDeleteReport(reportId) {
+    try {
+      // Check if report exists
+      const report = await ReportReason.findOneWithDetails(reportId);
+      if (!report) {
+        throw new ApiError(404, "Report not found");
+      }
+
+      // Check if report is resolved
+      if (!report.resolved) {
+        throw new ApiError(400, "Cannot delete unresolved report");
+      }
+
+      // Force delete report
+      await ReportReason.forceDelete(reportId);
+
+      return {
+        message: "Report permanently deleted",
+        reportId
+      };
+    } catch (error) {
+      console.error("Force delete report error:", error);
       throw error;
     }
   }

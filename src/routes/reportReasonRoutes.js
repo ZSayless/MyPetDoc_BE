@@ -8,5 +8,6 @@ router.use(validateAuth(["ADMIN"]));
 router.get("/", ReportReasonController.getAllReports);
 router.get("/:id", ReportReasonController.getReportDetail);
 router.patch("/:id/resolve", ReportReasonController.resolveReport);
+router.delete("/:id/force", ReportReasonController.forceDeleteReport);
 
 module.exports = router;
