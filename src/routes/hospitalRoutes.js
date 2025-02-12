@@ -64,7 +64,7 @@ router.post(
   HospitalController.createHospital
 );
 
-router.delete(" ", validateAuth(["ADMIN"]), HospitalController.hardDelete);
+router.delete("/:id", validateAuth(["ADMIN"]), HospitalController.hardDelete);
 
 router.patch(
   "/:id/toggle-delete",

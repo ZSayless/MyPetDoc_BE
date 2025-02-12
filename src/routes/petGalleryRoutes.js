@@ -52,4 +52,11 @@ router.delete("/posts/:id", PetGalleryController.deletePost);
 // (Controller will check user_id)
 router.delete("/comments/:commentId", PetGalleryController.deleteComment);
 
+// Admin route to update post status
+router.patch(
+  "/posts/:id/status",
+  validateAuth(["ADMIN"]),
+  PetGalleryController.updateStatus
+);
+
 module.exports = router;

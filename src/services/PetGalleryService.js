@@ -46,29 +46,10 @@ class PetGalleryService {
   // Get list of posts
   async getPosts(options = {}) {
     try {
-      const {
-        page = 1,
-        limit = 10,
-        petType,
-        tags,
-        userId,
-        sortBy = "created_at",
-        sortOrder = "DESC",
-      } = options;
-
-      const result = await PetGallery.findAll({
-        page,
-        limit,
-        petType,
-        tags,
-        userId,
-        sortBy,
-        sortOrder,
-      });
-
-      return result;
+      const { status = 'ACTIVE', ...otherOptions } = options;
+      return await PetGallery.findAll({ status, ...otherOptions });
     } catch (error) {
-      throw error;
+      throw new ApiError(500, 'Error fetching posts');
     }
   }
 
@@ -494,6 +475,32 @@ class PetGalleryService {
       };
     } catch (error) {
       console.error("Delete gallery error:", error);
+      throw error;
+    }
+  }
+
+  // Thêm method updateStatus
+  async updateStatus(id, status, userId, isAdmin = false) {
+    try {
+      // Check post exists
+      const post = await PetGallery.getDetail(id);
+      if (!post) {
+        throw new ApiError(404, 'Post not found');
+      }
+
+      // Check permission
+      if (!isAdmin && post.user_id !== userId) {
+        throw new ApiError(403, 'You do not have permission');
+      }
+
+      // Validate status
+      if (!['ACTIVE', 'INACTIVE'].includes(status)) {
+        throw new ApiError(400, 'Invalid status');
+      }
+
+      const updatedPost = await PetGallery.updateStatus(id, status);
+      return updatedPost;
+    } catch (error) {
       throw error;
     }
   }

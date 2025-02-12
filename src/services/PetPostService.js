@@ -670,6 +670,28 @@ class PetPostService {
       throw error;
     }
   }
+
+  // Get all blogs without filter
+  async getAllBlogs() {
+    try {
+      const result = await PetPost.getAllBlogs();
+      return result;
+    } catch (error) {
+      console.error("Get all blogs service error:", error);
+      throw new ApiError(500, "Error fetching blogs");
+    }
+  }
+
+  // Get soft deleted blogs
+  async getSoftDeletedBlogs() {
+    try {
+      const result = await PetPost.getSoftDeletedBlogs();
+      return result;
+    } catch (error) {
+      console.error("Get soft deleted blogs service error:", error);
+      throw new ApiError(500, "Error fetching soft deleted blogs");
+    }
+  }
 }
 
 module.exports = new PetPostService();

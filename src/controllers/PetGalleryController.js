@@ -74,7 +74,7 @@ class PetGalleryController {
   });
 
   // Get list of posts
-  getPosts = asyncHandler(async (req, res, next) => {
+  getPosts = asyncHandler(async (req, res) => {
     const {
       page = 1,
       limit = 10,
@@ -83,6 +83,7 @@ class PetGalleryController {
       user_id,
       sort_by,
       sort_order,
+      status = 'ACTIVE'
     } = req.query;
 
     const posts = await PetGalleryService.getPosts({
@@ -93,6 +94,7 @@ class PetGalleryController {
       userId: user_id,
       sortBy: sort_by,
       sortOrder: sort_order,
+      status
     });
 
     res.json({
@@ -364,6 +366,34 @@ class PetGalleryController {
     } catch (error) {
       throw new ApiError(500, "Internal server error");
     }
+  });
+
+  // Update post status
+  updateStatus = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'ADMIN';
+
+    if (!status) {
+      throw new ApiError(400, 'Status is required');
+    }
+
+    const updatedPost = await PetGalleryService.updateStatus(
+      parseInt(id),
+      status.toUpperCase(),
+      userId,
+      isAdmin
+    );
+
+    // Clear cache
+    await this.clearPostCache(id);
+
+    res.json({
+      success: true,
+      message: 'Update post status successful',
+      data: updatedPost
+    });
   });
 }
 

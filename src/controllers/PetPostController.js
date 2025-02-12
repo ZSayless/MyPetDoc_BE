@@ -380,6 +380,28 @@ class PetPostController {
       ...result,
     });
   });
+
+  // Get all blogs without filter
+  getAllBlogs = asyncHandler(async (req, res) => {
+    const result = await PetPostService.getAllBlogs();
+    
+    res.json({
+      success: true,
+      message: "Get list of posts successful",
+      data: result
+    });
+  });
+
+  // Get soft deleted blogs
+  getSoftDeletedBlogs = asyncHandler(async (req, res) => {
+    const result = await PetPostService.getSoftDeletedBlogs();
+    
+    res.json({
+      success: true,
+      message: "Get soft deleted posts successful",
+      data: result
+    });
+  });
 }
 
 module.exports = new PetPostController();

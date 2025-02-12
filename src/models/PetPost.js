@@ -486,6 +486,98 @@ class PetPost extends BaseModel {
       throw error;
     }
   }
+
+  // Get all blogs without filter
+  static async getAllBlogs() {
+    try {
+      const sql = `
+        SELECT 
+          p.*,
+          u.full_name as author_name,
+          u.avatar as author_avatar,
+          h.name as hospital_name,
+          CAST(p.is_deleted AS UNSIGNED) as is_deleted,
+          CAST(p.is_featured AS UNSIGNED) as is_featured
+        FROM ${this.tableName} p
+        LEFT JOIN users u ON p.author_id = u.id 
+        LEFT JOIN hospitals h ON p.hospital_id = h.id
+        WHERE p.post_type = 'BLOG'
+        AND p.is_deleted = 0
+        ORDER BY p.created_at DESC
+      `;
+
+      const countSql = `
+        SELECT COUNT(*) as total
+        FROM ${this.tableName}
+        WHERE post_type = 'BLOG' 
+        AND is_deleted = 0
+      `;
+
+      const [posts, [countResult]] = await Promise.all([
+        this.query(sql),
+        this.query(countSql)
+      ]);
+
+      return {
+        posts: posts.map(post => new PetPost(post)),
+        pagination: {
+          page: 1,
+          limit: posts.length,
+          total: countResult.total,
+          totalPages: 1
+        }
+      };
+    } catch (error) {
+      console.error("Get all blogs error:", error);
+      throw error;
+    }
+  }
+
+  // Get soft deleted blogs
+  static async getSoftDeletedBlogs() {
+    try {
+      const sql = `
+        SELECT 
+          p.*,
+          u.full_name as author_name,
+          u.avatar as author_avatar,
+          h.name as hospital_name,
+          CAST(p.is_deleted AS UNSIGNED) as is_deleted,
+          CAST(p.is_featured AS UNSIGNED) as is_featured
+        FROM ${this.tableName} p
+        LEFT JOIN users u ON p.author_id = u.id 
+        LEFT JOIN hospitals h ON p.hospital_id = h.id
+        WHERE p.post_type = 'BLOG'
+        AND p.is_deleted = 1
+        ORDER BY p.updated_at DESC
+      `;
+
+      const countSql = `
+        SELECT COUNT(*) as total
+        FROM ${this.tableName}
+        WHERE post_type = 'BLOG' 
+        AND is_deleted = 1
+      `;
+
+      const [posts, [countResult]] = await Promise.all([
+        this.query(sql),
+        this.query(countSql)
+      ]);
+
+      return {
+        posts: posts.map(post => new PetPost(post)),
+        pagination: {
+          page: 1,
+          limit: posts.length,
+          total: countResult.total,
+          totalPages: 1
+        }
+      };
+    } catch (error) {
+      console.error("Get soft deleted blogs error:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = PetPost;

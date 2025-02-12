@@ -40,6 +40,7 @@ router.post(
 const adminRouter = express.Router();
 
 // Routes admin
+adminRouter.get("/all", PetPostController.getAllBlogs);
 adminRouter.post("/", handleUploadPetPostImages, PetPostController.createPost);
 adminRouter.put(
   "/:id",
@@ -58,6 +59,9 @@ adminRouter.delete("/batch/hard", PetPostController.hardDeleteManyPosts);
 
 // Add toggle soft delete route (only for ADMIN)
 adminRouter.patch("/:id/toggle-delete", PetPostController.toggleSoftDelete);
+
+// Admin route to get soft deleted blogs
+adminRouter.get("/trash", PetPostController.getSoftDeletedBlogs);
 
 // Apply admin middleware and mount admin router
 router.use("/admin", validateAuth(["ADMIN"]), adminRouter);

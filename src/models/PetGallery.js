@@ -11,6 +11,7 @@ class PetGallery extends BaseModel {
       Object.assign(this, {
         ...data,
         is_deleted: convertBitToBoolean(data.is_deleted),
+        status: data.status || 'ACTIVE'
       });
     }
   }
@@ -27,6 +28,7 @@ class PetGallery extends BaseModel {
         sortBy = "created_at",
         sortOrder = "DESC",
         includeDeleted = false,
+        status = 'ACTIVE'
       } = options;
 
       const offset = (page - 1) * limit;
@@ -55,6 +57,12 @@ class PetGallery extends BaseModel {
       if (tags) {
         conditions.push("g.tags LIKE ?");
         params.push(`%${tags}%`);
+      }
+
+      // Filter by status
+      if (status) {
+        conditions.push("g.status = ?");
+        params.push(status);
       }
 
       const whereClause =
@@ -340,6 +348,33 @@ class PetGallery extends BaseModel {
       return true;
     } catch (error) {
       console.error("Delete gallery error:", error);
+      throw error;
+    }
+  }
+
+  // Update post status
+  static async updateStatus(id, status) {
+    try {
+      if (!['ACTIVE', 'INACTIVE'].includes(status)) {
+        throw new Error('Invalid status');
+      }
+
+      const sql = `
+        UPDATE ${this.tableName}
+        SET status = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `;
+
+      const result = await this.query(sql, [status, id]);
+      
+      if (result.affectedRows === 0) {
+        throw new Error('Post not found');
+      }
+
+      return await this.getDetail(id);
+    } catch (error) {
+      console.error('Update post status error:', error);
       throw error;
     }
   }
