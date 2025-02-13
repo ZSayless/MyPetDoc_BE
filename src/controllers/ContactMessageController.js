@@ -12,13 +12,13 @@ class ContactMessageController {
       parseInt(page),
       parseInt(limit)
     );
-    res.json(result);
+    res.status(200).json({ success: true, result });
   });
 
   // Get details of a message
   getMessageById = asyncHandler(async (req, res) => {
     const message = await ContactMessageService.getMessageById(req.params.id);
-    res.json(message);
+    res.status(200).json({ success: true, message });
   });
 
   // Create new message
@@ -31,7 +31,7 @@ class ContactMessageController {
     };
 
     const message = await ContactMessageService.createMessage(messageData);
-    res.status(201).json(message);
+    res.status(201).json({ success: true, message });
   });
 
   // Update message status
@@ -46,7 +46,7 @@ class ContactMessageController {
       status,
       req.user.id
     );
-    res.json(message);
+    res.status(200).json({ success: true, message });
   });
 
   // Respond to message
@@ -56,19 +56,19 @@ class ContactMessageController {
       req.body,
       req.user.id
     );
-    res.json(message);
+    res.status(200).json({ success: true, message });
   });
 
   // Soft delete message
   deleteMessage = asyncHandler(async (req, res) => {
     await ContactMessageService.deleteMessage(req.params.id);
-    res.status(204).send();
+    res.status(204).json({ success: true });
   });
 
   // Hard delete message
   hardDeleteMessage = asyncHandler(async (req, res) => {
     await ContactMessageService.hardDeleteMessage(req.params.id);
-    res.status(204).send();
+    res.status(204).json({ success: true });
   });
 
   // Get messages of current user
@@ -79,7 +79,7 @@ class ContactMessageController {
       parseInt(page),
       parseInt(limit)
     );
-    res.json(result);
+    res.status(200).json({ success: true, result });
   });
 
   // Get message stats by status
@@ -91,7 +91,7 @@ class ContactMessageController {
     if (to) filters.to = new Date(to);
 
     const stats = await ContactMessage.countMessages(filters);
-    res.json(stats);
+    res.status(200).json({ success: true, stats });
   });
 }
 

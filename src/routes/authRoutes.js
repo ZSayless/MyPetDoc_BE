@@ -50,6 +50,7 @@ router.get(
               full_name: userData.full_name,
               google_id: userData.google_id,
               avatar: userData.avatar,
+              phone_number: userData.phone_number,
             },
           },
         };
@@ -104,6 +105,7 @@ router.get(
             id: userData.id,
             email: userData.email,
             full_name: userData.full_name,
+            phone_number: userData.phone_number,
             role: userData.role,
             avatar: userData.avatar || null,
             is_active: true,

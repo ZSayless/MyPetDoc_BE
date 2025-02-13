@@ -127,6 +127,11 @@ class UserService {
         updateData.is_deleted = updateData.is_deleted === 'true' || updateData.is_deleted === true ? 1 : 0;
       }
 
+      if(updateData.password) {
+        const salt = await bcrypt.genSalt(10);
+        updateData.password = await bcrypt.hash(updateData.password, salt);
+      }
+
       // Remove empty password
       if (updateData.password === '') {
         delete updateData.password;

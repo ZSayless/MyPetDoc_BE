@@ -364,6 +364,7 @@ class AuthController {
             email: userData.email,
             full_name: userData.full_name,
             role: userData.role,
+            phone_number: userData.phone_number || null,
             avatar: userData.avatar,
           },
           token,
@@ -393,8 +394,9 @@ class AuthController {
         pet_type,
         pet_age,
         pet_notes,
-        avatar: avatarUrl,
+        avatar: googleAvatarUrl,
       } = req.body;
+
 
       // Validate required fields
       if (!email || !full_name || !phone_number || !role) {
@@ -421,50 +423,15 @@ class AuthController {
         );
       }
 
-      // Validate role-specific fields
-      if (role === "GENERAL_USER" && (!pet_type || !pet_age || !pet_notes)) {
-        // Xóa ảnh đã upload nếu có lỗi
-        if (req.uploadedFiles) {
-          try {
-            if (req.uploadedFiles.avatar) {
-              await cloudinary.uploader.destroy(
-                req.uploadedFiles.avatar.publicId
-              );
-            }
-            if (req.uploadedFiles.pet_photo) {
-              await cloudinary.uploader.destroy(
-                req.uploadedFiles.pet_photo.publicId
-              );
-            }
-          } catch (error) {
-            console.error("Error deleting images:", error);
-          }
-        }
-        throw new ApiError(
-          400,
-          "For GENERAL_USER role, pet_type, pet_age, and pet_notes are required"
-        );
-      }
-
-      if (!["GENERAL_USER", "HOSPITAL_ADMIN"].includes(role)) {
-        throw new ApiError(400, "Invalid role");
-      }
-
-      // Check if email already exists
-      const existingUser = await User.findByEmail(email);
-      if (existingUser) {
-        throw new ApiError(400, "Email already used");
-      }
-
       // Get avatar and pet photo paths from uploaded files
-      let avatarPath = req.uploadedFiles?.avatar?.path || null;
+      let avatarPath = req.uploadedFiles?.avatar?.path || googleAvatarUrl;
       let petPhotoPath = req.uploadedFiles?.pet_photo?.path || null;
 
       // Create random password for Google signup
       const randomPassword = Math.random().toString(36).slice(-8);
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
-      // Create new user
+      // Create new user với các trường pet optional
       const userData = {
         email,
         full_name,
@@ -480,10 +447,10 @@ class AuthController {
         reset_password_token: null,
         reset_password_expires: null,
         hospital_id: null,
-        pet_type: role === "GENERAL_USER" ? pet_type : null,
-        pet_age: role === "GENERAL_USER" ? pet_age : null,
+        pet_type: pet_type || null,
+        pet_age: pet_age || null,
         pet_photo: role === "GENERAL_USER" ? petPhotoPath : null,
-        pet_notes: role === "GENERAL_USER" ? pet_notes : null,
+        pet_notes: pet_notes || null,
       };
 
       console.log("Creating user with data:", userData);
@@ -504,6 +471,7 @@ class AuthController {
         email: user.email,
         full_name: user.full_name,
         role: user.role,
+        phone_number: user.phone_number,
         avatar: user.avatar,
         is_active: user.is_active,
         created_at: user.created_at,

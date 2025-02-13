@@ -50,7 +50,9 @@ class ContactMessage extends BaseModel {
         SELECT 
           cm.*,
           u.email as user_email,
-          u.full_name as user_full_name
+          u.full_name as user_full_name,
+          u.phone_number as user_phone,
+          u.avatar as user_avatar
         FROM ${this.tableName} cm
         LEFT JOIN users u ON cm.user_id = u.id
         WHERE ${conditions.join(" AND ")}

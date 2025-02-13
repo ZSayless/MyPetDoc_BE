@@ -114,7 +114,6 @@ class UserController {
       updateData.pet_photo = req.uploadedFiles.pet_photo.path;
     }
 
-    console.log('Update data to be sent:', updateData);
 
     if (Object.keys(updateData).length === 0) {
       throw new ApiError(400, "No data to update");
