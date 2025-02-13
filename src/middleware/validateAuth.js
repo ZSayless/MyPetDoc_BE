@@ -2,69 +2,100 @@ const Joi = require("joi");
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const ApiError = require("../exceptions/ApiError");
+const cloudinary = require("cloudinary");
 
-const validateRegister = (req, res, next) => {
-  if (!req.body) {
-    throw new ApiError(400, "No data provided");
+const validateRegister = async (req, res, next) => {
+  try {
+    if (!req.body) {
+      throw new ApiError(400, "No data provided");
+    }
+
+    console.log("Request body:", req.body);
+
+    const schema = Joi.object({
+      email: Joi.string().email().required(),
+      password: Joi.string().min(6).required(),
+      full_name: Joi.string().required(),
+      phone_number: Joi.string()
+        .regex(/^[0-9]{10}$/)
+        .min(10)
+        .max(10)
+        .required(),
+      role: Joi.string()
+        .valid("GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN")
+        .required(),
+      pet_type: Joi.string()
+        .valid(
+          "DOG",
+          "CAT",
+          "BIRD",
+          "RABBIT",
+          "FISH",
+          "HAMSTER",
+          "REPTILE",
+          "OTHER"
+        )
+        .optional(),
+      pet_age: Joi.number()
+        .integer()
+        .min(0)
+        .optional(),
+      pet_notes: Joi.string()
+        .optional(),
+      pet_photo: Joi.string()
+        .optional(),
+      // Allow fields from multer
+      avatar: Joi.any(),
+      files: Joi.any(),
+      uploadedFiles: Joi.any(),
+    }).unknown(true);
+
+    const { error } = schema.validate(req.body);
+    if (error) {
+      // Xóa ảnh đã upload nếu có lỗi validation
+      if (req.uploadedFiles) {
+        try {
+          const deletePromises = [];
+          if (req.uploadedFiles.avatar) {
+            deletePromises.push(
+              cloudinary.uploader.destroy(req.uploadedFiles.avatar.publicId)
+            );
+          }
+          if (req.uploadedFiles.pet_photo) {
+            deletePromises.push(
+              cloudinary.uploader.destroy(req.uploadedFiles.pet_photo.publicId)
+            );
+          }
+          await Promise.all(deletePromises);
+        } catch (deleteError) {
+          console.error("Error deleting uploaded files:", deleteError);
+        }
+      }
+      return next(new ApiError(400, error.details[0].message));
+    }
+    next();
+  } catch (error) {
+    // Xử lý lỗi và xóa ảnh nếu có
+    if (req.uploadedFiles) {
+      try {
+        const deletePromises = [];
+        if (req.uploadedFiles.avatar) {
+          deletePromises.push(
+            cloudinary.uploader.destroy(req.uploadedFiles.avatar.publicId)
+          );
+        }
+        if (req.uploadedFiles.pet_photo) {
+          deletePromises.push(
+            cloudinary.uploader.destroy(req.uploadedFiles.pet_photo.publicId)
+          );
+        }
+        await Promise.all(deletePromises);
+      } catch (deleteError) {
+        console.error("Error deleting uploaded files:", deleteError);
+      }
+    }
+    return next(error);
   }
-
-  console.log("Request body:", req.body);
-
-  const schema = Joi.object({
-    email: Joi.string().email().required(),
-    password: Joi.string().min(6).required(),
-    full_name: Joi.string().required(),
-    phone_number: Joi.string()
-      .regex(/^[0-9]{10}$/)
-      .min(10)
-      .max(10)
-      .required(),
-    role: Joi.string()
-      .valid("GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN")
-      .required(),
-    pet_type: Joi.string()
-      .valid(
-        "DOG",
-        "CAT",
-        "BIRD",
-        "RABBIT",
-        "FISH",
-        "HAMSTER",
-        "REPTILE",
-        "OTHER"
-      )
-      .when("role", {
-        is: "GENERAL_USER",
-        then: Joi.required(),
-        otherwise: Joi.forbidden(),
-      }),
-    pet_age: Joi.number().integer().min(0).when("role", {
-      is: "GENERAL_USER",
-      then: Joi.required(),
-      otherwise: Joi.forbidden(),
-    }),
-    pet_notes: Joi.string().when("role", {
-      is: "GENERAL_USER",
-      then: Joi.required(),
-      otherwise: Joi.forbidden(),
-    }),
-    pet_photo: Joi.string().when("role", {
-      is: "GENERAL_USER",
-      then: Joi.optional(),
-      otherwise: Joi.forbidden(),
-    }),
-    // Allow fields from multer
-    avatar: Joi.any(),
-    files: Joi.any(),
-    uploadedFiles: Joi.any(),
-  }).unknown(true);
-
-  const { error } = schema.validate(req.body);
-  if (error) {
-    console.log("Error:", error);
-    throw new ApiError(400, error.details[0].message);
-  }
-  next();
 };
 
 const validateAuth = (allowedRoles = []) => {

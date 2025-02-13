@@ -180,7 +180,7 @@ class UserService {
 
   async apsoluteDelete(id, currentUser) {
     try {
-      const userToDelete = await this.getDeletedUsers(id);
+      const userToDelete = await this.getUserById(id);
 
       // Check delete permission
       // If it's not self-delete account

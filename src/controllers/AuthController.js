@@ -15,63 +15,56 @@ class AuthController {
         full_name,
         phone_number,
         role = "GENERAL_USER",
-        pet_type,
-        pet_age,
-        pet_notes,
+        pet_type = null,
+        pet_age = null,
+        pet_notes = null,
       } = req.body;
-
+  
       // Validate data
       await this.validateUserData({ email, password, full_name, phone_number });
-
+  
       // Check if email already exists
       if (await User.isEmailTaken(email)) {
         // Xóa ảnh đã upload nếu có lỗi
         if (req.uploadedFiles) {
-          try {
-            if (req.uploadedFiles.avatar) {
-              await cloudinary.uploader.destroy(
-                req.uploadedFiles.avatar.publicId
-              );
-            }
-            if (req.uploadedFiles.pet_photo) {
-              await cloudinary.uploader.destroy(
-                req.uploadedFiles.pet_photo.publicId
-              );
-            }
-          } catch (error) {
-            console.error("Error deleting images:", error);
+          const deletePromises = [];
+          if (req.uploadedFiles.avatar) {
+            deletePromises.push(
+              cloudinary.uploader.destroy(req.uploadedFiles.avatar.publicId)
+            );
           }
+          if (req.uploadedFiles.pet_photo) {
+            deletePromises.push(
+              cloudinary.uploader.destroy(req.uploadedFiles.pet_photo.publicId)
+            );
+          }
+          await Promise.all(deletePromises);
         }
         throw new ApiError(400, "Email already used");
       }
-
-      // Process avatar and pet_photo from req.uploadedFiles
-      console.log("Uploaded files:", req.uploadedFiles); // Debug log
-
+  
       let userAvatar = "default-avatar.png";
       let petPhoto = null;
-
+  
       if (req.uploadedFiles) {
         if (req.uploadedFiles.avatar) {
           userAvatar = req.uploadedFiles.avatar.path;
-          console.log("Setting avatar path:", userAvatar); // Debug log
         }
         if (req.uploadedFiles.pet_photo) {
           petPhoto = req.uploadedFiles.pet_photo.path;
-          console.log("Setting pet photo path:", petPhoto); // Debug log
         }
       }
-
+  
       // Hash password
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
-
+  
       // Create verification token
       const verificationToken = crypto.randomBytes(32).toString("hex");
       const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
+  
       try {
-        // Create new user with correct image paths
+        // Create new user
         const user = await User.create({
           email,
           password: hashedPassword,
@@ -82,18 +75,18 @@ class AuthController {
           verification_token: verificationToken,
           verification_expires: verificationExpires,
           avatar: userAvatar,
-          pet_type: role === "GENERAL_USER" ? pet_type : null,
-          pet_age: role === "GENERAL_USER" ? pet_age : null,
-          pet_photo: role === "GENERAL_USER" ? petPhoto : null,
-          pet_notes: role === "GENERAL_USER" ? pet_notes : null,
+          pet_type,
+          pet_age,
+          pet_photo: petPhoto,
+          pet_notes,
         });
-
+  
         // Send verification email
         await emailService.sendVerificationEmail(email, verificationToken);
-
+  
         // Get full user data after creation
         const createdUser = await User.findById(user.id);
-
+  
         // Remove sensitive information
         const userResponse = {
           ...createdUser,
@@ -101,49 +94,48 @@ class AuthController {
           verification_token: undefined,
           verification_expires: undefined,
         };
-
+  
         res.status(201).json({
           status: "success",
-          message:
-            "Register successfully. Please check your email to verify your account.",
+          message: "Register successfully. Please check your email to verify your account.",
           data: userResponse,
         });
       } catch (error) {
-        // If creating user fails, delete uploaded images
+        // Nếu có lỗi khi tạo user hoặc gửi email, xóa ảnh đã upload
         if (req.uploadedFiles) {
-          try {
-            if (req.uploadedFiles.avatar) {
-              await cloudinary.uploader.destroy(
-                req.uploadedFiles.avatar.publicId
-              );
-            }
-            if (req.uploadedFiles.pet_photo) {
-              await cloudinary.uploader.destroy(
-                req.uploadedFiles.pet_photo.publicId
-              );
-            }
-          } catch (deleteError) {
-            console.error("Error deleting images:", deleteError);
+          const deletePromises = [];
+          if (req.uploadedFiles.avatar) {
+            deletePromises.push(
+              cloudinary.uploader.destroy(req.uploadedFiles.avatar.publicId)
+            );
           }
+          if (req.uploadedFiles.pet_photo) {
+            deletePromises.push(
+              cloudinary.uploader.destroy(req.uploadedFiles.pet_photo.publicId)
+            );
+          }
+          await Promise.all(deletePromises);
         }
         throw error;
       }
     } catch (error) {
-      // If there is an error and files were uploaded, delete them
+      // Xử lý lỗi chung và đảm bảo xóa ảnh
       if (req.uploadedFiles) {
+        const deletePromises = [];
+        if (req.uploadedFiles.avatar) {
+          deletePromises.push(
+            cloudinary.uploader.destroy(req.uploadedFiles.avatar.publicId)
+          );
+        }
+        if (req.uploadedFiles.pet_photo) {
+          deletePromises.push(
+            cloudinary.uploader.destroy(req.uploadedFiles.pet_photo.publicId)
+          );
+        }
         try {
-          if (req.uploadedFiles.avatar) {
-            await cloudinary.uploader.destroy(
-              req.uploadedFiles.avatar.publicId
-            );
-          }
-          if (req.uploadedFiles.pet_photo) {
-            await cloudinary.uploader.destroy(
-              req.uploadedFiles.pet_photo.publicId
-            );
-          }
+          await Promise.all(deletePromises);
         } catch (deleteError) {
-          console.error("Error deleting images:", deleteError);
+          console.error("Error deleting uploaded files:", deleteError);
         }
       }
       throw error;

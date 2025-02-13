@@ -323,71 +323,71 @@ const handleUploadAvatar = (req, res, next) => {
     }
 
     try {
-      // Check if it's the register or create user route
-      if (req.path.includes("/register") || req.path.includes("/create")) {
-        // Check required fields for register/create user
-        if (req.body.pet_type && req.body.pet_age && req.body.pet_notes) {
-          req.body.role = "GENERAL_USER";
-        }
-        if (
-          !req.body.email ||
-          !req.body.full_name ||
-          !req.body.phone_number ||
-          !req.body.role
-        ) {
-          throw new ApiError(400, "Missing required fields");
-        }
-      }
-      // If it's update profile, no need to check required fields
-
       // Upload to Cloudinary and get URLs
       if (req.files) {
         req.uploadedFiles = {};
 
+        // Tạo mảng promises để xử lý upload đồng thời
+        const uploadPromises = [];
+
         if (req.files.avatar && req.files.avatar[0]) {
-          const avatarResult = await cloudinary.uploader.upload(
-            req.files.avatar[0].path,
-            {
+          uploadPromises.push(
+            cloudinary.uploader.upload(req.files.avatar[0].path, {
               folder: "avatars",
               transformation: [{ width: 400, height: 400, crop: "fill" }],
-            }
+            })
           );
-          req.uploadedFiles.avatar = {
-            path: avatarResult.secure_url,
-            publicId: avatarResult.public_id,
-          };
         }
 
         if (req.files.pet_photo && req.files.pet_photo[0]) {
-          const petPhotoResult = await cloudinary.uploader.upload(
-            req.files.pet_photo[0].path,
-            {
+          uploadPromises.push(
+            cloudinary.uploader.upload(req.files.pet_photo[0].path, {
               folder: "pets",
               transformation: [{ width: 800, height: 600, crop: "fill" }],
-            }
+            })
           );
+        }
+
+        // Xử lý tất cả uploads cùng lúc
+        const results = await Promise.all(uploadPromises);
+
+        // Gán kết quả vào req.uploadedFiles
+        if (req.files.avatar) {
+          req.uploadedFiles.avatar = {
+            path: results[0].secure_url,
+            publicId: results[0].public_id,
+          };
+        }
+        
+        if (req.files.pet_photo) {
+          const resultIndex = req.files.avatar ? 1 : 0;
           req.uploadedFiles.pet_photo = {
-            path: petPhotoResult.secure_url,
-            publicId: petPhotoResult.public_id,
+            path: results[resultIndex].secure_url,
+            publicId: results[resultIndex].public_id,
           };
         }
       }
 
       next();
     } catch (error) {
-      // Delete uploaded files if there's an error
+      // Xóa tất cả files đã upload nếu có lỗi
       if (req.uploadedFiles) {
+        const deletePromises = [];
+        
+        if (req.uploadedFiles.avatar) {
+          deletePromises.push(
+            cloudinary.uploader.destroy(req.uploadedFiles.avatar.publicId)
+          );
+        }
+        
+        if (req.uploadedFiles.pet_photo) {
+          deletePromises.push(
+            cloudinary.uploader.destroy(req.uploadedFiles.pet_photo.publicId)
+          );
+        }
+
         try {
-          if (req.uploadedFiles.avatar) {
-            await cloudinary.uploader.destroy(
-              req.uploadedFiles.avatar.publicId
-            );
-          }
-          if (req.uploadedFiles.pet_photo) {
-            await cloudinary.uploader.destroy(
-              req.uploadedFiles.pet_photo.publicId
-            );
-          }
+          await Promise.all(deletePromises);
         } catch (deleteError) {
           console.error("Error deleting uploaded files:", deleteError);
         }
