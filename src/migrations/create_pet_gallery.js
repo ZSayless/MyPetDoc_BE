@@ -7,6 +7,7 @@ module.exports = async (connection) => {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         is_deleted BIT(1) DEFAULT 0,
         image_url VARCHAR(255) NOT NULL,
+        status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE',
         caption TEXT NOT NULL,
         slug VARCHAR(255) NOT NULL,
         description TEXT,

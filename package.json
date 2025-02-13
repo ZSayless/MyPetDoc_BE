@@ -42,6 +42,7 @@
     "nodemailer": "^6.9.16",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
+    "pet_hospital_api": "file:",
     "pm2": "^5.4.3",
     "sanitize-html": "^2.14.0",
     "winston": "^3.17.0",
