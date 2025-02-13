@@ -44,8 +44,7 @@ router.post(
   PetGalleryController.createPost
 );
 
-// Only allow users to edit/delete their own posts
-
+// Only allow users and admin to edit/delete their own posts
 router.delete("/posts/:id", PetGalleryController.deletePost);
 
 // Only allow users to delete their own comments and admin to delete any comment
