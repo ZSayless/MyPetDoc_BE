@@ -378,6 +378,91 @@ class PetGallery extends BaseModel {
       throw error;
     }
   }
+
+  // Get all posts without status filter
+  static async getAllPosts(options = {}) {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        petType,
+        tags,
+        userId,
+        sortBy = "created_at",
+        sortOrder = "DESC",
+        includeDeleted = false
+      } = options;
+
+      const offset = (page - 1) * limit;
+      let conditions = [];
+      let params = [];
+
+      // Add is_deleted condition
+      if (!includeDeleted) {
+        conditions.push("g.is_deleted = ?");
+        params.push(0);
+      }
+
+      // Filter by pet_type
+      if (petType) {
+        conditions.push("g.pet_type = ?");
+        params.push(petType);
+      }
+
+      // Filter by user_id
+      if (userId) {
+        conditions.push("g.user_id = ?");
+        params.push(Number(userId));
+      }
+
+      // Filter by tags
+      if (tags) {
+        conditions.push("g.tags LIKE ?");
+        params.push(`%${tags}%`);
+      }
+
+      const whereClause = conditions.length > 0 
+        ? `WHERE ${conditions.join(" AND ")}` 
+        : "";
+
+      const sql = `
+        SELECT g.*, 
+               u.full_name as user_name,
+               u.avatar as user_avatar,
+               (SELECT COUNT(1) FROM pet_gallery_likes l WHERE l.gallery_id = g.id) as likes_count,
+               (SELECT COUNT(1) FROM pet_gallery_comments c WHERE c.gallery_id = g.id AND c.is_deleted = 0) as comments_count
+        FROM ${this.tableName} g
+        LEFT JOIN users u ON g.user_id = u.id
+        ${whereClause}
+        ORDER BY g.${sortBy} ${sortOrder}
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+
+      const countSql = `
+        SELECT COUNT(*) as total
+        FROM ${this.tableName} g
+        ${whereClause}
+      `;
+
+      const [posts, [countResult]] = await Promise.all([
+        this.query(sql, [...params]),
+        this.query(countSql, params)
+      ]);
+
+      return {
+        posts: posts.map(post => new PetGallery(post)),
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total: countResult.total,
+          totalPages: Math.ceil(countResult.total / limit)
+        }
+      };
+    } catch (error) {
+      console.error("Get all posts error:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = PetGallery;

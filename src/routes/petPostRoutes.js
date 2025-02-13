@@ -20,6 +20,7 @@ router.get(
   cacheMiddleware(300),
   PetPostController.getCommentReplies
 );
+router.get("/slug/:slug", cacheMiddleware(300), PetPostController.getPostDetailBySlug);
 
 // Routes require login
 router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));

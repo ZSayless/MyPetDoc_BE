@@ -692,6 +692,20 @@ class PetPostService {
       throw new ApiError(500, "Error fetching soft deleted blogs");
     }
   }
+
+  // Get post detail by slug
+  async getPostDetailBySlug(slug) {
+    try {
+      const post = await PetPost.getPostDetailBySlug(slug);
+      if (!post) {
+        throw new ApiError(404, "Post not found");
+      }
+      return post;
+    } catch (error) {
+      console.error("Get post detail by slug service error:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new PetPostService();

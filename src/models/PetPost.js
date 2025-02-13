@@ -578,6 +578,37 @@ class PetPost extends BaseModel {
       throw error;
     }
   }
+
+  // Get post detail by slug
+  static async getPostDetailBySlug(slug) {
+    try {
+      const sql = `
+        SELECT 
+          p.*,
+          u.full_name as author_name,
+          u.avatar as author_avatar,
+          h.name as hospital_name,
+          CAST(p.is_deleted AS UNSIGNED) as is_deleted,
+          CAST(p.is_featured AS UNSIGNED) as is_featured,
+          (SELECT COUNT(*) FROM pet_post_likes WHERE post_id = p.id) as likes_count,
+          (SELECT COUNT(*) FROM pet_post_comments WHERE post_id = p.id AND is_deleted = 0) as comments_count
+        FROM ${this.tableName} p
+        LEFT JOIN users u ON p.author_id = u.id
+        LEFT JOIN hospitals h ON p.hospital_id = h.id
+        WHERE p.slug = ?
+        AND p.is_deleted = 0
+        AND p.status = 'PUBLISHED'
+      `;
+
+      const [post] = await this.query(sql, [slug]);
+      if (!post) return null;
+
+      return new PetPost(post);
+    } catch (error) {
+      console.error("Get post detail by slug error:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = PetPost;

@@ -54,9 +54,16 @@ router.delete("/comments/:commentId", PetGalleryController.deleteComment);
 
 // Admin route to update post status
 router.patch(
-  "/posts/:id/status",
+  "/admin/posts/:id/status",
   validateAuth(["ADMIN"]),
   PetGalleryController.updateStatus
+);
+
+// Admin route to get all posts without status filter
+router.get(
+  "/admin/posts/all",
+  validateAuth(["ADMIN"]),
+  PetGalleryController.getAllPosts
 );
 
 module.exports = router;

@@ -395,6 +395,35 @@ class PetGalleryController {
       data: updatedPost
     });
   });
+
+  // Get all posts without status filter
+  getAllPosts = asyncHandler(async (req, res) => {
+    const {
+      page = 1,
+      limit = 10,
+      pet_type,
+      tags,
+      user_id,
+      sort_by,
+      sort_order
+    } = req.query;
+
+    const posts = await PetGalleryService.getAllPosts({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      petType: pet_type,
+      tags,
+      userId: user_id,
+      sortBy: sort_by,
+      sortOrder: sort_order
+    });
+
+    res.json({
+      success: true,
+      message: "Get all posts successful",
+      data: posts
+    });
+  });
 }
 
 module.exports = new PetGalleryController();

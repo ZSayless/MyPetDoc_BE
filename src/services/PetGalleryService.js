@@ -504,6 +504,16 @@ class PetGalleryService {
       throw error;
     }
   }
+
+  // Get all posts without status filter
+  async getAllPosts(options = {}) {
+    try {
+      return await PetGallery.getAllPosts(options);
+    } catch (error) {
+      console.error("Get all posts service error:", error);
+      throw new ApiError(500, "Error fetching all posts");
+    }
+  }
 }
 
 module.exports = new PetGalleryService();

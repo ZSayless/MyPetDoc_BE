@@ -402,6 +402,19 @@ class PetPostController {
       data: result
     });
   });
+
+  // Get post detail by slug
+  getPostDetailBySlug = asyncHandler(async (req, res) => {
+    const { slug } = req.params;
+
+    const post = await PetPostService.getPostDetailBySlug(slug);
+
+    res.json({
+      success: true,
+      message: "Get post detail successful",
+      data: post
+    });
+  });
 }
 
 module.exports = new PetPostController();
