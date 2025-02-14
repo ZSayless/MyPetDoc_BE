@@ -101,9 +101,29 @@ class AboutUsController {
     await this.clearAboutUsCache();
     await cache.del(`cache:/api/about-us/version/${id}`);
 
-    res.status(204).json({
+    res.status(200).json({
       status: "success",
       message: "Hard delete version successfully",
+    });
+  });
+
+  // Update version
+  updateVersion = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const aboutUs = await AboutUsService.updateVersion(
+      parseInt(id),
+      req.body,
+      req.user.id
+    );
+
+    // Clear cache after updating
+    await this.clearAboutUsCache();
+    await cache.del(`cache:/api/about-us/version/${id}`);
+
+    res.json({
+      status: "success",
+      message: "Update version successfully",
+      data: aboutUs
     });
   });
 }

@@ -30,6 +30,7 @@ router.get(
   AboutUsController.compareVersions
 );
 router.post("/create", AboutUsController.createNewVersion);
+router.put("/update/:id", AboutUsController.updateVersion);
 router.patch("/soft-delete/:id", AboutUsController.toggleSoftDelete);
 router.delete("/hard-delete/:id", AboutUsController.hardDeleteVersion);
 

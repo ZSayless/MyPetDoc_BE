@@ -130,6 +130,32 @@ class AboutUsService {
       new: field2,
     };
   }
+
+  // Update a specific version
+  async updateVersion(id, data, userId) {
+    try {
+      // Validate data
+      await this.validateAboutUsData(data);
+
+      // Kiểm tra version tồn tại
+      const existingVersion = await AboutUs.findById(id);
+      if (!existingVersion) {
+        throw new ApiError(404, "Version not found");
+      }
+
+      // Cập nhật dữ liệu
+      const updateData = {
+        ...data,
+        last_updated_by: userId,
+        updated_at: new Date()
+      };
+
+      const updatedAboutUs = await AboutUs.update(id, updateData);
+      return updatedAboutUs;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = new AboutUsService();
