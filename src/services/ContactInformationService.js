@@ -143,6 +143,49 @@ class ContactInformationService {
     const phoneRegex = /^[0-9]{10,11}$/;
     return phoneRegex.test(phone);
   }
+
+  // Update version
+  async updateVersion(id, data, userId) {
+    try {
+      // Validate dữ liệu
+      await this.validateContactData(data);
+
+      // Kiểm tra version tồn tại
+      const existingContact = await ContactInformation.findById(id);
+      if (!existingContact) {
+        throw new ApiError(404, "Contact version not found");
+      }
+
+      // Kiểm tra xem có phải version hiện tại không
+      const currentContact = await ContactInformation.getCurrentContact();
+      if (currentContact && currentContact.id === parseInt(id)) {
+        // Kiểm tra năm của ngày hiệu lực nếu có
+        if (data.effective_date) {
+          const currentYear = new Date().getFullYear();
+          const effectiveDate = new Date(data.effective_date);
+          
+          if (effectiveDate.getFullYear() !== currentYear) {
+            throw new ApiError(
+              400,
+              `Effective date must be in the current year (${currentYear})`
+            );
+          }
+        }
+      }
+
+      // Cập nhật dữ liệu
+      const updateData = {
+        ...data,
+        last_updated_by: userId,
+        updated_at: new Date()
+      };
+
+      const updatedContact = await ContactInformation.update(id, updateData);
+      return updatedContact;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = new ContactInformationService();

@@ -109,6 +109,26 @@ class ContactInformationController {
       message: "Permanently delete version successful",
     });
   });
+
+  // Update version
+  updateVersion = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const contact = await ContactInformationService.updateVersion(
+      parseInt(id),
+      req.body,
+      req.user.id
+    );
+
+    // Clear cache after updating
+    await this.clearContactCache();
+    await cache.del(`cache:/api/contact/version/${id}`);
+
+    res.json({
+      status: "success",
+      message: "Update contact version successfully",
+      data: contact
+    });
+  });
 }
 
 module.exports = new ContactInformationController();

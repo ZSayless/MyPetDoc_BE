@@ -32,5 +32,6 @@ router.get(
 router.post("/create", ContactInformationController.createNewVersion);
 router.patch("/soft-delete/:id", ContactInformationController.toggleSoftDelete);
 router.delete("/hard-delete/:id", ContactInformationController.hardDelete);
+router.put("/update/:id", ContactInformationController.updateVersion);
 
 module.exports = router;
