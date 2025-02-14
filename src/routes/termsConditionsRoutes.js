@@ -26,7 +26,6 @@ router.get(
 );
 router.get(
   "/history",
-  cacheMiddleware(300),
   TermsConditionsController.getVersionHistory
 );
 router.get(
@@ -37,5 +36,6 @@ router.get(
 router.post("/create", TermsConditionsController.createNewVersion);
 router.patch("/soft-delete/:id", TermsConditionsController.toggleSoftDelete);
 router.delete("/hard-delete/:id", TermsConditionsController.hardDeleteVersion);
+router.put("/update/:id", TermsConditionsController.updateVersion);
 
 module.exports = router;

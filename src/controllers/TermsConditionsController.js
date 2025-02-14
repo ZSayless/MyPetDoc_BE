@@ -131,6 +131,25 @@ class TermsConditionsController {
       message: "Hard delete version successful",
     });
   });
+
+  // Update version
+  updateVersion = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const terms = await TermsConditionsService.updateVersion(
+      parseInt(id),
+      req.body,
+      req.user.id
+    );
+
+    // Clear cache after updating
+    await this.clearTermsCache(id);
+
+    res.json({
+      status: "success",
+      message: "Update terms version successfully",
+      data: terms
+    });
+  });
 }
 
 module.exports = new TermsConditionsController();

@@ -174,6 +174,47 @@ class TermsConditionsService {
       new: field2,
     };
   }
+
+  // Update version
+  async updateVersion(id, data, userId) {
+    try {
+      // Validate dữ liệu
+      await this.validateTermsData(data);
+
+      // Kiểm tra version tồn tại
+      const existingTerms = await TermsConditions.findById(id);
+      if (!existingTerms) {
+        throw new ApiError(404, "Terms version not found");
+      }
+
+      // Kiểm tra xem có phải version hiện tại không
+      const currentTerms = await TermsConditions.getCurrentTerms();
+      if (currentTerms && currentTerms[0].id === parseInt(id)) {
+        // Kiểm tra năm của ngày hiệu lực
+        const currentYear = new Date().getFullYear();
+        const effectiveDate = new Date(data.effective_date);
+        
+        if (effectiveDate.getFullYear() !== currentYear) {
+          throw new ApiError(
+            400,
+            `Effective date must be in the current year (${currentYear})`
+          );
+        }
+      }
+
+      // Cập nhật dữ liệu
+      const updateData = {
+        ...data,
+        last_updated_by: userId,
+        updated_at: new Date()
+      };
+
+      const updatedTerms = await TermsConditions.update(id, updateData);
+      return updatedTerms;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 module.exports = new TermsConditionsService();
