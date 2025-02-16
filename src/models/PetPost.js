@@ -102,7 +102,9 @@ class PetPost extends BaseModel {
         SELECT p.*, 
                u.full_name as author_name,
                u.avatar as author_avatar,
-               h.name as hospital_name
+               h.name as hospital_name,
+               (SELECT COUNT(*) FROM pet_post_likes WHERE post_id = p.id) as likes_count,
+               (SELECT COUNT(*) FROM pet_post_comments WHERE post_id = p.id AND is_deleted = 0) as comments_count
         FROM ${this.tableName} p
         LEFT JOIN users u ON p.author_id = u.id
         LEFT JOIN hospitals h ON p.hospital_id = h.id
@@ -501,16 +503,14 @@ class PetPost extends BaseModel {
         FROM ${this.tableName} p
         LEFT JOIN users u ON p.author_id = u.id 
         LEFT JOIN hospitals h ON p.hospital_id = h.id
-        WHERE p.post_type = 'BLOG'
-        AND p.is_deleted = 0
+        WHERE p.is_deleted = 0
         ORDER BY p.created_at DESC
       `;
 
       const countSql = `
         SELECT COUNT(*) as total
         FROM ${this.tableName}
-        WHERE post_type = 'BLOG' 
-        AND is_deleted = 0
+        WHERE is_deleted = 0
       `;
 
       const [posts, [countResult]] = await Promise.all([
@@ -547,16 +547,14 @@ class PetPost extends BaseModel {
         FROM ${this.tableName} p
         LEFT JOIN users u ON p.author_id = u.id 
         LEFT JOIN hospitals h ON p.hospital_id = h.id
-        WHERE p.post_type = 'BLOG'
-        AND p.is_deleted = 1
+        WHERE p.is_deleted = 1
         ORDER BY p.updated_at DESC
       `;
 
       const countSql = `
         SELECT COUNT(*) as total
         FROM ${this.tableName}
-        WHERE post_type = 'BLOG' 
-        AND is_deleted = 1
+        WHERE is_deleted = 1
       `;
 
       const [posts, [countResult]] = await Promise.all([

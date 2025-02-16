@@ -168,8 +168,8 @@ class PetPostService {
         throw new ApiError(400, "Comment content cannot be empty");
       }
 
-      // Check parent comment if it's a reply
-      if (data.parent_id) {
+      // Chỉ kiểm tra parent comment nếu parent_id có giá trị
+      if (data.parent_id && data.parent_id !== null) {
         const parentComment = await PetPostComment.getDetail(data.parent_id);
         if (!parentComment || parentComment.post_id !== Number(postId)) {
           throw new ApiError(404, "Parent comment not found");
@@ -365,14 +365,6 @@ class PetPostService {
         throw new ApiError(404, "Post not found");
       }
 
-      // Kiểm tra quyền cập nhật
-      if (!isAdmin && post.author_id !== userId) {
-        throw new ApiError(
-          403,
-          "You do not have permission to update this post"
-        );
-      }
-
       // Validate status
       const validStatuses = ["DRAFT", "PUBLISHED", "ARCHIVED"];
       if (!validStatuses.includes(status)) {
@@ -396,17 +388,6 @@ class PetPostService {
         if (data.thumbnail_image)
           await this.deleteImage(data.thumbnail_image.path);
         throw new ApiError(404, "Post not found");
-      }
-
-      if (!(await PetPost.isOwnedByUser(id, userId))) {
-        if (data.featured_image)
-          await this.deleteImage(data.featured_image.path);
-        if (data.thumbnail_image)
-          await this.deleteImage(data.thumbnail_image.path);
-        throw new ApiError(
-          403,
-          "You do not have permission to update this post"
-        );
       }
 
       await this.validatePostData(data, true);
@@ -440,6 +421,7 @@ class PetPostService {
       if (data.status === "PUBLISHED" && post.status !== "PUBLISHED") {
         updatedData.published_at = new Date();
       }
+      updatedData.updated_at = new Date();
 
       await PetPost.update(id, updatedData);
       return await PetPost.getDetail(id);
@@ -703,6 +685,24 @@ class PetPostService {
       return post;
     } catch (error) {
       console.error("Get post detail by slug service error:", error);
+      throw error;
+    }
+  }
+
+  // Check if user has liked post
+  async checkUserLikedPost(postId, userId) {
+    try {
+      const post = await PetPost.getDetail(postId);
+      if (!post) {
+        throw new ApiError(404, "Bài viết không tồn tại");
+      }
+
+      const hasLiked = await PetPostLike.hasUserLiked(userId, postId);
+      return {
+        hasLiked,
+        likesCount: await PetPostLike.getPostLikesCount(postId)
+      };
+    } catch (error) {
       throw error;
     }
   }
