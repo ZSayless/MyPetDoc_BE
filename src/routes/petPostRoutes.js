@@ -29,6 +29,7 @@ router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));
 router.post("/:id/like", PetPostController.toggleLike);
 router.post("/:id/comments", PetPostController.addComment);
 router.delete("/comments/:commentId", PetPostController.deleteComment);
+router.get("/:id/check-like", PetPostController.checkUserLikedPost);
 
 // Add report comment route
 router.post(

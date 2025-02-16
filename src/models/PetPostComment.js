@@ -84,10 +84,12 @@ class PetPostComment extends BaseModel {
 
           return {
             ...comment,
-            is_deleted: Boolean(comment.is_deleted),
+            is_deleted: convertBitToBoolean(comment.is_deleted),
+            is_reported: convertBitToBoolean(comment.is_reported),
             replies: replies.map((reply) => ({
               ...reply,
-              is_deleted: Boolean(reply.is_deleted),
+              is_deleted: convertBitToBoolean(reply.is_deleted),
+              is_reported: convertBitToBoolean(reply.is_reported)
             })),
           };
         })

@@ -100,7 +100,7 @@ class PetPostController {
   getPosts = asyncHandler(async (req, res) => {
     const result = await PetPostService.getPosts(req.query);
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Get list of posts successful",
       data: result,
@@ -112,7 +112,7 @@ class PetPostController {
     const postId = req.params.id;
     const post = await PetPostService.getPostDetail(postId);
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Get post details successful",
       data: post,
@@ -135,7 +135,7 @@ class PetPostController {
     // Clear cache after updating post
     await this.clearPostCache(postId);
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Update post successful",
       data: post,
@@ -152,7 +152,7 @@ class PetPostController {
     // Clear cache after like/unlike
     await cache.del(`cache:/api/pet-posts/${postId}/likes`);
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: result.message,
       data: {
@@ -171,7 +171,7 @@ class PetPostController {
       limit: parseInt(limit),
     });
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Get list of users who liked successful",
       data: result,
@@ -209,7 +209,7 @@ class PetPostController {
       limit: parseInt(limit),
     });
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Get comments successful",
       data: result,
@@ -226,7 +226,7 @@ class PetPostController {
       limit: parseInt(limit),
     });
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Get replies successful",
       data: replies,
@@ -248,7 +248,7 @@ class PetPostController {
     // Clear cache after deleting comment
     await this.clearCommentCache(comment.post_id, commentId);
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Delete comment successful",
     });
@@ -271,7 +271,7 @@ class PetPostController {
     // Clear cache after updating status
     await this.clearPostCache(postId);
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Update post status successful",
       data: post,
@@ -290,7 +290,7 @@ class PetPostController {
       userId
     );
 
-    res.json(result);
+    res.status(200).json(result);
   });
 
   // Soft delete post
@@ -304,7 +304,7 @@ class PetPostController {
     // Clear cache after soft delete
     await this.clearPostCache(postId);
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Soft delete post successful",
     });
@@ -321,7 +321,7 @@ class PetPostController {
     // Clear cache after hard delete
     await this.clearPostCache(postId);
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Hard delete post successful",
     });
@@ -339,7 +339,7 @@ class PetPostController {
 
     await PetPostService.softDeleteManyPosts(ids, userId, isAdmin);
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Soft delete many posts successful",
     });
@@ -357,7 +357,7 @@ class PetPostController {
 
     await PetPostService.hardDeleteManyPosts(ids, userId, isAdmin);
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Hard delete many posts successful",
     });
@@ -375,7 +375,7 @@ class PetPostController {
       isAdmin
     );
 
-    res.json({
+    res.status(200).json({
       success: true,
       ...result,
     });
@@ -385,7 +385,7 @@ class PetPostController {
   getAllBlogs = asyncHandler(async (req, res) => {
     const result = await PetPostService.getAllBlogs();
     
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Get list of posts successful",
       data: result
@@ -396,7 +396,7 @@ class PetPostController {
   getSoftDeletedBlogs = asyncHandler(async (req, res) => {
     const result = await PetPostService.getSoftDeletedBlogs();
     
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Get soft deleted posts successful",
       data: result
@@ -409,10 +409,24 @@ class PetPostController {
 
     const post = await PetPostService.getPostDetailBySlug(slug);
 
-    res.json({
+    res.status(200).json({
       success: true,
       message: "Get post detail successful",
       data: post
+    });
+  });
+
+  // Check if user has liked post
+  checkUserLikedPost = asyncHandler(async (req, res) => {
+    const postId = req.params.id;
+    const userId = req.user.id;
+
+    const result = await PetPostService.checkUserLikedPost(postId, userId);
+
+    res.status(200).json({
+      success: true,
+      message: "Check user liked post successful",
+      data: result
     });
   });
 }
