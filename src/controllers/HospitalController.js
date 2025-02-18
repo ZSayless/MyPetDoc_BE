@@ -351,6 +351,23 @@ class HospitalController {
       data: result,
     });
   });
+
+  getHospitalsByCreator = asyncHandler(async (req, res) => {
+    const { creatorId } = req.params;
+    
+    // Check permission
+    if (req.user.role !== "ADMIN" && req.user.id != creatorId) {
+      throw new ApiError(403, "You are not allowed to view this information");
+    }
+
+    const hospitals = await HospitalService.getHospitalsByCreator(creatorId);
+
+    res.json({
+      status: "success",
+      message: "Get hospitals by creator successful",
+      data: hospitals
+    });
+  });
 }
 
 module.exports = new HospitalController();

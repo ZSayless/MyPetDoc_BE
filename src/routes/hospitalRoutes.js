@@ -88,4 +88,12 @@ router.patch(
 
 router.get("/deleted/list", validateAuth(["ADMIN"]), HospitalController.getDeletedHospitals);
 
+// Get hospitals by creator
+router.get(
+  "/creator/:creatorId",
+  validateAuth(["ADMIN", "HOSPITAL_ADMIN"]),
+  cacheMiddleware(1800),
+  HospitalController.getHospitalsByCreator
+);
+
 module.exports = router;

@@ -515,6 +515,40 @@ class HospitalService {
       throw error;
     }
   }
+
+  async getHospitalsByCreator(creatorId) {
+    try {
+      // Check if user exists
+      const user = await User.findById(creatorId);
+      if (!user) {
+        throw new ApiError(404, "User not found");
+      }
+
+      // Get hospitals by creator
+      const hospitals = await Hospital.findByCreatorId(creatorId);
+
+      // Get images for each hospital
+      const hospitalsWithImages = await Promise.all(
+        hospitals.map(async (hospital) => {
+          const images = await HospitalImage.findByHospitalId(hospital.id);
+          return {
+            ...hospital,
+            images: images.map(img => ({
+              id: img.id,
+              url: img.image_url,
+              createdAt: img.created_at,
+              likesCount: parseInt(img.likes_count) || 0
+            }))
+          };
+        })
+      );
+
+      return hospitalsWithImages;
+    } catch (error) {
+      console.error("Get hospitals by creator error:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new HospitalService();
