@@ -424,6 +424,37 @@ class PetGalleryController {
       data: posts
     });
   });
+
+  // Get posts by logged in user
+  getMyPosts = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const {
+      page = 1,
+      limit = 10,
+      pet_type,
+      tags,
+      sort_by,
+      sort_order,
+      status
+    } = req.query;
+
+    const posts = await PetGalleryService.getPosts({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      petType: pet_type,
+      tags,
+      userId: userId,
+      sortBy: sort_by,
+      sortOrder: sort_order,
+      status
+    });
+
+    res.json({
+      success: true,
+      message: "Get posts by logged in user successful",
+      data: posts
+    });
+  });
 }
 
 module.exports = new PetGalleryController();

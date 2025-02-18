@@ -29,6 +29,9 @@ router.get(
 // Routes require login (all roles)
 router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));
 
+// Get posts by logged in user
+router.get("/my-posts", cacheMiddleware(1800), PetGalleryController.getMyPosts);
+
 // Basic interactions - for all logged in users
 router.post("/posts/:id/like", PetGalleryController.toggleLike);
 router.post("/posts/:id/comments", PetGalleryController.addComment);
