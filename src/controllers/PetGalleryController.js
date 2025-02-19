@@ -9,13 +9,13 @@ class PetGalleryController {
   clearPostCache = async (postId = null) => {
     try {
       const keys = [
-        "cache:/api/pet-gallery/posts", // List of posts
+        "cache:/api/community/posts", // List of posts
       ];
 
       if (postId) {
         keys.push(
-          `cache:/api/pet-gallery/posts/${postId}`, // Post details
-          `cache:/api/pet-gallery/posts/${postId}/comments` // Comments of post
+          `cache:/api/community/posts/${postId}`, // Post details
+          `cache:/api/community/posts/${postId}/comments` // Comments of post
         );
       }
 
@@ -31,10 +31,10 @@ class PetGalleryController {
   // Method to clear comment cache
   clearCommentCache = async (postId, commentId = null) => {
     try {
-      const keys = [`cache:/api/pet-gallery/posts/${postId}/comments`];
+      const keys = [`cache:/api/community/posts/${postId}/comments`];
 
       if (commentId) {
-        keys.push(`cache:/api/pet-gallery/comments/${commentId}/replies`);
+        keys.push(`cache:/api/community/comments/${commentId}/replies`);
       }
 
       // Clear cache
