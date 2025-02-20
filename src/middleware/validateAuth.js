@@ -35,14 +35,18 @@ const validateRegister = async (req, res, next) => {
           "REPTILE",
           "OTHER"
         )
+        .allow(null, '')
         .optional(),
       pet_age: Joi.number()
         .integer()
         .min(0)
+        .allow(null, '')
         .optional(),
       pet_notes: Joi.string()
+        .allow(null, '')
         .optional(),
       pet_photo: Joi.string()
+        .allow(null, '')
         .optional(),
       // Allow fields from multer
       avatar: Joi.any(),
