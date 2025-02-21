@@ -328,25 +328,16 @@ class HospitalController {
   // Method to clear cache
   clearHospitalCache = async () => {
     try {
-      // Import redis instance
-      const redis = require('../config/redis');
-      
-      if (redis.hasRedis()) {
-        // Get all keys matching the pattern
-        const pattern = "cache:/api/hospitals*";
-        const keys = await redis.keys(pattern);
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/hospitals*";
+      const keys = await cache.keys(pattern);
 
-        // Delete each found key
-        if (keys.length > 0) {
-          await Promise.all(keys.map(key => redis.del(key)));
-        }
-
-        console.log("Cleared hospital cache:", keys.length, "keys");
-      } else {
-        // Handle memory cache
-        await redis.clear();
-        console.log("Cleared memory cache");
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
       }
+
+      console.log("Cleared hospital cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing hospital cache:", error);
     }

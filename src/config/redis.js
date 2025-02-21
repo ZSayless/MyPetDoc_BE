@@ -101,6 +101,20 @@ const cacheWrapper = {
     connected: redis ? redis.status === "ready" : true,
     size: redis ? "unknown" : memoryCache.size,
   }),
+
+  keys: async (pattern) => {
+    try {
+      if (redis) {
+        return await redis.keys(pattern);
+      }
+      // For memory cache, simulate pattern matching
+      const regex = new RegExp('^' + pattern.replace('*', '.*') + '$');
+      return Array.from(memoryCache.keys()).filter(key => regex.test(key));
+    } catch (error) {
+      console.warn("Cache keys warning:", error);
+      return [];
+    }
+  },
 };
 
 module.exports = cacheWrapper;
