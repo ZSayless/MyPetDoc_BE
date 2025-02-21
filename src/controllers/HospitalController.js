@@ -329,20 +329,28 @@ class HospitalController {
   // Method to clear cache
   clearHospitalCache = async () => {
     try {
-      // Promisify redis KEYS command
-      const keysAsync = promisify(cache.keys).bind(cache);
-      
-      // Get all keys matching the pattern
+      // Get all keys matching the pattern using KEYS command
       const pattern = "cache:/api/hospitals*";
-      const keys = await keysAsync(pattern);
-
-      // Delete each found key
-      if (keys.length > 0) {
-        const delAsync = promisify(cache.del).bind(cache);
-        await Promise.all(keys.map(key => delAsync(key)));
-      }
-
-      console.log("Cleared hospital cache:", keys.length, "keys");
+      cache.KEYS(pattern, async (err, keys) => {
+        if (err) {
+          console.error("Error getting keys:", err);
+          return;
+        }
+        
+        if (keys.length > 0) {
+          // Delete each found key
+          for (const key of keys) {
+            await new Promise((resolve, reject) => {
+              cache.del(key, (err) => {
+                if (err) reject(err);
+                resolve();
+              });
+            });
+          }
+        }
+        
+        console.log("Cleared hospital cache:", keys.length, "keys");
+      });
     } catch (error) {
       console.error("Error clearing hospital cache:", error);
     }
