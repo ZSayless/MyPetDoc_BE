@@ -330,18 +330,16 @@ class HospitalController {
   clearHospitalCache = async () => {
     try {
       if (cache.hasRedis()) {
-        // Get redis instance and promisify its methods
+        // Get redis instance
         const redis = cache.getRedis();
-        const keysAsync = promisify(redis.keys).bind(redis);
-        const delAsync = promisify(redis.del).bind(redis);
         
         // Get all keys matching the pattern
         const pattern = "cache:/api/hospitals*";
-        const keys = await keysAsync(pattern);
+        const keys = await redis.keys(pattern);
 
         // Delete each found key
         if (keys.length > 0) {
-          await Promise.all(keys.map(key => delAsync(key)));
+          await Promise.all(keys.map(key => redis.del(key)));
         }
 
         console.log("Cleared hospital cache:", keys.length, "keys");
