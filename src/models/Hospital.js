@@ -224,6 +224,10 @@ class Hospital extends BaseModel {
         // Convert string "false" or false to 0, otherwise to 1
         data.is_active = data.is_active === "false" || data.is_active === false ? 0 : 1;
       }
+
+      if (data.name) {
+        data.slug = slugify(data.name);
+      }
       
       if (data.is_deleted !== undefined) {
         data.is_deleted = data.is_deleted ? 1 : 0;
