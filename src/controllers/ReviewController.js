@@ -3,52 +3,52 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const HospitalService = require("../services/HospitalService");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class ReviewController {
   // Method to clear review cache
   clearReviewCache = async (hospitalId = null, reviewId = null, userId = null) => {
     try {
+      // Promisify redis commands
+      const keysAsync = promisify(cache.keys).bind(cache);
+      const delAsync = promisify(cache.del).bind(cache);
+      
       // Get all keys matching the pattern
       const pattern = "cache:/api/reviews*";
-      const keys = await new Promise((resolve, reject) => {
-        cache.keys(pattern, (err, keys) => {
-          if (err) reject(err);
-          resolve(keys);
-        });
-      });
+      const keys = await keysAsync(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+        await Promise.all(keys.map(key => delAsync(key)));
       }
 
       // Clear hospital specific cache if provided
       if (hospitalId) {
         await Promise.all([
-          cache.del(`cache:/api/reviews/hospital/${hospitalId}`),
-          cache.del(`cache:/api/reviews/hospital/${hospitalId}/stats`),
-          cache.del(`cache:/api/reviews/hospital/${hospitalId}/can-review`),
-          cache.del(`cache:/api/reviews/hospital/${hospitalId}?*`),
-          cache.del(`cache:/api/reviews/hospital/${hospitalId}/stats?*`),
-          cache.del(`cache:/api/reviews/hospital/${hospitalId}/can-review?*`)
+          delAsync(`cache:/api/reviews/hospital/${hospitalId}`),
+          delAsync(`cache:/api/reviews/hospital/${hospitalId}/stats`),
+          delAsync(`cache:/api/reviews/hospital/${hospitalId}/can-review`),
+          delAsync(`cache:/api/reviews/hospital/${hospitalId}?*`),
+          delAsync(`cache:/api/reviews/hospital/${hospitalId}/stats?*`),
+          delAsync(`cache:/api/reviews/hospital/${hospitalId}/can-review?*`)
         ]);
       }
 
       // Clear review specific cache if provided
       if (reviewId) {
         await Promise.all([
-          cache.del(`cache:/api/reviews/${reviewId}`),
-          cache.del(`cache:/api/reviews/${reviewId}?*`)
+          delAsync(`cache:/api/reviews/${reviewId}`),
+          delAsync(`cache:/api/reviews/${reviewId}?*`)
         ]);
       }
 
       // Clear user specific cache if provided
       if (userId) {
         await Promise.all([
-          cache.del(`cache:/api/reviews/user/${userId}`),
-          cache.del(`cache:/api/reviews/user/me`),
-          cache.del(`cache:/api/reviews/user/${userId}?*`),
-          cache.del(`cache:/api/reviews/user/me?*`)
+          delAsync(`cache:/api/reviews/user/${userId}`),
+          delAsync(`cache:/api/reviews/user/me`),
+          delAsync(`cache:/api/reviews/user/${userId}?*`),
+          delAsync(`cache:/api/reviews/user/me?*`)
         ]);
       }
 
@@ -66,16 +66,15 @@ class ReviewController {
         return;
       }
 
+      // Promisify redis commands
+      const keysAsync = promisify(cache.keys).bind(cache);
+      const delAsync = promisify(cache.del).bind(cache);
+      
       const pattern = `cache:/api/reviews/user/${userId}*`;
-      const keys = await new Promise((resolve, reject) => {
-        cache.keys(pattern, (err, keys) => {
-          if (err) reject(err);
-          resolve(keys);
-        });
-      });
+      const keys = await keysAsync(pattern);
 
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+        await Promise.all(keys.map(key => delAsync(key)));
       }
 
       console.log("Cleared user review cache:", keys.length, "keys");

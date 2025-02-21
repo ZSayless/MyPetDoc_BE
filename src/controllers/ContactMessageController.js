@@ -3,6 +3,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const ContactMessage = require("../models/ContactMessage");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class ContactMessageController {
   // Get list of messages with filter and pagination
@@ -119,19 +120,25 @@ class ContactMessageController {
   // Method to clear cache
   clearMessageCache = async (messageId = null) => {
     try {
+      // Promisify redis commands
+      const keysAsync = promisify(cache.keys).bind(cache);
+      const delAsync = promisify(cache.del).bind(cache);
+      
       // Get all keys matching the pattern
       const pattern = "cache:/api/contact-messages*";
-      const keys = await new Promise((resolve, reject) => {
-        cache.keys(pattern, (err, keys) => {
-          if (err) reject(err);
-          resolve(keys);
-        });
-      });
+      const keys = await keysAsync(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+        await Promise.all(keys.map(key => delAsync(key)));
       }
+
+      // Clear cache for specific message if provided
+      if (messageId) {
+        await delAsync(`cache:/api/contact-messages/${messageId}`);
+      }
+
+      console.log("Cleared contact message cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing contact message cache:", error);
     }

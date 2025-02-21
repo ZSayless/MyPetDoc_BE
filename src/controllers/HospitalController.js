@@ -4,6 +4,7 @@ const ApiError = require("../exceptions/ApiError");
 const HospitalImageService = require("../services/HospitalImageService");
 const fs = require("fs");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class HospitalController {
   // Get list of hospitals with filter and pagination
@@ -325,21 +326,20 @@ class HospitalController {
     });
   });
 
-  // Clear cache when data changes
+  // Method to clear cache
   clearHospitalCache = async () => {
     try {
-      // Get all keys match pattern
+      // Promisify redis KEYS command
+      const keysAsync = promisify(cache.keys).bind(cache);
+      
+      // Get all keys matching the pattern
       const pattern = "cache:/api/hospitals*";
-      const keys = await new Promise((resolve, reject) => {
-        cache.keys(pattern, (err, keys) => {
-          if (err) reject(err);
-          resolve(keys);
-        });
-      });
+      const keys = await keysAsync(pattern);
 
-      // Delete each key found
+      // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+        const delAsync = promisify(cache.del).bind(cache);
+        await Promise.all(keys.map(key => delAsync(key)));
       }
 
       console.log("Cleared hospital cache:", keys.length, "keys");

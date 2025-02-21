@@ -2,28 +2,28 @@ const BannerService = require("../services/BannerService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class BannerController {
   // Method to clear cache
   clearBannerCache = async (bannerId = null) => {
     try {
+      // Promisify redis commands
+      const keysAsync = promisify(cache.keys).bind(cache);
+      const delAsync = promisify(cache.del).bind(cache);
+      
       // Get all keys matching the pattern
       const pattern = "cache:/api/banners*";
-      const keys = await new Promise((resolve, reject) => {
-        cache.keys(pattern, (err, keys) => {
-          if (err) reject(err);
-          resolve(keys);
-        });
-      });
+      const keys = await keysAsync(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+        await Promise.all(keys.map(key => delAsync(key)));
       }
 
       // Clear cache for specific banner if provided
       if (bannerId) {
-        await cache.del(`cache:/api/banners/${bannerId}`);
+        await delAsync(`cache:/api/banners/${bannerId}`);
       }
 
       console.log("Cleared banner cache:", keys.length, "keys");

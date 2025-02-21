@@ -4,45 +4,45 @@ const ApiError = require("../exceptions/ApiError");
 const bcrypt = require("bcrypt");
 const cloudinary = require("cloudinary");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class UserController {
   // Method to clear user cache
   clearUserCache = async (userId = null) => {
     try {
+      // Promisify redis commands
+      const keysAsync = promisify(cache.keys).bind(cache);
+      const delAsync = promisify(cache.del).bind(cache);
+      
       // Get all keys matching the pattern
       const pattern = "cache:/api/users*";
-      const keys = await new Promise((resolve, reject) => {
-        cache.keys(pattern, (err, keys) => {
-          if (err) reject(err);
-          resolve(keys);
-        });
-      });
+      const keys = await keysAsync(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+        await Promise.all(keys.map(key => delAsync(key)));
       }
 
       // Clear specific user's cache if provided
       if (userId) {
         await Promise.all([
-          cache.del(`cache:/api/users/${userId}`),
-          cache.del(`cache:/api/users/${userId}/profile`),
-          cache.del(`cache:/api/users/${userId}/stats`),
-          cache.del(`cache:/api/users/${userId}?*`),
-          cache.del(`cache:/api/users/${userId}/profile?*`),
-          cache.del(`cache:/api/users/${userId}/stats?*`)
+          delAsync(`cache:/api/users/${userId}`),
+          delAsync(`cache:/api/users/${userId}/profile`),
+          delAsync(`cache:/api/users/${userId}/stats`),
+          delAsync(`cache:/api/users/${userId}?*`),
+          delAsync(`cache:/api/users/${userId}/profile?*`),
+          delAsync(`cache:/api/users/${userId}/stats?*`)
         ]);
       }
 
       // Clear role-specific caches
       await Promise.all([
-        cache.del('cache:/api/users/admins'),
-        cache.del('cache:/api/users/moderators'),
-        cache.del('cache:/api/users/general-users'),
-        cache.del('cache:/api/users/admins?*'),
-        cache.del('cache:/api/users/moderators?*'),
-        cache.del('cache:/api/users/general-users?*')
+        delAsync('cache:/api/users/admins'),
+        delAsync('cache:/api/users/moderators'),
+        delAsync('cache:/api/users/general-users'),
+        delAsync('cache:/api/users/admins?*'),
+        delAsync('cache:/api/users/moderators?*'),
+        delAsync('cache:/api/users/general-users?*')
       ]);
 
       console.log("Cleared user cache:", keys.length, "keys");
@@ -54,16 +54,15 @@ class UserController {
   // Method to clear deleted users cache
   clearDeletedUsersCache = async () => {
     try {
+      // Promisify redis commands
+      const keysAsync = promisify(cache.keys).bind(cache);
+      const delAsync = promisify(cache.del).bind(cache);
+      
       const pattern = "cache:/api/users/deleted*";
-      const keys = await new Promise((resolve, reject) => {
-        cache.keys(pattern, (err, keys) => {
-          if (err) reject(err);
-          resolve(keys);
-        });
-      });
+      const keys = await keysAsync(pattern);
 
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+        await Promise.all(keys.map(key => delAsync(key)));
       }
 
       console.log("Cleared deleted users cache:", keys.length, "keys");

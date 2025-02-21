@@ -2,30 +2,31 @@ const ContactInformationService = require("../services/ContactInformationService
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class ContactInformationController {
   // Method to clear cache
   clearContactCache = async (versionId = null) => {
     try {
+      // Promisify redis commands
+      const keysAsync = promisify(cache.keys).bind(cache);
+      const delAsync = promisify(cache.del).bind(cache);
+      
       // Get all keys matching the pattern
       const pattern = "cache:/api/contact-info*";
-      const keys = await new Promise((resolve, reject) => {
-        cache.keys(pattern, (err, keys) => {
-          if (err) reject(err);
-          resolve(keys);
-        });
-      });
+      const keys = await keysAsync(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+        await Promise.all(keys.map(key => delAsync(key)));
       }
 
       // Clear cache for specific version if provided
       if (versionId) {
-        await cache.del(`cache:/api/contact-info/version/${versionId}`);
+        await delAsync(`cache:/api/contact-info/version/${versionId}`);
       }
 
+      console.log("Cleared contact information cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing contact information cache:", error);
     }

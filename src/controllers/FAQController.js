@@ -2,30 +2,31 @@ const FAQService = require("../services/FAQService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class FAQController {
   // Method to clear cache
   clearFAQCache = async (faqId = null) => {
     try {
+      // Promisify redis commands
+      const keysAsync = promisify(cache.keys).bind(cache);
+      const delAsync = promisify(cache.del).bind(cache);
+      
       // Get all keys matching the pattern
       const pattern = "cache:/api/faqs*";
-      const keys = await new Promise((resolve, reject) => {
-        cache.keys(pattern, (err, keys) => {
-          if (err) reject(err);
-          resolve(keys);
-        });
-      });
+      const keys = await keysAsync(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+        await Promise.all(keys.map(key => delAsync(key)));
       }
 
       // Clear cache for specific FAQ if provided
       if (faqId) {
-        await cache.del(`cache:/api/faqs/${faqId}`);
+        await delAsync(`cache:/api/faqs/${faqId}`);
       }
-      
+
+      console.log("Cleared FAQ cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing FAQ cache:", error);
     }

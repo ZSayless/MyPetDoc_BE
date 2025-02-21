@@ -2,28 +2,28 @@ const AboutUsService = require("../services/AboutUsService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class AboutUsController {
   // Method to clear cache
   clearAboutUsCache = async (versionId = null) => {
     try {
-      // Get all keys match pattern
+      // Promisify redis commands
+      const keysAsync = promisify(cache.keys).bind(cache);
+      const delAsync = promisify(cache.del).bind(cache);
+      
+      // Get all keys matching the pattern
       const pattern = "cache:/api/about-us*";
-      const keys = await new Promise((resolve, reject) => {
-        cache.keys(pattern, (err, keys) => {
-          if (err) reject(err);
-          resolve(keys);
-        });
-      });
+      const keys = await keysAsync(pattern);
 
-      // Delete each key found
+      // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+        await Promise.all(keys.map(key => delAsync(key)));
       }
 
       // Clear cache for specific version if provided
       if (versionId) {
-        await cache.del(`cache:/api/about-us/version/${versionId}`);
+        await delAsync(`cache:/api/about-us/version/${versionId}`);
       }
 
       console.log("Cleared about us cache:", keys.length, "keys");
