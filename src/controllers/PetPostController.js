@@ -39,12 +39,21 @@ class PetPostController {
   clearCommentCache = async (postId, commentId = null) => {
     try {
       // Get all comment related keys
-      const pattern = `cache:/api/blog-posts/${postId}/comments*`;
-      const keys = await cache.keys(pattern);
+      const commentPattern = `cache:/api/blog-posts/${postId}/comments*`;
+      const postPattern = "cache:/api/blog-posts*";
+      
+      // Get all keys for both patterns
+      const [commentKeys, postKeys] = await Promise.all([
+        cache.keys(commentPattern),
+        cache.keys(postPattern)
+      ]);
+
+      // Combine all keys that need to be deleted
+      const keysToDelete = [...commentKeys, ...postKeys];
 
       // Delete each found key
-      if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+      if (keysToDelete.length > 0) {
+        await Promise.all(keysToDelete.map(key => cache.del(key)));
       }
 
       // Clear specific comment's replies if provided
@@ -55,6 +64,7 @@ class PetPostController {
         ]);
       }
 
+      console.log("Cleared cache keys:", keysToDelete);
     } catch (error) {
       console.error("Error clearing comment cache:", error);
     }
@@ -257,6 +267,7 @@ class PetPostController {
 
     // Clear cache after deleting comment
     await this.clearCommentCache(comment.post_id, commentId);
+    await this.clearPostCache(comment.post_id);
 
     res.status(200).json({
       success: true,
