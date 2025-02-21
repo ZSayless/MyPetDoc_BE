@@ -10,12 +10,21 @@ class ReviewController {
   clearReviewCache = async (hospitalId = null, reviewId = null, userId = null) => {
     try {
       // Get all keys matching the pattern
-      const pattern = "cache:/api/reviews*";
-      const keys = await cache.keys(pattern);
+      const reviewPattern = "cache:/api/reviews*";
+      const hospitalPattern = "cache:/api/hospitals*";
+      
+      // Get all keys for both patterns
+      const [reviewKeys, hospitalKeys] = await Promise.all([
+        cache.keys(reviewPattern),
+        cache.keys(hospitalPattern)
+      ]);
 
-      // Delete each found key
-      if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+      // Combine all keys that need to be deleted
+      const keysToDelete = [...reviewKeys, ...hospitalKeys];
+
+      // Delete all found keys
+      if (keysToDelete.length > 0) {
+        await Promise.all(keysToDelete.map(key => cache.del(key)));
       }
 
       // Clear hospital specific cache if provided
@@ -27,7 +36,6 @@ class ReviewController {
           cache.del(`cache:/api/reviews/hospital/${hospitalId}?*`),
           cache.del(`cache:/api/reviews/hospital/${hospitalId}/stats?*`),
           cache.del(`cache:/api/reviews/hospital/${hospitalId}/can-review?*`),
-          cache.del(`cache:/api/hospitals/by-slug/*`),
           cache.del(`cache:/api/hospitals/${hospitalId}`)
         ]);
       }
@@ -49,7 +57,8 @@ class ReviewController {
           cache.del(`cache:/api/reviews/user/me?*`)
         ]);
       }
-      console.log('=== Clear Review Cache ===');
+
+      console.log('=== Clear Cache Keys ===', keysToDelete);
     } catch (error) {
       console.error("Error clearing review cache:", error);
     }
