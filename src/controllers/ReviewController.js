@@ -26,7 +26,9 @@ class ReviewController {
           cache.del(`cache:/api/reviews/hospital/${hospitalId}/can-review`),
           cache.del(`cache:/api/reviews/hospital/${hospitalId}?*`),
           cache.del(`cache:/api/reviews/hospital/${hospitalId}/stats?*`),
-          cache.del(`cache:/api/reviews/hospital/${hospitalId}/can-review?*`)
+          cache.del(`cache:/api/reviews/hospital/${hospitalId}/can-review?*`),
+          cache.del(`cache:/api/hospital/*`),
+          cache.del(`cache:/api/hospitals/${hospitalId}`)
         ]);
       }
 

@@ -152,8 +152,8 @@ class ReviewService {
     }
 
     // Validate comment if exists
-    if (data.comment && data.comment.trim().length < 10) {
-      errors.push("Comment must be at least 10 characters");
+    if (data.comment && data.comment.trim().length < 5) {
+      errors.push("Comment must be at least 5 characters");
     }
 
     // Validate image_description if new image exists
