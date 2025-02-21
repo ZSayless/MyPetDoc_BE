@@ -329,9 +329,9 @@ class HospitalController {
   // Method to clear cache
   clearHospitalCache = async () => {
     try {
-      // Get all keys matching the pattern using KEYS command
+      // Get all keys matching the pattern using keys command
       const pattern = "cache:/api/hospitals*";
-      cache.KEYS(pattern, async (err, keys) => {
+      cache.keys(pattern, async (err, keys) => {
         if (err) {
           console.error("Error getting keys:", err);
           return;
