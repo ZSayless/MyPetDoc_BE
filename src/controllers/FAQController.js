@@ -5,16 +5,23 @@ const cache = require("../config/redis");
 
 class FAQController {
   // Method to clear cache
-  clearFAQCache = async () => {
+  clearFAQCache = async (faqId = null) => {
     try {
-      const keys = ["cache:/api/faqs", "cache:/api/faqs/search"];
+      const keys = [
+        "cache:/api/faqs",
+        "cache:/api/faqs/search"
+      ];
 
-      // Clear cache for list and search
+      // Clear common cache
       for (const key of keys) {
         await cache.del(key);
       }
 
-      console.log("Cleared FAQ cache");
+      // Clear specific FAQ cache if provided
+      if (faqId) {
+        await cache.del(`cache:/api/faqs/${faqId}`);
+      }
+
     } catch (error) {
       console.error("Error clearing FAQ cache:", error);
     }
@@ -58,7 +65,7 @@ class FAQController {
   createFAQ = asyncHandler(async (req, res) => {
     const faq = await FAQService.createFAQ(req.body, req.user.id);
 
-    // Clear cache after creating new FAQ
+    // Clear all cache after creating new FAQ
     await this.clearFAQCache();
 
     res.status(201).json({
@@ -70,61 +77,46 @@ class FAQController {
 
   // Update FAQ
   updateFAQ = asyncHandler(async (req, res) => {
-    try {
-      const { id } = req.params;
-      const faq = await FAQService.updateFAQ(parseInt(id), req.body);
+    const { id } = req.params;
+    const faq = await FAQService.updateFAQ(parseInt(id), req.body);
 
-      // Clear cache after updating
-      await this.clearFAQCache();
-      await cache.del(`cache:/api/faqs/${id}`);
+    // Clear cache after updating
+    await this.clearFAQCache(id);
 
-      res.json({
-        status: "success",
-        message: "Update FAQ successful",
-        data: faq,
-      });
-    } catch (error) {
-      throw new ApiError(500, "Internal server error");
-    }
+    res.json({
+      status: "success",
+      message: "Update FAQ successful",
+      data: faq,
+    });
   });
 
   // Soft delete/restore FAQ
   toggleSoftDelete = asyncHandler(async (req, res) => {
-    try {
-      const { id } = req.params;
-      const faq = await FAQService.toggleSoftDelete(parseInt(id));
+    const { id } = req.params;
+    const faq = await FAQService.toggleSoftDelete(parseInt(id));
 
-      // Clear cache after changing status
-      await this.clearFAQCache();
-      await cache.del(`cache:/api/faqs/${id}`);
+    // Clear cache after changing status
+    await this.clearFAQCache(id);
 
-      res.json({
-        status: "success",
-        message: `FAQ has been ${faq.is_deleted ? "deleted" : "restored"}`,
-        data: faq,
-      });
-    } catch (error) {
-      throw new ApiError(500, "Internal server error");
-    }
+    res.json({
+      status: "success",
+      message: `FAQ has been ${faq.is_deleted ? "deleted" : "restored"}`,
+      data: faq,
+    });
   });
 
   // Hard delete FAQ
   hardDelete = asyncHandler(async (req, res) => {
-    try {
-      const { id } = req.params;
-      await FAQService.hardDelete(parseInt(id));
+    const { id } = req.params;
+    await FAQService.hardDelete(parseInt(id));
 
-      // Clear cache after hard delete
-      await this.clearFAQCache();
-      await cache.del(`cache:/api/faqs/${id}`);
+    // Clear cache after hard delete
+    await this.clearFAQCache(id);
 
-      res.json({
-        status: "success",
-        message: "Permanently delete FAQ successful",
-      });
-    } catch (error) {
-      throw new ApiError(500, "Internal server error");
-    }
+    res.json({
+      status: "success",
+      message: "Permanently delete FAQ successful",
+    });
   });
 }
 

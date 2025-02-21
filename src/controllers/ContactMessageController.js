@@ -2,6 +2,7 @@ const ContactMessageService = require("../services/ContactMessageService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const ContactMessage = require("../models/ContactMessage");
+const cache = require("../config/redis");
 
 class ContactMessageController {
   // Get list of messages with filter and pagination
@@ -31,6 +32,7 @@ class ContactMessageController {
     };
 
     const message = await ContactMessageService.createMessage(messageData);
+    await this.clearMessageCache();
     res.status(201).json({ success: true, message });
   });
 
@@ -46,6 +48,11 @@ class ContactMessageController {
       status,
       req.user.id
     );
+    
+    // Clear cache and specific message cache
+    await this.clearMessageCache();
+    await cache.del(`cache:/api/contact-messages/${req.params.id}`);
+    
     res.status(200).json({ success: true, message });
   });
 
@@ -56,18 +63,33 @@ class ContactMessageController {
       req.body,
       req.user.id
     );
+    
+    // Clear cache and specific message cache
+    await this.clearMessageCache();
+    await cache.del(`cache:/api/contact-messages/${req.params.id}`);
+    
     res.status(200).json({ success: true, message });
   });
 
   // Soft delete message
   deleteMessage = asyncHandler(async (req, res) => {
     await ContactMessageService.deleteMessage(req.params.id);
+    
+    // Clear cache and specific message cache
+    await this.clearMessageCache();
+    await cache.del(`cache:/api/contact-messages/${req.params.id}`);
+    
     res.status(204).json({ success: true });
   });
 
   // Hard delete message
   hardDeleteMessage = asyncHandler(async (req, res) => {
     await ContactMessageService.hardDeleteMessage(req.params.id);
+    
+    // Clear cache and specific message cache
+    await this.clearMessageCache();
+    await cache.del(`cache:/api/contact-messages/${req.params.id}`);
+    
     res.status(204).json({ success: true });
   });
 
@@ -93,6 +115,23 @@ class ContactMessageController {
     const stats = await ContactMessage.countMessages(filters);
     res.status(200).json({ success: true, stats });
   });
+
+  // Add method clear cache
+  clearMessageCache = async () => {
+    try {
+      const keys = [
+        "cache:/api/contact-messages",
+        "cache:/api/contact-messages/stats",
+        "cache:/api/contact-messages/my-messages"
+      ];
+      
+      for (const key of keys) {
+        await cache.del(key);
+      }
+    } catch (error) {
+      console.error("Error clearing contact message cache:", error);
+    }
+  };
 }
 
 module.exports = new ContactMessageController();

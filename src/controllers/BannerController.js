@@ -5,16 +5,22 @@ const cache = require("../config/redis");
 
 class BannerController {
   // Method to clear cache
-  clearBannerCache = async () => {
+  clearBannerCache = async (bannerId = null) => {
     try {
-      const keys = ["cache:/api/banners", "cache:/api/banners/active"];
+      const keys = [
+        "cache:/api/banners",
+        "cache:/api/banners/active"
+      ];
 
-      // Clear cache for list and active banner
+      // Clear common cache
       for (const key of keys) {
         await cache.del(key);
       }
 
-      console.log("Cleared banner cache");
+      // Clear cache for specific banner if provided
+      if (bannerId) {
+        await cache.del(`cache:/api/banners/${bannerId}`);
+      }
     } catch (error) {
       console.error("Error clearing banner cache:", error);
     }
@@ -62,7 +68,6 @@ class BannerController {
     if (!req.file) {
       throw new ApiError(400, "Please upload banner image");
     }
-    // Check number of files
     if (req.files && req.files.length > 1) {
       throw new ApiError(400, "Only one image is allowed for banner");
     }
@@ -73,7 +78,7 @@ class BannerController {
       req.file
     );
 
-    // Clear cache after creating new banner
+    // Clear all cache after creating new banner
     await this.clearBannerCache();
 
     res.status(201).json({
@@ -101,8 +106,7 @@ class BannerController {
     );
 
     // Clear cache after updating
-    await this.clearBannerCache();
-    await cache.del(`cache:/api/banners/${id}`);
+    await this.clearBannerCache(id);
 
     res.json({
       status: "success",
@@ -117,8 +121,7 @@ class BannerController {
     const banner = await BannerService.toggleActive(parseInt(id));
 
     // Clear cache after changing status
-    await this.clearBannerCache();
-    await cache.del(`cache:/api/banners/${id}`);
+    await this.clearBannerCache(id);
 
     res.json({
       status: "success",
@@ -135,8 +138,7 @@ class BannerController {
     const banner = await BannerService.softDelete(parseInt(id));
 
     // Clear cache after soft delete
-    await this.clearBannerCache();
-    await cache.del(`cache:/api/banners/${id}`);
+    await this.clearBannerCache(id);
 
     res.json({
       status: "success",
@@ -151,8 +153,7 @@ class BannerController {
     await BannerService.hardDelete(parseInt(id));
 
     // Clear cache after hard delete
-    await this.clearBannerCache();
-    await cache.del(`cache:/api/banners/${id}`);
+    await this.clearBannerCache(id);
 
     res.json({
       status: "success",
