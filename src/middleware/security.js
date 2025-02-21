@@ -36,6 +36,23 @@ const securityMiddleware = (app) => {
       "Too many requests from this IP, please try again after 15 minutes",
     standardHeaders: true,
     legacyHeaders: false,
+    
+    // Add proxy configuration
+    trustProxy: true, // Trust proxy
+    handler: (req, res) => {
+      res.status(429).json({
+        status: "error",
+        message: "Too many requests, please try again later."
+      });
+    },
+
+    // Customize IP detection
+    keyGenerator: (req) => {
+      // Prioritize X-Forwarded-For header from proxy
+      return req.headers['x-forwarded-for'] || 
+             req.connection.remoteAddress ||
+             req.socket.remoteAddress;
+    }
   });
   app.use("/api", limiter);
 
