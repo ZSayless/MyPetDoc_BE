@@ -101,6 +101,8 @@ const cacheWrapper = {
     connected: redis ? redis.status === "ready" : true,
     size: redis ? "unknown" : memoryCache.size,
   }),
+
+  getRedis: () => redis,
 };
 
 module.exports = cacheWrapper;
