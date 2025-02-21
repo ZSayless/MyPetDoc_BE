@@ -1,6 +1,6 @@
 const User = require("../models/User");
 const ApiError = require("../exceptions/ApiError");
-const emailService = require("../services/emailService");
+const emailService = require("../services/EmailService");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const cloudinary = require("cloudinary");
