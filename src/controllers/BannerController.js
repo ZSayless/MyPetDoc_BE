@@ -9,7 +9,9 @@ class BannerController {
     try {
       const keys = [
         "cache:/api/banners",
-        "cache:/api/banners/active"
+        "cache:/api/banners/active",
+        "cache:/api/banners?*",
+        "cache:/api/banners/active?*"
       ];
 
       // Clear common cache

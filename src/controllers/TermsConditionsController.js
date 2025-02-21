@@ -9,13 +9,18 @@ class TermsConditionsController {
     try {
       const keys = [
         "cache:/api/terms/current",
+        "cache:/api/terms/current?*",
         "cache:/api/terms/effective",
+        "cache:/api/terms/effective?*",
         "cache:/api/terms/history",
-        "cache:/api/terms/compare"
+        "cache:/api/terms/history?*",
+        "cache:/api/terms/compare",
+        "cache:/api/terms/compare?*",
+        "cache:/api/terms/version?*"
       ];
 
       if (versionId) {
-        keys.push(`cache:/api/terms/version/${versionId}`);
+        keys.push(`cache:/api/terms/version/${versionId}`, `cache:/api/terms/version/${versionId}?*`);
       }
 
       // Clear cache

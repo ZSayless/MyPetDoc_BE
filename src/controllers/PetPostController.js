@@ -9,8 +9,10 @@ class PetPostController {
     try {
       const keys = [
         "cache:/api/blog-posts", // List of posts
-        "cache:/api/blog-posts/admin/all", // Admin list
-        "cache:/api/blog-posts/admin/trash" // Soft deleted posts
+        "cache:/api/blog-posts/admin/all",
+        "cache:/api/blog-posts/admin/all?*",
+        "cache:/api/blog-posts/admin/trash",
+        "cache:/api/blog-posts/admin/trash?*",
       ];
 
       if (postId) {
@@ -18,7 +20,8 @@ class PetPostController {
           `cache:/api/blog-posts/${postId}`, // Post details
           `cache:/api/blog-posts/${postId}/comments`, // Comments
           `cache:/api/blog-posts/${postId}/likes`, // Likes
-          `cache:/api/blog-posts/${postId}/check-like` // Like check status
+          `cache:/api/blog-posts/${postId}/check-like`, // Like check status
+          `cache:/api/blog-posts/${postId}/comments?*`, // Comments
         );
 
         // Add cache for slug
@@ -40,10 +43,10 @@ class PetPostController {
   // Method to clear comment cache
   clearCommentCache = async (postId, commentId = null) => {
     try {
-      const keys = [`cache:/api/blog-posts/${postId}/comments`];
+      const keys = [`cache:/api/blog-posts/${postId}/comments`, `cache:/api/blog-posts/${postId}/comments?*`];
 
       if (commentId) {
-        keys.push(`cache:/api/blog-posts/comments/${commentId}/replies`);
+        keys.push(`cache:/api/blog-posts/comments/${commentId}/replies`, `cache:/api/blog-posts/comments/${commentId}/replies?*`);
       }
 
       // Clear cache

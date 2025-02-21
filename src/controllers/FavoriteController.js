@@ -13,14 +13,19 @@ class FavoriteController {
         keys.push(
           `cache:/api/favorites/user/${userId}/hospitals`,
           `cache:/api/favorites/user/${userId}/count`,
-          `cache:/api/favorites/check/${hospitalId}`
+          `cache:/api/favorites/check/${hospitalId}`,
+          `cache:/api/favorites/user/${userId}/hospitals?*`,
+          `cache:/api/favorites/user/${userId}/count?*`,
+          `cache:/api/favorites/check/${hospitalId}?*`
         );
       }
 
       if (hospitalId) {
         keys.push(
           `cache:/api/favorites/hospital/${hospitalId}/users`,
-          `cache:/api/favorites/hospital/${hospitalId}/count`
+          `cache:/api/favorites/hospital/${hospitalId}/count`,
+          `cache:/api/favorites/hospital/${hospitalId}/users?*`,
+          `cache:/api/favorites/hospital/${hospitalId}/count?*`
         );
       }
 

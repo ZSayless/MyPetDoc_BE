@@ -9,7 +9,9 @@ class AboutUsController {
     try {
       const keys = [
         "cache:/api/about-us/current",
+        "cache:/api/about-us/current?*",
         "cache:/api/about-us/history",
+        "cache:/api/about-us/history?*",
         "cache:/api/about-us/compare"
       ];
 

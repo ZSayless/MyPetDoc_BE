@@ -16,18 +16,23 @@ class ReviewController {
         keys.push(
           `cache:/api/reviews/hospital/${hospitalId}`, // Reviews of hospital
           `cache:/api/reviews/hospital/${hospitalId}/stats`, // Stats of hospital
-          `cache:/api/reviews/hospital/${hospitalId}/can-review` // Can review check
+          `cache:/api/reviews/hospital/${hospitalId}/can-review`, // Can review check
+          `cache:/api/reviews/hospital/${hospitalId}?*`, // Reviews of hospital
+          `cache:/api/reviews/hospital/${hospitalId}/stats?*`, // Stats of hospital
+          `cache:/api/reviews/hospital/${hospitalId}/can-review?*` // Can review check
         );
       }
 
       if (reviewId) {
-        keys.push(`cache:/api/reviews/${reviewId}`); // Details of review
+        keys.push(`cache:/api/reviews/${reviewId}`, `cache:/api/reviews/${reviewId}?*`); // Details of review
       }
 
       if (userId) {
         keys.push(
           `cache:/api/reviews/user/${userId}`, // User's reviews
-          `cache:/api/reviews/user/me` // Current user's reviews
+          `cache:/api/reviews/user/me`, // Current user's reviews
+          `cache:/api/reviews/user/${userId}?*`, // User's reviews
+          `cache:/api/reviews/user/me?*` // Current user's reviews
         );
       }
 
@@ -47,7 +52,7 @@ class ReviewController {
         console.error('Cannot clear cache: userId is undefined');
         return;
       }
-      await cache.del(`cache:/api/reviews/user/${userId}`);
+      await cache.del(`cache:/api/reviews/user/${userId}`, `cache:/api/reviews/user/${userId}?*`);
     } catch (error) {
       console.error("Error clearing user review cache:", error);
     }

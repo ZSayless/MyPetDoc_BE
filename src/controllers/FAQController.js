@@ -9,7 +9,9 @@ class FAQController {
     try {
       const keys = [
         "cache:/api/faqs",
-        "cache:/api/faqs/search"
+        "cache:/api/faqs/search",
+        "cache:/api/faqs?*",
+        "cache:/api/faqs/search?*"
       ];
 
       // Clear common cache

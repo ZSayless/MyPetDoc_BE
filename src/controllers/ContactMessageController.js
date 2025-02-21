@@ -122,7 +122,10 @@ class ContactMessageController {
       const keys = [
         "cache:/api/contact-messages",
         "cache:/api/contact-messages/stats",
-        "cache:/api/contact-messages/my-messages"
+        "cache:/api/contact-messages/my-messages",
+        "cache:/api/contact-messages?*",
+        "cache:/api/contact-messages/stats?*",
+        "cache:/api/contact-messages/my-messages?*"
       ];
       
       for (const key of keys) {

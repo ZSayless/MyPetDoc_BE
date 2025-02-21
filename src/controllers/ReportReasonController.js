@@ -6,10 +6,10 @@ class ReportReasonController {
   // Method to clear cache
   clearReportCache = async (reportId = null) => {
     try {
-      const keys = ["cache:/api/reports"];
+      const keys = ["cache:/api/reports", "cache:/api/reports?*"];
 
       if (reportId) {
-        keys.push(`cache:/api/reports/${reportId}`);
+        keys.push(`cache:/api/reports/${reportId}`, `cache:/api/reports/${reportId}?*`);
       }
 
       // Clear cache

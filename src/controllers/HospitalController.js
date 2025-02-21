@@ -329,9 +329,11 @@ class HospitalController {
   clearHospitalCache = async () => {
     try {
       const keys = [
-        "cache:/api/hospitals", 
+        "cache:/api/hospitals",
+        "cache:/api/hospitals?*",
         "cache:/api/hospitals/search", 
-        "cache:/api/hospitals/deleted/list", 
+        "cache:/api/hospitals/deleted/list",
+        "cache:/api/hospitals/deleted/list?*",
         "cache:/api/hospitals/by-slug",
         "cache:/api/hospitals/creator"
       ];

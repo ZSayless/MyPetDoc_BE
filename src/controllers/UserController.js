@@ -10,7 +10,10 @@ class UserController {
   clearUserCache = async (userId = null) => {
     try {
       const keys = [
-        "cache:/api/users", // List of users
+        "cache:/api/users",
+        "cache:/api/users?*",
+        "cache:/api/users/deleted/list",
+        "cache:/api/users/deleted/list?*",
       ];
 
       if (userId) {

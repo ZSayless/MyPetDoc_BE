@@ -9,7 +9,9 @@ class ContactInformationController {
     try {
       const keys = [
         "cache:/api/contact-info/current",
+        "cache:/api/contact-info/current?*",
         "cache:/api/contact-info/history",
+        "cache:/api/contact-info/history?*",
         "cache:/api/contact-info/compare"
       ];
 
