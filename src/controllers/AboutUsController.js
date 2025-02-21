@@ -5,19 +5,23 @@ const cache = require("../config/redis");
 
 class AboutUsController {
   // Method to clear cache
-  clearAboutUsCache = async () => {
+  clearAboutUsCache = async (versionId = null) => {
     try {
       const keys = [
         "cache:/api/about-us/current",
         "cache:/api/about-us/history",
+        "cache:/api/about-us/compare"
       ];
 
-      // Clear cache for current and history
+      // Clear common cache
       for (const key of keys) {
         await cache.del(key);
       }
 
-      console.log("Cleared About Us cache");
+      // Clear cache for specific version if provided
+      if (versionId) {
+        await cache.del(`cache:/api/about-us/version/${versionId}`);
+      }
     } catch (error) {
       console.error("Error clearing About Us cache:", error);
     }
@@ -80,8 +84,7 @@ class AboutUsController {
     const aboutUs = await AboutUsService.toggleSoftDelete(parseInt(id));
 
     // Clear cache after changing status
-    await this.clearAboutUsCache();
-    await cache.del(`cache:/api/about-us/version/${id}`);
+    await this.clearAboutUsCache(id);
 
     res.status(200).json({
       status: "success",
@@ -98,8 +101,7 @@ class AboutUsController {
     await AboutUsService.hardDelete(parseInt(id));
 
     // Clear cache after hard delete
-    await this.clearAboutUsCache();
-    await cache.del(`cache:/api/about-us/version/${id}`);
+    await this.clearAboutUsCache(id);
 
     res.status(200).json({
       status: "success",
@@ -117,8 +119,7 @@ class AboutUsController {
     );
 
     // Clear cache after updating
-    await this.clearAboutUsCache();
-    await cache.del(`cache:/api/about-us/version/${id}`);
+    await this.clearAboutUsCache(id);
 
     res.json({
       status: "success",

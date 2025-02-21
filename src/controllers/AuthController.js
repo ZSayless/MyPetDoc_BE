@@ -20,6 +20,10 @@ class AuthController {
         pet_notes = null,
       } = req.body;
   
+      // Chuyển đổi pet_age từ chuỗi rỗng thành null
+      const sanitizedPetAge = pet_age === '' ? null : 
+                             pet_age ? parseInt(pet_age) : null;
+  
       // Validate data
       await this.validateUserData({ email, password, full_name, phone_number });
   
@@ -75,10 +79,10 @@ class AuthController {
           verification_token: verificationToken,
           verification_expires: verificationExpires,
           avatar: userAvatar,
-          pet_type,
-          pet_age,
+          pet_type: pet_type || null,
+          pet_age: sanitizedPetAge,
           pet_photo: petPhoto,
-          pet_notes,
+          pet_notes: pet_notes || null,
         });
   
         // Send verification email

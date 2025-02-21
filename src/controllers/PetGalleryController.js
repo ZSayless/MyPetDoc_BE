@@ -6,17 +6,23 @@ const cache = require("../config/redis");
 
 class PetGalleryController {
   // Method to clear cache
-  clearPostCache = async (postId = null) => {
+  clearPostCache = async (postId = null, userId = null) => {
     try {
       const keys = [
         "cache:/api/community/posts", // List of posts
+        "cache:/api/community/admin/posts/all" // Admin list of all posts
       ];
 
       if (postId) {
         keys.push(
           `cache:/api/community/posts/${postId}`, // Post details
-          `cache:/api/community/posts/${postId}/comments` // Comments of post
+          `cache:/api/community/posts/${postId}/comments`, // Comments of post
+          `cache:/api/community/posts/${postId}/like/check` // Like status
         );
+      }
+
+      if (userId) {
+        keys.push(`cache:/api/community/my-posts`); // User's posts
       }
 
       // Clear cache
@@ -41,6 +47,7 @@ class PetGalleryController {
       for (const key of keys) {
         await cache.del(key);
       }
+
     } catch (error) {
       console.error("Error clearing comment cache:", error);
     }
@@ -64,7 +71,7 @@ class PetGalleryController {
     const post = await PetGalleryService.createPost(req.body, userId, file);
 
     // Clear cache after creating new post
-    await this.clearPostCache();
+    await this.clearPostCache(null, userId);
 
     res.status(201).json({
       success: true,
@@ -174,7 +181,7 @@ class PetGalleryController {
       );
 
       // Clear cache after updating post
-      await this.clearPostCache(postId);
+      await this.clearPostCache(postId, post.user_id);
 
       res.json({
         success: true,
@@ -199,7 +206,7 @@ class PetGalleryController {
       await PetGalleryService.deletePost(postId, userId, isAdmin);
 
       // Clear cache after deleting post
-      await this.clearPostCache(postId);
+      await this.clearPostCache(postId, userId);
 
       res.json({
         success: true,
@@ -242,7 +249,7 @@ class PetGalleryController {
     const result = await PetGalleryService.toggleLike(postId, userId);
 
     // Clear cache after like/unlike post
-    await this.clearPostCache(postId);
+    await this.clearPostCache(postId, userId);
 
     res.json({
       success: true,
@@ -387,7 +394,7 @@ class PetGalleryController {
     );
 
     // Clear cache
-    await this.clearPostCache(id);
+    await this.clearPostCache(id, updatedPost.user_id);
 
     res.json({
       success: true,

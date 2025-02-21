@@ -8,43 +8,48 @@ class PetPostController {
   clearPostCache = async (postId = null) => {
     try {
       const keys = [
-        "cache:/api/pet-posts", // List of posts
+        "cache:/api/blog-posts", // List of posts
+        "cache:/api/blog-posts/admin/all", // Admin list
+        "cache:/api/blog-posts/admin/trash" // Soft deleted posts
       ];
 
       if (postId) {
         keys.push(
-          `cache:/api/pet-posts/${postId}`, // Post details
-          `cache:/api/pet-posts/${postId}/comments`, // Comments of post
-          `cache:/api/pet-posts/${postId}/likes` // Likes of post
+          `cache:/api/blog-posts/${postId}`, // Post details
+          `cache:/api/blog-posts/${postId}/comments`, // Comments
+          `cache:/api/blog-posts/${postId}/likes`, // Likes
+          `cache:/api/blog-posts/${postId}/check-like` // Like check status
         );
+
+        // Add cache for slug
+        const post = await PetPostService.getPostDetail(postId);
+        if (post?.slug) {
+          keys.push(`cache:/api/blog-posts/slug/${post.slug}`);
+        }
       }
 
       // Clear cache
       for (const key of keys) {
         await cache.del(key);
       }
-
-      console.log("Cleared pet post cache", postId ? `for post ${postId}` : "");
     } catch (error) {
-      console.error("Error clearing pet post cache:", error);
+      console.error("Error clearing blog post cache:", error);
     }
   };
 
   // Method to clear comment cache
   clearCommentCache = async (postId, commentId = null) => {
     try {
-      const keys = [`cache:/api/pet-posts/${postId}/comments`];
+      const keys = [`cache:/api/blog-posts/${postId}/comments`];
 
       if (commentId) {
-        keys.push(`cache:/api/pet-posts/comments/${commentId}/replies`);
+        keys.push(`cache:/api/blog-posts/comments/${commentId}/replies`);
       }
 
       // Clear cache
       for (const key of keys) {
         await cache.del(key);
       }
-
-      // console.log("Cleared comment cache for post:", postId);
     } catch (error) {
       console.error("Error clearing comment cache:", error);
     }
@@ -150,7 +155,7 @@ class PetPostController {
     const result = await PetPostService.toggleLike(postId, userId);
 
     // Clear cache after like/unlike
-    await cache.del(`cache:/api/pet-posts/${postId}/likes`);
+    await cache.del(`cache:/api/blog-posts/${postId}/likes`);
 
     res.status(200).json({
       success: true,
@@ -357,6 +362,10 @@ class PetPostController {
 
     await PetPostService.hardDeleteManyPosts(ids, userId, isAdmin);
 
+    // Clear cache cho từng post và cache chung
+    await Promise.all(ids.map(id => this.clearPostCache(id)));
+    await this.clearPostCache();
+
     res.status(200).json({
       success: true,
       message: "Hard delete many posts successful",
@@ -374,6 +383,9 @@ class PetPostController {
       userId,
       isAdmin
     );
+
+    // Clear cache sau khi thay đổi trạng thái
+    await this.clearPostCache(postId);
 
     res.status(200).json({
       success: true,

@@ -206,6 +206,8 @@ class HospitalController {
         userId
       );
 
+      await this.clearHospitalCache();
+
       res.json({
         status: "success",
         message: "Add images successful",
@@ -235,6 +237,8 @@ class HospitalController {
       }
 
       await HospitalImageService.deleteImage(imageId, userId);
+
+      await this.clearHospitalCache();
 
       res.json({
         status: "success",
@@ -324,13 +328,17 @@ class HospitalController {
   // Clear cache when data changes
   clearHospitalCache = async () => {
     try {
-      const keys = ["cache:/api/hospitals", "cache:/api/hospitals/search", "cache:/api/hospitals/deleted/list", "cache:/api/hospitals/slug"];
-
-      // Clear cache for list and search
+      const keys = [
+        "cache:/api/hospitals", 
+        "cache:/api/hospitals/search", 
+        "cache:/api/hospitals/deleted/list", 
+        "cache:/api/hospitals/by-slug",
+        "cache:/api/hospitals/creator"
+      ];
+      
       for (const key of keys) {
         await cache.del(key);
       }
-
       console.log("Cleared hospital cache");
     } catch (error) {
       console.error("Error clearing hospital cache:", error);
