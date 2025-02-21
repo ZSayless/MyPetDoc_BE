@@ -7,22 +7,26 @@ class BannerController {
   // Method to clear cache
   clearBannerCache = async (bannerId = null) => {
     try {
-      const keys = [
-        "cache:/api/banners",
-        "cache:/api/banners/active",
-        "cache:/api/banners?*",
-        "cache:/api/banners/active?*"
-      ];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/banners*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
 
-      // Clear common cache
-      for (const key of keys) {
-        await cache.del(key);
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear cache for specific banner if provided
       if (bannerId) {
         await cache.del(`cache:/api/banners/${bannerId}`);
       }
+
+      console.log("Cleared banner cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing banner cache:", error);
     }

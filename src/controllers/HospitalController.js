@@ -328,20 +328,21 @@ class HospitalController {
   // Clear cache when data changes
   clearHospitalCache = async () => {
     try {
-      const keys = [
-        "cache:/api/hospitals",
-        "cache:/api/hospitals?*",
-        "cache:/api/hospitals/search", 
-        "cache:/api/hospitals/deleted/list",
-        "cache:/api/hospitals/deleted/list?*",
-        "cache:/api/hospitals/by-slug",
-        "cache:/api/hospitals/creator"
-      ];
-      
-      for (const key of keys) {
-        await cache.del(key);
+      // Get all keys match pattern
+      const pattern = "cache:/api/hospitals*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
+
+      // Delete each key found
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
       }
-      console.log("Cleared hospital cache");
+
+      console.log("Cleared hospital cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing hospital cache:", error);
     }

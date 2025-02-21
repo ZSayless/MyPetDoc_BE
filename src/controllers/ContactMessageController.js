@@ -116,20 +116,21 @@ class ContactMessageController {
     res.status(200).json({ success: true, stats });
   });
 
-  // Add method clear cache
-  clearMessageCache = async () => {
+  // Method to clear cache
+  clearMessageCache = async (messageId = null) => {
     try {
-      const keys = [
-        "cache:/api/contact-messages",
-        "cache:/api/contact-messages/stats",
-        "cache:/api/contact-messages/my-messages",
-        "cache:/api/contact-messages?*",
-        "cache:/api/contact-messages/stats?*",
-        "cache:/api/contact-messages/my-messages?*"
-      ];
-      
-      for (const key of keys) {
-        await cache.del(key);
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/contact-messages*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
+
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
       }
     } catch (error) {
       console.error("Error clearing contact message cache:", error);

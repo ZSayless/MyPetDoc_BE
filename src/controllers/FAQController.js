@@ -7,23 +7,25 @@ class FAQController {
   // Method to clear cache
   clearFAQCache = async (faqId = null) => {
     try {
-      const keys = [
-        "cache:/api/faqs",
-        "cache:/api/faqs/search",
-        "cache:/api/faqs?*",
-        "cache:/api/faqs/search?*"
-      ];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/faqs*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
 
-      // Clear common cache
-      for (const key of keys) {
-        await cache.del(key);
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
-      // Clear specific FAQ cache if provided
+      // Clear cache for specific FAQ if provided
       if (faqId) {
         await cache.del(`cache:/api/faqs/${faqId}`);
       }
-
+      
     } catch (error) {
       console.error("Error clearing FAQ cache:", error);
     }

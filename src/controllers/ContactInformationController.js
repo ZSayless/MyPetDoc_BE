@@ -7,17 +7,18 @@ class ContactInformationController {
   // Method to clear cache
   clearContactCache = async (versionId = null) => {
     try {
-      const keys = [
-        "cache:/api/contact-info/current",
-        "cache:/api/contact-info/current?*",
-        "cache:/api/contact-info/history",
-        "cache:/api/contact-info/history?*",
-        "cache:/api/contact-info/compare"
-      ];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/contact-info*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
 
-      // Clear common cache
-      for (const key of keys) {
-        await cache.del(key);
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear cache for specific version if provided

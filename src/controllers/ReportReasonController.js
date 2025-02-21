@@ -3,21 +3,34 @@ const asyncHandler = require("../utils/asyncHandler");
 const cache = require("../config/redis");
 
 class ReportReasonController {
-  // Method to clear cache
+  // Method to clear report cache
   clearReportCache = async (reportId = null) => {
     try {
-      const keys = ["cache:/api/reports", "cache:/api/reports?*"];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/reports*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
 
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific report's cache if provided
       if (reportId) {
-        keys.push(`cache:/api/reports/${reportId}`, `cache:/api/reports/${reportId}?*`);
+        await Promise.all([
+          cache.del(`cache:/api/reports/${reportId}`),
+          cache.del(`cache:/api/reports/${reportId}?*`)
+        ]);
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
-      }
+      console.log("Cleared report reason cache:", keys.length, "keys");
     } catch (error) {
-      console.error("Error clearing report cache:", error);
+      console.error("Error clearing report reason cache:", error);
     }
   };
 

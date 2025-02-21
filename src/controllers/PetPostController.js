@@ -4,37 +4,37 @@ const asyncHandler = require("../utils/asyncHandler");
 const cache = require("../config/redis");
 
 class PetPostController {
-  // Method to clear cache
+  // Method to clear post cache
   clearPostCache = async (postId = null) => {
     try {
-      const keys = [
-        "cache:/api/blog-posts", // List of posts
-        "cache:/api/blog-posts/admin/all",
-        "cache:/api/blog-posts/admin/all?*",
-        "cache:/api/blog-posts/admin/trash",
-        "cache:/api/blog-posts/admin/trash?*",
-      ];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/blog-posts*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
 
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific post's cache if provided
       if (postId) {
-        keys.push(
-          `cache:/api/blog-posts/${postId}`, // Post details
-          `cache:/api/blog-posts/${postId}/comments`, // Comments
-          `cache:/api/blog-posts/${postId}/likes`, // Likes
-          `cache:/api/blog-posts/${postId}/check-like`, // Like check status
-          `cache:/api/blog-posts/${postId}/comments?*`, // Comments
-        );
-
-        // Add cache for slug
         const post = await PetPostService.getPostDetail(postId);
-        if (post?.slug) {
-          keys.push(`cache:/api/blog-posts/slug/${post.slug}`);
-        }
+        await Promise.all([
+          cache.del(`cache:/api/blog-posts/${postId}`),
+          cache.del(`cache:/api/blog-posts/${postId}/comments`),
+          cache.del(`cache:/api/blog-posts/${postId}/likes`),
+          cache.del(`cache:/api/blog-posts/${postId}/check-like`),
+          cache.del(`cache:/api/blog-posts/${postId}/comments?*`),
+          post?.slug && cache.del(`cache:/api/blog-posts/slug/${post.slug}`)
+        ].filter(Boolean)); // Filter out undefined operations
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
-      }
+      console.log("Cleared blog post cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing blog post cache:", error);
     }
@@ -43,16 +43,29 @@ class PetPostController {
   // Method to clear comment cache
   clearCommentCache = async (postId, commentId = null) => {
     try {
-      const keys = [`cache:/api/blog-posts/${postId}/comments`, `cache:/api/blog-posts/${postId}/comments?*`];
+      // Get all comment related keys
+      const pattern = `cache:/api/blog-posts/${postId}/comments*`;
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
 
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific comment's replies if provided
       if (commentId) {
-        keys.push(`cache:/api/blog-posts/comments/${commentId}/replies`, `cache:/api/blog-posts/comments/${commentId}/replies?*`);
+        await Promise.all([
+          cache.del(`cache:/api/blog-posts/comments/${commentId}/replies`),
+          cache.del(`cache:/api/blog-posts/comments/${commentId}/replies?*`)
+        ]);
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
-      }
+      console.log("Cleared comment cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing comment cache:", error);
     }

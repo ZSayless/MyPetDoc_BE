@@ -4,29 +4,32 @@ const ApiError = require("../exceptions/ApiError");
 const cache = require("../config/redis");
 
 class TermsConditionsController {
-  // Method to clear cache
+  // Method to clear terms cache
   clearTermsCache = async (versionId = null) => {
     try {
-      const keys = [
-        "cache:/api/terms/current",
-        "cache:/api/terms/current?*",
-        "cache:/api/terms/effective",
-        "cache:/api/terms/effective?*",
-        "cache:/api/terms/history",
-        "cache:/api/terms/history?*",
-        "cache:/api/terms/compare",
-        "cache:/api/terms/compare?*",
-        "cache:/api/terms/version?*"
-      ];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/terms*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
 
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific version's cache if provided
       if (versionId) {
-        keys.push(`cache:/api/terms/version/${versionId}`, `cache:/api/terms/version/${versionId}?*`);
+        await Promise.all([
+          cache.del(`cache:/api/terms/version/${versionId}`),
+          cache.del(`cache:/api/terms/version/${versionId}?*`)
+        ]);
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
-      }
+      console.log("Cleared terms & conditions cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing terms & conditions cache:", error);
     }

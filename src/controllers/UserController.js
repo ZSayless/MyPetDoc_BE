@@ -6,28 +6,69 @@ const cloudinary = require("cloudinary");
 const cache = require("../config/redis");
 
 class UserController {
-  // Method to clear cache
+  // Method to clear user cache
   clearUserCache = async (userId = null) => {
     try {
-      const keys = [
-        "cache:/api/users",
-        "cache:/api/users?*",
-        "cache:/api/users/deleted/list",
-        "cache:/api/users/deleted/list?*",
-      ];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/users*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
 
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific user's cache if provided
       if (userId) {
-        keys.push(`cache:/api/users/${userId}`); // Details of user
+        await Promise.all([
+          cache.del(`cache:/api/users/${userId}`),
+          cache.del(`cache:/api/users/${userId}/profile`),
+          cache.del(`cache:/api/users/${userId}/stats`),
+          cache.del(`cache:/api/users/${userId}?*`),
+          cache.del(`cache:/api/users/${userId}/profile?*`),
+          cache.del(`cache:/api/users/${userId}/stats?*`)
+        ]);
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
-      }
+      // Clear role-specific caches
+      await Promise.all([
+        cache.del('cache:/api/users/admins'),
+        cache.del('cache:/api/users/moderators'),
+        cache.del('cache:/api/users/general-users'),
+        cache.del('cache:/api/users/admins?*'),
+        cache.del('cache:/api/users/moderators?*'),
+        cache.del('cache:/api/users/general-users?*')
+      ]);
 
-      // console.log("Cleared user cache", userId ? `for user ${userId}` : "");
+      console.log("Cleared user cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing user cache:", error);
+    }
+  };
+
+  // Method to clear deleted users cache
+  clearDeletedUsersCache = async () => {
+    try {
+      const pattern = "cache:/api/users/deleted*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
+
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      console.log("Cleared deleted users cache:", keys.length, "keys");
+    } catch (error) {
+      console.error("Error clearing deleted users cache:", error);
     }
   };
 

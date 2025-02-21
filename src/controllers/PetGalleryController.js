@@ -5,33 +5,39 @@ const cloudinary = require("cloudinary");
 const cache = require("../config/redis");
 
 class PetGalleryController {
-  // Method to clear cache
+  // Method to clear post cache
   clearPostCache = async (postId = null, userId = null) => {
     try {
-      const keys = [
-        "cache:/api/community/posts",
-        "cache:/api/community/posts?*",
-        "cache:/api/community/admin/posts/all",
-        "cache:/api/community/admin/posts/all?*",
-      ];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/community*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
 
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific post's cache if provided
       if (postId) {
-        keys.push(
-          `cache:/api/community/posts/${postId}`, // Post details
-          `cache:/api/community/posts/${postId}/comments`, // Comments of post
-          `cache:/api/community/posts/${postId}/like/check`, // Like status
-          `cache:/api/community/posts/${postId}/comments?*`, // Comments of post
-        );
+        await Promise.all([
+          cache.del(`cache:/api/community/posts/${postId}`),
+          cache.del(`cache:/api/community/posts/${postId}/comments`),
+          cache.del(`cache:/api/community/posts/${postId}/like/check`),
+          cache.del(`cache:/api/community/posts/${postId}/comments?*`)
+        ]);
       }
 
+      // Clear user's posts cache if provided
       if (userId) {
-        keys.push(`cache:/api/community/my-posts`); // User's posts
+        await cache.del(`cache:/api/community/my-posts`);
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
-      }
+      console.log("Cleared pet gallery cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing pet gallery cache:", error);
     }
@@ -40,17 +46,29 @@ class PetGalleryController {
   // Method to clear comment cache
   clearCommentCache = async (postId, commentId = null) => {
     try {
-      const keys = [`cache:/api/community/posts/${postId}/comments`, `cache:/api/community/posts/${postId}/comments?*`];
+      // Get all comment related keys
+      const pattern = `cache:/api/community/posts/${postId}/comments*`;
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
 
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific comment's replies if provided
       if (commentId) {
-        keys.push(`cache:/api/community/comments/${commentId}/replies`, `cache:/api/community/comments/${commentId}/replies?*`);
+        await Promise.all([
+          cache.del(`cache:/api/community/comments/${commentId}/replies`),
+          cache.del(`cache:/api/community/comments/${commentId}/replies?*`)
+        ]);
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
-      }
-
+      console.log("Cleared comment cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing comment cache:", error);
     }

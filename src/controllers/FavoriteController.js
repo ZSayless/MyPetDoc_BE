@@ -7,34 +7,39 @@ class FavoriteController {
   // Method to clear cache
   clearFavoriteCache = async (userId = null, hospitalId = null) => {
     try {
-      let keys = ["cache:/api/favorites/latest"];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/favorites*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
 
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific user's cache if provided
       if (userId) {
-        keys.push(
-          `cache:/api/favorites/user/${userId}/hospitals`,
-          `cache:/api/favorites/user/${userId}/count`,
-          `cache:/api/favorites/check/${hospitalId}`,
-          `cache:/api/favorites/user/${userId}/hospitals?*`,
-          `cache:/api/favorites/user/${userId}/count?*`,
-          `cache:/api/favorites/check/${hospitalId}?*`
-        );
+        await Promise.all([
+          cache.del(`cache:/api/favorites/user/${userId}/hospitals`),
+          cache.del(`cache:/api/favorites/user/${userId}/count`)
+        ]);
       }
 
+      // Clear specific hospital's cache if provided
       if (hospitalId) {
-        keys.push(
-          `cache:/api/favorites/hospital/${hospitalId}/users`,
-          `cache:/api/favorites/hospital/${hospitalId}/count`,
-          `cache:/api/favorites/hospital/${hospitalId}/users?*`,
-          `cache:/api/favorites/hospital/${hospitalId}/count?*`
-        );
+        await Promise.all([
+          cache.del(`cache:/api/favorites/hospital/${hospitalId}/users`),
+          cache.del(`cache:/api/favorites/hospital/${hospitalId}/count`),
+          cache.del(`cache:/api/favorites/check/${hospitalId}`)
+        ]);
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
-      }
     } catch (error) {
-      console.error("Error clearing favorite cache:", error);
+      console.error("Error clearing favorites cache:", error);
     }
   };
 

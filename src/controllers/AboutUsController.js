@@ -7,25 +7,28 @@ class AboutUsController {
   // Method to clear cache
   clearAboutUsCache = async (versionId = null) => {
     try {
-      const keys = [
-        "cache:/api/about-us/current",
-        "cache:/api/about-us/current?*",
-        "cache:/api/about-us/history",
-        "cache:/api/about-us/history?*",
-        "cache:/api/about-us/compare"
-      ];
+      // Get all keys match pattern
+      const pattern = "cache:/api/about-us*";
+      const keys = await new Promise((resolve, reject) => {
+        cache.keys(pattern, (err, keys) => {
+          if (err) reject(err);
+          resolve(keys);
+        });
+      });
 
-      // Clear common cache
-      for (const key of keys) {
-        await cache.del(key);
+      // Delete each key found
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear cache for specific version if provided
       if (versionId) {
         await cache.del(`cache:/api/about-us/version/${versionId}`);
       }
+
+      console.log("Cleared about us cache:", keys.length, "keys");
     } catch (error) {
-      console.error("Error clearing About Us cache:", error);
+      console.error("Error clearing about us cache:", error);
     }
   };
 
