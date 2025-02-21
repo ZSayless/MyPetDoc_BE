@@ -171,6 +171,7 @@ class PetPostController {
 
     // Clear cache after like/unlike
     await cache.del(`cache:/api/blog-posts/${postId}/likes`);
+    await this.clearPostCache(postId);
 
     res.status(200).json({
       success: true,
