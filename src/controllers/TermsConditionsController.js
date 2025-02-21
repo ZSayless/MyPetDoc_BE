@@ -8,24 +8,20 @@ class TermsConditionsController {
   // Method to clear terms cache
   clearTermsCache = async (versionId = null) => {
     try {
-      // Promisify redis commands
-      const keysAsync = promisify(cache.keys).bind(cache);
-      const delAsync = promisify(cache.del).bind(cache);
-      
       // Get all keys matching the pattern
       const pattern = "cache:/api/terms*";
-      const keys = await keysAsync(pattern);
+      const keys = await cache.keys(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => delAsync(key)));
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear specific version's cache if provided
       if (versionId) {
         await Promise.all([
-          delAsync(`cache:/api/terms/version/${versionId}`),
-          delAsync(`cache:/api/terms/version/${versionId}?*`)
+          cache.del(`cache:/api/terms/version/${versionId}`),
+          cache.del(`cache:/api/terms/version/${versionId}?*`)
         ]);
       }
 

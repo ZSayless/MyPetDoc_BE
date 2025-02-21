@@ -14,6 +14,7 @@ class HospitalController {
       parseInt(page),
       parseInt(limit)
     );
+    console.log(result);
     res.json(result);
   });
 

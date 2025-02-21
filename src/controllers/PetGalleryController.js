@@ -9,32 +9,28 @@ class PetGalleryController {
   // Method to clear post cache
   clearPostCache = async (postId = null, userId = null) => {
     try {
-      // Promisify redis commands
-      const keysAsync = promisify(cache.keys).bind(cache);
-      const delAsync = promisify(cache.del).bind(cache);
-      
       // Get all keys matching the pattern
       const pattern = "cache:/api/community*";
-      const keys = await keysAsync(pattern);
+      const keys = await cache.keys(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => delAsync(key)));
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear specific post's cache if provided
       if (postId) {
         await Promise.all([
-          delAsync(`cache:/api/community/posts/${postId}`),
-          delAsync(`cache:/api/community/posts/${postId}/comments`),
-          delAsync(`cache:/api/community/posts/${postId}/like/check`),
-          delAsync(`cache:/api/community/posts/${postId}/comments?*`)
+          cache.del(`cache:/api/community/posts/${postId}`),
+          cache.del(`cache:/api/community/posts/${postId}/comments`),
+          cache.del(`cache:/api/community/posts/${postId}/like/check`),
+          cache.del(`cache:/api/community/posts/${postId}/comments?*`)
         ]);
       }
 
       // Clear user's posts cache if provided
       if (userId) {
-        await delAsync(`cache:/api/community/my-posts`);
+        await cache.del(`cache:/api/community/my-posts`);
       }
 
       console.log("Cleared pet gallery cache:", keys.length, "keys");
@@ -46,24 +42,20 @@ class PetGalleryController {
   // Method to clear comment cache
   clearCommentCache = async (postId, commentId = null) => {
     try {
-      // Promisify redis commands
-      const keysAsync = promisify(cache.keys).bind(cache);
-      const delAsync = promisify(cache.del).bind(cache);
-      
       // Get all comment related keys
       const pattern = `cache:/api/community/posts/${postId}/comments*`;
-      const keys = await keysAsync(pattern);
+      const keys = await cache.keys(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => delAsync(key)));
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear specific comment's replies if provided
       if (commentId) {
         await Promise.all([
-          delAsync(`cache:/api/community/comments/${commentId}/replies`),
-          delAsync(`cache:/api/community/comments/${commentId}/replies?*`)
+          cache.del(`cache:/api/community/comments/${commentId}/replies`),
+          cache.del(`cache:/api/community/comments/${commentId}/replies?*`)
         ]);
       }
 

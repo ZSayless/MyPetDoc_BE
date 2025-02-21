@@ -8,29 +8,25 @@ class PetPostController {
   // Method to clear post cache
   clearPostCache = async (postId = null) => {
     try {
-      // Promisify redis commands
-      const keysAsync = promisify(cache.keys).bind(cache);
-      const delAsync = promisify(cache.del).bind(cache);
-      
       // Get all keys matching the pattern
       const pattern = "cache:/api/blog-posts*";
-      const keys = await keysAsync(pattern);
+      const keys = await cache.keys(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => delAsync(key)));
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear specific post's cache if provided
       if (postId) {
         const post = await PetPostService.getPostDetail(postId);
         await Promise.all([
-          delAsync(`cache:/api/blog-posts/${postId}`),
-          delAsync(`cache:/api/blog-posts/${postId}/comments`),
-          delAsync(`cache:/api/blog-posts/${postId}/likes`),
-          delAsync(`cache:/api/blog-posts/${postId}/check-like`),
-          delAsync(`cache:/api/blog-posts/${postId}/comments?*`),
-          post?.slug && delAsync(`cache:/api/blog-posts/slug/${post.slug}`)
+          cache.del(`cache:/api/blog-posts/${postId}`),
+          cache.del(`cache:/api/blog-posts/${postId}/comments`),
+          cache.del(`cache:/api/blog-posts/${postId}/likes`),
+          cache.del(`cache:/api/blog-posts/${postId}/check-like`),
+          cache.del(`cache:/api/blog-posts/${postId}/comments?*`),
+          post?.slug && cache.del(`cache:/api/blog-posts/slug/${post.slug}`)
         ].filter(Boolean));
       }
 
@@ -43,24 +39,20 @@ class PetPostController {
   // Method to clear comment cache
   clearCommentCache = async (postId, commentId = null) => {
     try {
-      // Promisify redis commands
-      const keysAsync = promisify(cache.keys).bind(cache);
-      const delAsync = promisify(cache.del).bind(cache);
-      
       // Get all comment related keys
       const pattern = `cache:/api/blog-posts/${postId}/comments*`;
-      const keys = await keysAsync(pattern);
+      const keys = await cache.keys(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => delAsync(key)));
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear specific comment's replies if provided
       if (commentId) {
         await Promise.all([
-          delAsync(`cache:/api/blog-posts/comments/${commentId}/replies`),
-          delAsync(`cache:/api/blog-posts/comments/${commentId}/replies?*`)
+          cache.del(`cache:/api/blog-posts/comments/${commentId}/replies`),
+          cache.del(`cache:/api/blog-posts/comments/${commentId}/replies?*`)
         ]);
       }
 

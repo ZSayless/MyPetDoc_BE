@@ -120,22 +120,18 @@ class ContactMessageController {
   // Method to clear cache
   clearMessageCache = async (messageId = null) => {
     try {
-      // Promisify redis commands
-      const keysAsync = promisify(cache.keys).bind(cache);
-      const delAsync = promisify(cache.del).bind(cache);
-      
       // Get all keys matching the pattern
       const pattern = "cache:/api/contact-messages*";
-      const keys = await keysAsync(pattern);
+      const keys = await cache.keys(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => delAsync(key)));
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear cache for specific message if provided
       if (messageId) {
-        await delAsync(`cache:/api/contact-messages/${messageId}`);
+        await cache.del(`cache:/api/contact-messages/${messageId}`);
       }
 
       console.log("Cleared contact message cache:", keys.length, "keys");

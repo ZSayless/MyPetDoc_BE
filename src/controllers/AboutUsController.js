@@ -8,22 +8,18 @@ class AboutUsController {
   // Method to clear cache
   clearAboutUsCache = async (versionId = null) => {
     try {
-      // Promisify redis commands
-      const keysAsync = promisify(cache.keys).bind(cache);
-      const delAsync = promisify(cache.del).bind(cache);
-      
       // Get all keys matching the pattern
       const pattern = "cache:/api/about-us*";
-      const keys = await keysAsync(pattern);
+      const keys = await cache.keys(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => delAsync(key)));
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear cache for specific version if provided
       if (versionId) {
-        await delAsync(`cache:/api/about-us/version/${versionId}`);
+        await cache.del(`cache:/api/about-us/version/${versionId}`);
       }
 
       console.log("Cleared about us cache:", keys.length, "keys");

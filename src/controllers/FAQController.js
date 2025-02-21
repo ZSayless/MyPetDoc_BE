@@ -8,22 +8,18 @@ class FAQController {
   // Method to clear cache
   clearFAQCache = async (faqId = null) => {
     try {
-      // Promisify redis commands
-      const keysAsync = promisify(cache.keys).bind(cache);
-      const delAsync = promisify(cache.del).bind(cache);
-      
       // Get all keys matching the pattern
       const pattern = "cache:/api/faqs*";
-      const keys = await keysAsync(pattern);
+      const keys = await cache.keys(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => delAsync(key)));
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear cache for specific FAQ if provided
       if (faqId) {
-        await delAsync(`cache:/api/faqs/${faqId}`);
+        await cache.del(`cache:/api/faqs/${faqId}`);
       }
 
       console.log("Cleared FAQ cache:", keys.length, "keys");

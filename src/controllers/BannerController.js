@@ -8,22 +8,18 @@ class BannerController {
   // Method to clear cache
   clearBannerCache = async (bannerId = null) => {
     try {
-      // Promisify redis commands
-      const keysAsync = promisify(cache.keys).bind(cache);
-      const delAsync = promisify(cache.del).bind(cache);
-      
       // Get all keys matching the pattern
       const pattern = "cache:/api/banners*";
-      const keys = await keysAsync(pattern);
+      const keys = await cache.keys(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => delAsync(key)));
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear cache for specific banner if provided
       if (bannerId) {
-        await delAsync(`cache:/api/banners/${bannerId}`);
+        await cache.del(`cache:/api/banners/${bannerId}`);
       }
 
       console.log("Cleared banner cache:", keys.length, "keys");

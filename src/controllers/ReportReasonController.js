@@ -7,24 +7,20 @@ class ReportReasonController {
   // Method to clear report cache
   clearReportCache = async (reportId = null) => {
     try {
-      // Promisify redis commands
-      const keysAsync = promisify(cache.keys).bind(cache);
-      const delAsync = promisify(cache.del).bind(cache);
-      
       // Get all keys matching the pattern
       const pattern = "cache:/api/reports*";
-      const keys = await keysAsync(pattern);
+      const keys = await cache.keys(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => delAsync(key)));
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear specific report's cache if provided
       if (reportId) {
         await Promise.all([
-          delAsync(`cache:/api/reports/${reportId}`),
-          delAsync(`cache:/api/reports/${reportId}?*`)
+          cache.del(`cache:/api/reports/${reportId}`),
+          cache.del(`cache:/api/reports/${reportId}?*`)
         ]);
       }
 

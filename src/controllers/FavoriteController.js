@@ -8,33 +8,29 @@ class FavoriteController {
   // Method to clear cache
   clearFavoriteCache = async (userId = null, hospitalId = null) => {
     try {
-      // Promisify redis commands
-      const keysAsync = promisify(cache.keys).bind(cache);
-      const delAsync = promisify(cache.del).bind(cache);
-      
       // Get all keys matching the pattern
       const pattern = "cache:/api/favorites*";
-      const keys = await keysAsync(pattern);
+      const keys = await cache.keys(pattern);
 
       // Delete each found key
       if (keys.length > 0) {
-        await Promise.all(keys.map(key => delAsync(key)));
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
       // Clear specific user's cache if provided
       if (userId) {
         await Promise.all([
-          delAsync(`cache:/api/favorites/user/${userId}/hospitals`),
-          delAsync(`cache:/api/favorites/user/${userId}/count`)
+          cache.del(`cache:/api/favorites/user/${userId}/hospitals`),
+          cache.del(`cache:/api/favorites/user/${userId}/count`)
         ]);
       }
 
       // Clear specific hospital's cache if provided
       if (hospitalId) {
         await Promise.all([
-          delAsync(`cache:/api/favorites/hospital/${hospitalId}/users`),
-          delAsync(`cache:/api/favorites/hospital/${hospitalId}/count`),
-          delAsync(`cache:/api/favorites/check/${hospitalId}`)
+          cache.del(`cache:/api/favorites/hospital/${hospitalId}/users`),
+          cache.del(`cache:/api/favorites/hospital/${hospitalId}/count`),
+          cache.del(`cache:/api/favorites/check/${hospitalId}`)
         ]);
       }
 
