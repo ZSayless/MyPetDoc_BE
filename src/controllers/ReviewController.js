@@ -49,7 +49,7 @@ class ReviewController {
           cache.del(`cache:/api/reviews/user/me?*`)
         ]);
       }
-
+      console.log('=== Clear Review Cache ===');
     } catch (error) {
       console.error("Error clearing review cache:", error);
     }
