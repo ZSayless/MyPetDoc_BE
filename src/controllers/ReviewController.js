@@ -48,7 +48,6 @@ class ReviewController {
         ]);
       }
 
-      console.log("Cleared review cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing review cache:", error);
     }
@@ -69,7 +68,6 @@ class ReviewController {
         await Promise.all(keys.map(key => cache.del(key)));
       }
 
-      console.log("Cleared user review cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing user review cache:", error);
     }

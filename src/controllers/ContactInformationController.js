@@ -22,7 +22,6 @@ class ContactInformationController {
         await cache.del(`cache:/api/contact-info/version/${versionId}`);
       }
 
-      console.log("Cleared contact information cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing contact information cache:", error);
     }

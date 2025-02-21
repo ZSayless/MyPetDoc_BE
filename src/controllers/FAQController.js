@@ -22,7 +22,6 @@ class FAQController {
         await cache.del(`cache:/api/faqs/${faqId}`);
       }
 
-      console.log("Cleared FAQ cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing FAQ cache:", error);
     }

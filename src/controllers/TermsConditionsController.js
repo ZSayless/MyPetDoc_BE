@@ -25,7 +25,6 @@ class TermsConditionsController {
         ]);
       }
 
-      console.log("Cleared terms & conditions cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing terms & conditions cache:", error);
     }

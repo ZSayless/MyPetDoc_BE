@@ -134,7 +134,6 @@ class ContactMessageController {
         await cache.del(`cache:/api/contact-messages/${messageId}`);
       }
 
-      console.log("Cleared contact message cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing contact message cache:", error);
     }

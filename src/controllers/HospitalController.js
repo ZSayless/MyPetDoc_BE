@@ -14,7 +14,6 @@ class HospitalController {
       parseInt(page),
       parseInt(limit)
     );
-    console.log(result);
     res.json(result);
   });
 
@@ -338,7 +337,6 @@ class HospitalController {
         await Promise.all(keys.map(key => cache.del(key)));
       }
 
-      console.log("Cleared hospital cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing hospital cache:", error);
     }

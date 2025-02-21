@@ -30,7 +30,6 @@ class PetPostController {
         ].filter(Boolean));
       }
 
-      console.log("Cleared blog post cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing blog post cache:", error);
     }
@@ -56,7 +55,6 @@ class PetPostController {
         ]);
       }
 
-      console.log("Cleared comment cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing comment cache:", error);
     }

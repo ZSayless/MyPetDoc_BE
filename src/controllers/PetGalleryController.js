@@ -33,7 +33,6 @@ class PetGalleryController {
         await cache.del(`cache:/api/community/my-posts`);
       }
 
-      console.log("Cleared pet gallery cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing pet gallery cache:", error);
     }
@@ -59,7 +58,6 @@ class PetGalleryController {
         ]);
       }
 
-      console.log("Cleared comment cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing comment cache:", error);
     }

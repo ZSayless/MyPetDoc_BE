@@ -34,7 +34,6 @@ class FavoriteController {
         ]);
       }
 
-      console.log("Cleared favorites cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing favorites cache:", error);
     }

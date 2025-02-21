@@ -41,7 +41,6 @@ class UserController {
         cache.del('cache:/api/users/general-users?*')
       ]);
 
-      console.log("Cleared user cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing user cache:", error);
     }
@@ -130,7 +129,6 @@ class UserController {
       "is_locked"
     ];
 
-    console.log('Request body:', req.body);
 
     // Chỉ lấy những trường được gửi đi và được phép cập nhật
     allowedFields.forEach((field) => {

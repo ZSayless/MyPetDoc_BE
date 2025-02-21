@@ -22,7 +22,6 @@ class AboutUsController {
         await cache.del(`cache:/api/about-us/version/${versionId}`);
       }
 
-      console.log("Cleared about us cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing about us cache:", error);
     }

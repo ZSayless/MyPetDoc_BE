@@ -22,7 +22,6 @@ class BannerController {
         await cache.del(`cache:/api/banners/${bannerId}`);
       }
 
-      console.log("Cleared banner cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing banner cache:", error);
     }

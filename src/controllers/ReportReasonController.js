@@ -24,7 +24,6 @@ class ReportReasonController {
         ]);
       }
 
-      console.log("Cleared report reason cache:", keys.length, "keys");
     } catch (error) {
       console.error("Error clearing report reason cache:", error);
     }
