@@ -307,6 +307,31 @@ class ReviewController {
       data: review
     });
   });
+
+  // Delete reply
+  deleteReply = asyncHandler(async (req, res) => {
+    // Check role HOSPITAL_ADMIN or ADMIN
+    if (!["HOSPITAL_ADMIN", "ADMIN"].includes(req.user.role)) {
+      throw new ApiError(403, "You are not authorized to delete replies");
+    }
+
+    const { id } = req.params;
+    
+    const review = await ReviewService.deleteReply(
+      id,
+      req.user.id,
+      req.user.role
+    );
+
+    // Clear cache for review and hospital
+    await this.clearReviewCache(review.hospital_id, id);
+
+    res.json({
+      status: "success",
+      message: "Reply deleted successfully",
+      data: review
+    });
+  });
 }
 
 module.exports = new ReviewController();

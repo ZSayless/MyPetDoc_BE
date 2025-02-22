@@ -447,10 +447,10 @@ class Review extends BaseModel {
 
   static async reply(reviewId, hospitalAdminId, replyContent) {
     try {
-      // Kiểm tra review tồn tại
+      // Check if review exists
       const review = await this.findById(reviewId);
       if (!review) {
-        throw new ApiError(404, "Không tìm thấy đánh giá");
+        throw new ApiError(404, "Review not found");
       }
 
       const sql = `

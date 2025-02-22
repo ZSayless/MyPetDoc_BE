@@ -17,7 +17,8 @@ const securityMiddleware = (app) => {
   // 2. CORS - Configure details
   const corsOptions = {
     origin: [
-      "https://mypetdoc.vn"
+      "https://mypetdoc.vn",
+      "http://localhost:3001"
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],

@@ -362,6 +362,7 @@ class AuthController {
             role: userData.role,
             phone_number: userData.phone_number || null,
             avatar: userData.avatar,
+            hospital_id: userData.hospital_id || null,
           },
           token,
         },
