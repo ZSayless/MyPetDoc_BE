@@ -206,6 +206,8 @@ class HospitalController {
         userId
       );
 
+      await this.clearHospitalCache();
+
       res.json({
         status: "success",
         message: "Add images successful",
@@ -235,6 +237,8 @@ class HospitalController {
       }
 
       await HospitalImageService.deleteImage(imageId, userId);
+
+      await this.clearHospitalCache();
 
       res.json({
         status: "success",
@@ -321,17 +325,18 @@ class HospitalController {
     });
   });
 
-  // Clear cache when data changes
+  // Method to clear cache
   clearHospitalCache = async () => {
     try {
-      const keys = ["cache:/api/hospitals", "cache:/api/hospitals/search", "cache:/api/hospitals/deleted/list", "cache:/api/hospitals/slug"];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/hospitals*";
+      const keys = await cache.keys(pattern);
 
-      // Clear cache for list and search
-      for (const key of keys) {
-        await cache.del(key);
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
-      console.log("Cleared hospital cache");
     } catch (error) {
       console.error("Error clearing hospital cache:", error);
     }
@@ -349,6 +354,23 @@ class HospitalController {
       status: "success",
       message: "Get deleted hospitals successful",
       data: result,
+    });
+  });
+
+  getHospitalsByCreator = asyncHandler(async (req, res) => {
+    const { creatorId } = req.params;
+    
+    // Check permission
+    if (req.user.role !== "ADMIN" && req.user.id != creatorId) {
+      throw new ApiError(403, "You are not allowed to view this information");
+    }
+
+    const hospitals = await HospitalService.getHospitalsByCreator(creatorId);
+
+    res.json({
+      status: "success",
+      message: "Get hospitals by creator successful",
+      data: hospitals
     });
   });
 }

@@ -3,36 +3,62 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const HospitalService = require("../services/HospitalService");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class ReviewController {
-  // Method to clear cache
-  clearReviewCache = async (hospitalId = null, reviewId = null) => {
+  // Method to clear review cache
+  clearReviewCache = async (hospitalId = null, reviewId = null, userId = null) => {
     try {
-      const keys = [
-        "cache:/api/reviews", // List of reviews
-      ];
+      // Get all keys matching the pattern
+      const reviewPattern = "cache:/api/reviews*";
+      const hospitalPattern = "cache:/api/hospitals*";
+      
+      // Get all keys for both patterns
+      const [reviewKeys, hospitalKeys] = await Promise.all([
+        cache.keys(reviewPattern),
+        cache.keys(hospitalPattern)
+      ]);
 
+      // Combine all keys that need to be deleted
+      const keysToDelete = [...reviewKeys, ...hospitalKeys];
+
+      // Delete all found keys
+      if (keysToDelete.length > 0) {
+        await Promise.all(keysToDelete.map(key => cache.del(key)));
+      }
+
+      // Clear hospital specific cache if provided
       if (hospitalId) {
-        keys.push(
-          `cache:/api/reviews/hospital/${hospitalId}`, // Reviews of hospital
-          `cache:/api/reviews/hospital/${hospitalId}/stats` // Stats of hospital
-        );
+        await Promise.all([
+          cache.del(`cache:/api/reviews/hospital/${hospitalId}`),
+          cache.del(`cache:/api/reviews/hospital/${hospitalId}/stats`),
+          cache.del(`cache:/api/reviews/hospital/${hospitalId}/can-review`),
+          cache.del(`cache:/api/reviews/hospital/${hospitalId}?*`),
+          cache.del(`cache:/api/reviews/hospital/${hospitalId}/stats?*`),
+          cache.del(`cache:/api/reviews/hospital/${hospitalId}/can-review?*`),
+          cache.del(`cache:/api/hospitals/${hospitalId}`)
+        ]);
       }
 
+      // Clear review specific cache if provided
       if (reviewId) {
-        keys.push(`cache:/api/reviews/${reviewId}`); // Details of review
+        await Promise.all([
+          cache.del(`cache:/api/reviews/${reviewId}`),
+          cache.del(`cache:/api/reviews/${reviewId}?*`)
+        ]);
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
+      // Clear user specific cache if provided
+      if (userId) {
+        await Promise.all([
+          cache.del(`cache:/api/reviews/user/${userId}`),
+          cache.del(`cache:/api/reviews/user/me`),
+          cache.del(`cache:/api/reviews/user/${userId}?*`),
+          cache.del(`cache:/api/reviews/user/me?*`)
+        ]);
       }
 
-      // console.log(
-      //   "Cleared review cache",
-      //   hospitalId ? `for hospital ${hospitalId}` : "",
-      //   reviewId ? `and review ${reviewId}` : ""
-      // );
+      console.log('=== Clear Cache Keys ===', keysToDelete);
     } catch (error) {
       console.error("Error clearing review cache:", error);
     }
@@ -45,8 +71,14 @@ class ReviewController {
         console.error('Cannot clear cache: userId is undefined');
         return;
       }
-      await cache.del(`cache:/api/reviews/user/${userId}`);
-      console.log("Cleared user review cache for user:", userId);
+
+      const pattern = `cache:/api/reviews/user/${userId}*`;
+      const keys = await cache.keys(pattern);
+
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
     } catch (error) {
       console.error("Error clearing user review cache:", error);
     }
@@ -69,9 +101,8 @@ class ReviewController {
       file
     );
 
-    // Clear cache after creating new review
-    await this.clearReviewCache(req.body.hospital_id);
-    await this.clearUserReviewCache(req.user.id);
+    // Clear cache for hospital and user
+    await this.clearReviewCache(req.body.hospital_id, null, req.user.id);
 
     res.status(201).json({
       status: "success",
@@ -143,10 +174,8 @@ class ReviewController {
         req.user.role
       );
 
-      // Clear cache after toggling delete status
-      if (result && result.hospital_id) {
-        await this.clearReviewCache(result.hospital_id, req.params.id);
-      }
+      // Clear cache for review, hospital and user
+      await this.clearReviewCache(result.hospital_id, req.params.id, req.user.id);
       
       if (req.user && req.user.id) {
         await this.clearUserReviewCache(req.user.id);
@@ -175,9 +204,8 @@ class ReviewController {
       req.file
     );
 
-    // Clear cache after updating
-    await this.clearReviewCache(review.hospital_id, req.params.id);
-    await this.clearUserReviewCache(req.user.id);
+    // Clear cache for review, hospital and user
+    await this.clearReviewCache(review.hospital_id, req.params.id, req.user.id);
 
     res.json({
       status: "success",
@@ -246,9 +274,8 @@ class ReviewController {
   hardDeleteReview = asyncHandler(async (req, res) => {
     const review = await ReviewService.hardDelete(req.params.id);
 
-    // Clear cache after hard delete
-    await this.clearReviewCache(review.hospital_id, req.params.id);
-    await this.clearUserReviewCache(review.user_id);
+    // Clear cache for review, hospital and user
+    await this.clearReviewCache(review.hospital_id, req.params.id, review.user_id);
 
     res.status(200).json({
       status: "success",
@@ -271,12 +298,37 @@ class ReviewController {
       reply
     );
 
-    // Clear cache
+    // Clear cache for review and hospital
     await this.clearReviewCache(review.hospital_id, id);
 
     res.json({
       status: "success",
       message: "Reply to review successful",
+      data: review
+    });
+  });
+
+  // Delete reply
+  deleteReply = asyncHandler(async (req, res) => {
+    // Check role HOSPITAL_ADMIN or ADMIN
+    if (!["HOSPITAL_ADMIN", "ADMIN"].includes(req.user.role)) {
+      throw new ApiError(403, "You are not authorized to delete replies");
+    }
+
+    const { id } = req.params;
+    
+    const review = await ReviewService.deleteReply(
+      id,
+      req.user.id,
+      req.user.role
+    );
+
+    // Clear cache for review and hospital
+    await this.clearReviewCache(review.hospital_id, id);
+
+    res.json({
+      status: "success",
+      message: "Reply deleted successfully",
       data: review
     });
   });

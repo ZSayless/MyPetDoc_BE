@@ -82,10 +82,19 @@ router.get("/:hospitalId/images/:imageId/like/check", HospitalController.checkIm
 // Route toggle active
 router.patch(
   "/:id/toggle-active",
-  validateAuth(["ADMIN"]),
+  validateAuth(["ADMIN", "HOSPITAL_ADMIN"]),
+  validateHospitalOwnership,
   HospitalController.toggleActive
 );
 
 router.get("/deleted/list", validateAuth(["ADMIN"]), HospitalController.getDeletedHospitals);
+
+// Get hospitals by creator
+router.get(
+  "/creator/:creatorId",
+  validateAuth(["ADMIN", "HOSPITAL_ADMIN"]),
+  cacheMiddleware(1800),
+  HospitalController.getHospitalsByCreator
+);
 
 module.exports = router;

@@ -9,17 +9,9 @@ const router = express.Router();
 // Public routes (no need to login)
 router.get("/", cacheMiddleware(300), PetPostController.getPosts);
 router.get("/:id", cacheMiddleware(300), PetPostController.getPostDetail);
-router.get(
-  "/:id/comments",
-  cacheMiddleware(300),
-  PetPostController.getComments
-);
+router.get("/:id/comments", cacheMiddleware(300), PetPostController.getComments);
 router.get("/:id/likes", cacheMiddleware(300), PetPostController.getLikedUsers);
-router.get(
-  "/comments/:commentId/replies",
-  cacheMiddleware(300),
-  PetPostController.getCommentReplies
-);
+router.get("/comments/:commentId/replies", cacheMiddleware(300), PetPostController.getCommentReplies);
 router.get("/slug/:slug", cacheMiddleware(300), PetPostController.getPostDetailBySlug);
 
 // Routes require login

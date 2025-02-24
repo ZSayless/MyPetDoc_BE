@@ -49,4 +49,7 @@ router.post(
   ReviewController.replyToReview
 );
 
+// Thêm route mới
+router.delete('/:id/reply', validateAuth(['HOSPITAL_ADMIN', 'ADMIN']), ReviewController.deleteReply);
+
 module.exports = router;

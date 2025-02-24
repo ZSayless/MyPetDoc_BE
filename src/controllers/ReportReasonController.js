@@ -1,7 +1,34 @@
 const ReportReasonService = require("../services/ReportReasonService");
 const asyncHandler = require("../utils/asyncHandler");
+const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class ReportReasonController {
+  // Method to clear report cache
+  clearReportCache = async (reportId = null) => {
+    try {
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/reports*";
+      const keys = await cache.keys(pattern);
+
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific report's cache if provided
+      if (reportId) {
+        await Promise.all([
+          cache.del(`cache:/api/reports/${reportId}`),
+          cache.del(`cache:/api/reports/${reportId}?*`)
+        ]);
+      }
+
+    } catch (error) {
+      console.error("Error clearing report reason cache:", error);
+    }
+  };
+
   // Get list of reports
   getAllReports = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, resolved, reportType } = req.query;
@@ -39,6 +66,9 @@ class ReportReasonController {
     const { id } = req.params;
     const result = await ReportReasonService.resolveReport(parseInt(id));
 
+    // Clear cache after resolve
+    await this.clearReportCache(id);
+
     res.json({
       status: "success",
       ...result,
@@ -50,6 +80,9 @@ class ReportReasonController {
     const { id } = req.params;
     
     await ReportReasonService.forceDeleteReport(parseInt(id));
+
+    // Clear cache after delete
+    await this.clearReportCache(id);
 
     res.json({
       status: "success",

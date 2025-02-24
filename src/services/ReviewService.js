@@ -152,8 +152,8 @@ class ReviewService {
     }
 
     // Validate comment if exists
-    if (data.comment && data.comment.trim().length < 10) {
-      errors.push("Comment must be at least 10 characters");
+    if (data.comment && data.comment.trim().length < 5) {
+      errors.push("Comment must be at least 5 characters");
     }
 
     // Validate image_description if new image exists
@@ -414,6 +414,50 @@ class ReviewService {
       return updatedReview;
     } catch (error) {
       console.error("Reply to review error:", error);
+      throw error;
+    }
+  }
+
+  // Delete reply
+  async deleteReply(reviewId, userId, userRole) {
+    try {
+      // Check if review exists
+      const review = await Review.findById(reviewId);
+      if (!review) {
+        throw new ApiError(404, "Review not found");
+      }
+
+      // Check if review has reply
+      if (!review.reply) {
+        throw new ApiError(400, "This review has no reply to delete");
+      }
+
+      // Check permissions
+      if (userRole === 'HOSPITAL_ADMIN') {
+        // Hospital admin can only delete replies from their hospital
+        const user = await User.findById(userId);
+        if (review.hospital_id !== user.hospital_id) {
+          throw new ApiError(403, "You can only delete replies from your hospital");
+        }
+      } else if (userRole !== 'ADMIN') {
+        throw new ApiError(403, "You don't have permission to delete replies");
+      }
+
+      // Update reply to null
+      const sql = `
+        UPDATE reviews 
+        SET reply = NULL,
+            replied_by = NULL,
+            replied_at = NULL
+        WHERE id = ?
+      `;
+
+      await Review.query(sql, [reviewId]);
+
+      // Get updated review
+      return await Review.findById(reviewId);
+    } catch (error) {
+      console.error("Delete reply error:", error);
       throw error;
     }
   }

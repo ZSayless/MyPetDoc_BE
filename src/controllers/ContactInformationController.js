@@ -2,19 +2,26 @@ const ContactInformationService = require("../services/ContactInformationService
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class ContactInformationController {
   // Method to clear cache
-  clearContactCache = async () => {
+  clearContactCache = async (versionId = null) => {
     try {
-      const keys = ["cache:/api/contact/current", "cache:/api/contact/history"];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/contact-info*";
+      const keys = await cache.keys(pattern);
 
-      // Clear cache for current contact and history
-      for (const key of keys) {
-        await cache.del(key);
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
-      console.log("Cleared contact information cache");
+      // Clear cache for specific version if provided
+      if (versionId) {
+        await cache.del(`cache:/api/contact-info/version/${versionId}`);
+      }
+
     } catch (error) {
       console.error("Error clearing contact information cache:", error);
     }
@@ -33,7 +40,7 @@ class ContactInformationController {
       req.user.id
     );
 
-    // Clear cache after creating new version
+    // Clear all cache after creating new version
     await this.clearContactCache();
 
     res.status(201).json(contact);
@@ -74,7 +81,6 @@ class ContactInformationController {
 
   // Soft delete/restore
   toggleSoftDelete = asyncHandler(async (req, res) => {
-    // Check admin permission
     if (req.user.role !== "ADMIN") {
       throw new ApiError(403, "You are not allowed to perform this action");
     }
@@ -85,15 +91,13 @@ class ContactInformationController {
     );
 
     // Clear cache after changing status
-    await this.clearContactCache();
-    await cache.del(`cache:/api/contact/version/${id}`);
+    await this.clearContactCache(id);
 
     res.json(contact);
   });
 
   // Hard delete
   hardDelete = asyncHandler(async (req, res) => {
-    // Check admin permission
     if (req.user.role !== "ADMIN") {
       throw new ApiError(403, "You are not allowed to perform this action");
     }
@@ -101,8 +105,7 @@ class ContactInformationController {
     await ContactInformationService.hardDelete(req.params.id);
 
     // Clear cache after hard delete
-    await this.clearContactCache();
-    await cache.del(`cache:/api/contact/version/${req.params.id}`);
+    await this.clearContactCache(req.params.id);
 
     res.status(200).json({
       status: "success",
@@ -120,8 +123,7 @@ class ContactInformationController {
     );
 
     // Clear cache after updating
-    await this.clearContactCache();
-    await cache.del(`cache:/api/contact/version/${id}`);
+    await this.clearContactCache(id);
 
     res.json({
       status: "success",

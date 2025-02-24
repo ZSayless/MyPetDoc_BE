@@ -2,6 +2,8 @@ const ContactMessageService = require("../services/ContactMessageService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const ContactMessage = require("../models/ContactMessage");
+const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class ContactMessageController {
   // Get list of messages with filter and pagination
@@ -31,6 +33,7 @@ class ContactMessageController {
     };
 
     const message = await ContactMessageService.createMessage(messageData);
+    await this.clearMessageCache();
     res.status(201).json({ success: true, message });
   });
 
@@ -46,6 +49,11 @@ class ContactMessageController {
       status,
       req.user.id
     );
+    
+    // Clear cache and specific message cache
+    await this.clearMessageCache();
+    await cache.del(`cache:/api/contact-messages/${req.params.id}`);
+    
     res.status(200).json({ success: true, message });
   });
 
@@ -56,18 +64,33 @@ class ContactMessageController {
       req.body,
       req.user.id
     );
+    
+    // Clear cache and specific message cache
+    await this.clearMessageCache();
+    await cache.del(`cache:/api/contact-messages/${req.params.id}`);
+    
     res.status(200).json({ success: true, message });
   });
 
   // Soft delete message
   deleteMessage = asyncHandler(async (req, res) => {
     await ContactMessageService.deleteMessage(req.params.id);
+    
+    // Clear cache and specific message cache
+    await this.clearMessageCache();
+    await cache.del(`cache:/api/contact-messages/${req.params.id}`);
+    
     res.status(204).json({ success: true });
   });
 
   // Hard delete message
   hardDeleteMessage = asyncHandler(async (req, res) => {
     await ContactMessageService.hardDeleteMessage(req.params.id);
+    
+    // Clear cache and specific message cache
+    await this.clearMessageCache();
+    await cache.del(`cache:/api/contact-messages/${req.params.id}`);
+    
     res.status(204).json({ success: true });
   });
 
@@ -93,6 +116,28 @@ class ContactMessageController {
     const stats = await ContactMessage.countMessages(filters);
     res.status(200).json({ success: true, stats });
   });
+
+  // Method to clear cache
+  clearMessageCache = async (messageId = null) => {
+    try {
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/contact-messages*";
+      const keys = await cache.keys(pattern);
+
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear cache for specific message if provided
+      if (messageId) {
+        await cache.del(`cache:/api/contact-messages/${messageId}`);
+      }
+
+    } catch (error) {
+      console.error("Error clearing contact message cache:", error);
+    }
+  };
 }
 
 module.exports = new ContactMessageController();

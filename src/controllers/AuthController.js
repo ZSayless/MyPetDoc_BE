@@ -1,6 +1,6 @@
 const User = require("../models/User");
 const ApiError = require("../exceptions/ApiError");
-const emailService = require("../services/emailService");
+const emailService = require("../services/EmailService");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const cloudinary = require("cloudinary");
@@ -19,6 +19,10 @@ class AuthController {
         pet_age = null,
         pet_notes = null,
       } = req.body;
+  
+      // Chuyển đổi pet_age từ chuỗi rỗng thành null
+      const sanitizedPetAge = pet_age === '' ? null : 
+                             pet_age ? parseInt(pet_age) : null;
   
       // Validate data
       await this.validateUserData({ email, password, full_name, phone_number });
@@ -75,10 +79,10 @@ class AuthController {
           verification_token: verificationToken,
           verification_expires: verificationExpires,
           avatar: userAvatar,
-          pet_type,
-          pet_age,
+          pet_type: pet_type || null,
+          pet_age: sanitizedPetAge,
           pet_photo: petPhoto,
-          pet_notes,
+          pet_notes: pet_notes || null,
         });
   
         // Send verification email
@@ -358,6 +362,7 @@ class AuthController {
             role: userData.role,
             phone_number: userData.phone_number || null,
             avatar: userData.avatar,
+            hospital_id: userData.hospital_id || null,
           },
           token,
         },

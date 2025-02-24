@@ -107,6 +107,7 @@ router.get(
             full_name: userData.full_name,
             phone_number: userData.phone_number,
             role: userData.role,
+            hospital_id: userData.hospital_id || null,
             avatar: userData.avatar || null,
             is_active: true,
             is_locked: false,

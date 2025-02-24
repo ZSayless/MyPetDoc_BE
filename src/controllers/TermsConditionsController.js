@@ -2,30 +2,29 @@ const TermsConditionsService = require("../services/TermsConditionsService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class TermsConditionsController {
-  // Method to clear cache
+  // Method to clear terms cache
   clearTermsCache = async (versionId = null) => {
     try {
-      const keys = [
-        "cache:/api/terms/current",
-        "cache:/api/terms/effective",
-        "cache:/api/terms/history",
-      ];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/terms*";
+      const keys = await cache.keys(pattern);
 
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific version's cache if provided
       if (versionId) {
-        keys.push(`cache:/api/terms/version/${versionId}`);
+        await Promise.all([
+          cache.del(`cache:/api/terms/version/${versionId}`),
+          cache.del(`cache:/api/terms/version/${versionId}?*`)
+        ]);
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
-      }
-
-      console.log(
-        "Cleared terms & conditions cache",
-        versionId ? `for version ${versionId}` : ""
-      );
     } catch (error) {
       console.error("Error clearing terms & conditions cache:", error);
     }
@@ -57,7 +56,7 @@ class TermsConditionsController {
       req.user.id
     );
 
-    // Clear cache after creating new version
+    // Clear all cache after creating new version
     await this.clearTermsCache();
 
     res.status(201).json(terms);
@@ -96,14 +95,13 @@ class TermsConditionsController {
 
   // Soft delete/restore
   toggleSoftDelete = asyncHandler(async (req, res) => {
-    // Check admin permission
     if (req.user.role !== "ADMIN") {
       throw new ApiError(403, "You are not authorized to perform this action");
     }
 
     const terms = await TermsConditionsService.toggleSoftDelete(req.params.id);
 
-    // Clear cache after changing status
+    // Clear cache of specific version and related caches
     await this.clearTermsCache(req.params.id);
 
     res.status(200).json({
@@ -123,7 +121,7 @@ class TermsConditionsController {
 
     await TermsConditionsService.hardDelete(req.params.id);
 
-    // Clear cache after hard delete
+    // Clear cache of specific version and related caches
     await this.clearTermsCache(req.params.id);
 
     res.status(200).json({
@@ -141,7 +139,7 @@ class TermsConditionsController {
       req.user.id
     );
 
-    // Clear cache after updating
+    // Clear cache of specific version and related caches
     await this.clearTermsCache(id);
 
     res.json({

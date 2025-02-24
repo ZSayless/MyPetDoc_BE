@@ -4,27 +4,61 @@ const ApiError = require("../exceptions/ApiError");
 const bcrypt = require("bcrypt");
 const cloudinary = require("cloudinary");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class UserController {
-  // Method to clear cache
+  // Method to clear user cache
   clearUserCache = async (userId = null) => {
     try {
-      const keys = [
-        "cache:/api/users", // List of users
-      ];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/users*";
+      const keys = await cache.keys(pattern);
 
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific user's cache if provided
       if (userId) {
-        keys.push(`cache:/api/users/${userId}`); // Details of user
+        await Promise.all([
+          cache.del(`cache:/api/users/${userId}`),
+          cache.del(`cache:/api/users/${userId}/profile`),
+          cache.del(`cache:/api/users/${userId}/stats`),
+          cache.del(`cache:/api/users/${userId}?*`),
+          cache.del(`cache:/api/users/${userId}/profile?*`),
+          cache.del(`cache:/api/users/${userId}/stats?*`)
+        ]);
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
-      }
+      // Clear role-specific caches
+      await Promise.all([
+        cache.del('cache:/api/users/admins'),
+        cache.del('cache:/api/users/moderators'),
+        cache.del('cache:/api/users/general-users'),
+        cache.del('cache:/api/users/admins?*'),
+        cache.del('cache:/api/users/moderators?*'),
+        cache.del('cache:/api/users/general-users?*')
+      ]);
 
-      // console.log("Cleared user cache", userId ? `for user ${userId}` : "");
     } catch (error) {
       console.error("Error clearing user cache:", error);
+    }
+  };
+
+  // Method to clear deleted users cache
+  clearDeletedUsersCache = async () => {
+    try {
+      const pattern = "cache:/api/users/deleted*";
+      const keys = await cache.keys(pattern);
+
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      console.log("Cleared deleted users cache:", keys.length, "keys");
+    } catch (error) {
+      console.error("Error clearing deleted users cache:", error);
     }
   };
 
@@ -95,7 +129,6 @@ class UserController {
       "is_locked"
     ];
 
-    console.log('Request body:', req.body);
 
     // Chỉ lấy những trường được gửi đi và được phép cập nhật
     allowedFields.forEach((field) => {

@@ -219,10 +219,16 @@ class Hospital extends BaseModel {
   }
   static async update(id, data) {
     try {
-      // Convert boolean to bit before update
+      // Handle special case for is_active from form-data
       if (data.is_active !== undefined) {
-        data.is_active = data.is_active ? 1 : 0;
+        // Convert string "false" or false to 0, otherwise to 1
+        data.is_active = data.is_active === "false" || data.is_active === false ? 0 : 1;
       }
+
+      if (data.name) {
+        data.slug = slugify(data.name);
+      }
+      
       if (data.is_deleted !== undefined) {
         data.is_deleted = data.is_deleted ? 1 : 0;
       }
@@ -476,6 +482,34 @@ class Hospital extends BaseModel {
       return result.total;
     } catch (error) {
       console.error("Count deleted hospitals error:", error);
+      throw error;
+    }
+  }
+
+  static async findByCreatorId(creatorId) {
+    try {
+      const sql = `
+        SELECT h.*,
+               COUNT(DISTINCT r.id) as review_count,
+               CAST(AVG(r.rating) AS DECIMAL(10,1)) as average_rating
+        FROM ${this.tableName} h
+        LEFT JOIN reviews r ON h.id = r.hospital_id AND r.is_deleted = 0
+        WHERE h.created_by = ? AND h.is_deleted = 0
+        GROUP BY h.id
+        ORDER BY h.created_at DESC
+      `;
+
+      const hospitals = await this.query(sql, [creatorId]);
+
+      // Convert bit fields to boolean
+      return hospitals.map(hospital => ({
+        ...hospital,
+        is_active: convertBitToBoolean(hospital.is_active),
+        is_deleted: convertBitToBoolean(hospital.is_deleted),
+        average_rating: parseFloat(hospital.average_rating) || 0
+      }));
+    } catch (error) {
+      console.error("Find hospitals by creator error:", error);
       throw error;
     }
   }

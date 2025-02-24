@@ -26,6 +26,7 @@ router.get(
 );
 router.get(
   "/history",
+  cacheMiddleware(300),
   TermsConditionsController.getVersionHistory
 );
 router.get(

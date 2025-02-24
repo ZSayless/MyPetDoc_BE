@@ -2,166 +2,138 @@ const FavoriteService = require("../services/FavoriteService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class FavoriteController {
   // Method to clear cache
-  clearFavoriteCache = async (userId, hospitalId) => {
+  clearFavoriteCache = async (userId = null, hospitalId = null) => {
     try {
-      const keys = [
-        `cache:/api/favorites/user/${userId}/hospitals`,
-        `cache:/api/favorites/user/${userId}/count`,
-        `cache:/api/favorites/hospital/${hospitalId}/users`,
-        `cache:/api/favorites/hospital/${hospitalId}/count`,
-        "cache:/api/favorites/latest",
-      ];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/favorites*";
+      const keys = await cache.keys(pattern);
 
-      // Clear cache related to favorite
-      for (const key of keys) {
-        await cache.del(key);
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
       }
 
-      // console.log(
-      //   "Cleared favorite cache for user:",
-      //   userId,
-      //   "hospital:",
-      //   hospitalId
-      // );
+      // Clear specific user's cache if provided
+      if (userId) {
+        await Promise.all([
+          cache.del(`cache:/api/favorites/user/${userId}/hospitals`),
+          cache.del(`cache:/api/favorites/user/${userId}/count`)
+        ]);
+      }
+
+      // Clear specific hospital's cache if provided
+      if (hospitalId) {
+        await Promise.all([
+          cache.del(`cache:/api/favorites/hospital/${hospitalId}/users`),
+          cache.del(`cache:/api/favorites/hospital/${hospitalId}/count`),
+          cache.del(`cache:/api/favorites/check/${hospitalId}`)
+        ]);
+      }
+
     } catch (error) {
-      console.error("Error clearing favorite cache:", error);
+      console.error("Error clearing favorites cache:", error);
     }
   };
 
-  // Toggle favorite a hospital
+  // Toggle favorite
   toggleFavorite = asyncHandler(async (req, res) => {
-    try {
-      const { hospitalId } = req.params;
-      const userId = req.user.id;
+    const { hospitalId } = req.params;
+    const userId = req.user.id;
 
-      const result = await FavoriteService.toggleFavorite(userId, hospitalId);
+    const result = await FavoriteService.toggleFavorite(userId, hospitalId);
 
-      // Clear cache after toggle favorite
-      await this.clearFavoriteCache(userId, hospitalId);
+    await this.clearFavoriteCache(userId, hospitalId);
 
-      res.json({
-        status: "success",
-        message: result.message,
-        data: {
-          isFavorited: result.isFavorited,
-        },
-      });
-    } catch (error) {
-      throw new ApiError(500, "Internal server error");
-    }
+    res.json({
+      status: "success",
+      message: result.message,
+      data: {
+        isFavorited: result.isFavorited,
+      },
+    });
   });
 
-  // Get list of favorite hospitals of user
+  // Get user favorites
   getUserFavorites = asyncHandler(async (req, res) => {
-    try {
-      const { page = 1, limit = 10 } = req.query;
-      const userId = req.user.id;
+    const { page = 1, limit = 10 } = req.query;
+    const userId = req.user.id;
 
-      const result = await FavoriteService.getUserFavorites(
-        userId,
-        parseInt(page),
-        parseInt(limit)
-      );
+    const result = await FavoriteService.getUserFavorites(
+      userId,
+      parseInt(page),
+      parseInt(limit)
+    );
 
-      res.json({
-        status: "success",
-        data: result,
-      });
-    } catch (error) {
-      throw new ApiError(500, "Internal server error");
-    }
+    res.json({
+      status: "success",
+      data: result,
+    });
   });
 
-  // Get list of users who have favorite a hospital
+  // Get hospital favorites
   getHospitalFavorites = asyncHandler(async (req, res) => {
-    try {
-      const { hospitalId } = req.params;
-      const { page = 1, limit = 10 } = req.query;
+    const { hospitalId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
 
-      const result = await FavoriteService.getHospitalFavorites(
-        hospitalId,
-        parseInt(page),
-        parseInt(limit)
-      );
+    const result = await FavoriteService.getHospitalFavorites(
+      hospitalId,
+      parseInt(page),
+      parseInt(limit)
+    );
 
-      res.json({
-        status: "success",
-        data: result,
-      });
-    } catch (error) {
-      throw new ApiError(500, "Internal server error");
-    }
+    res.json({
+      status: "success",
+      data: result,
+    });
   });
 
-  // Check if user has favorite a hospital
+  // Check user favorite
   checkUserFavorite = asyncHandler(async (req, res) => {
-    try {
-      const { hospitalId } = req.params;
-      const userId = req.user.id;
+    const { hospitalId } = req.params;
+    const userId = req.user.id;
 
-      const result = await FavoriteService.checkUserFavorite(
-        userId,
-        hospitalId
-      );
+    const result = await FavoriteService.checkUserFavorite(userId, hospitalId);
 
-      res.json({
-        status: "success",
-        data: result,
-      });
-    } catch (error) {
-      throw new ApiError(500, "Internal server error");
-    }
+    res.json({
+      status: "success",
+      data: result,
+    });
   });
 
-  // Get favorite count of a hospital
+  // Get counts
   getHospitalFavoriteCount = asyncHandler(async (req, res) => {
-    try {
-      const { hospitalId } = req.params;
+    const { hospitalId } = req.params;
+    const result = await FavoriteService.getHospitalFavoriteCount(hospitalId);
 
-      const result = await FavoriteService.getHospitalFavoriteCount(hospitalId);
-
-      res.json({
-        status: "success",
-        data: result,
-      });
-    } catch (error) {
-      throw new ApiError(500, "Internal server error");
-    }
+    res.json({
+      status: "success",
+      data: result,
+    });
   });
 
-  // Get favorite count of a user
   getUserFavoriteCount = asyncHandler(async (req, res) => {
-    try {
-      const userId = req.user.id;
+    const userId = req.user.id;
+    const result = await FavoriteService.getUserFavoriteCount(userId);
 
-      const result = await FavoriteService.getUserFavoriteCount(userId);
-
-      res.json({
-        status: "success",
-        data: result,
-      });
-    } catch (error) {
-      throw new ApiError(500, "Internal server error");
-    }
+    res.json({
+      status: "success",
+      data: result,
+    });
   });
 
-  // Get list of latest favorites
+  // Get latest favorites
   getLatestFavorites = asyncHandler(async (req, res) => {
-    try {
-      const { limit = 10 } = req.query;
+    const { limit = 10 } = req.query;
+    const result = await FavoriteService.getLatestFavorites(parseInt(limit));
 
-      const result = await FavoriteService.getLatestFavorites(parseInt(limit));
-
-      res.json({
-        status: "success",
-        data: result,
-      });
-    } catch (error) {
-      throw new ApiError(500, "Internal server error");
-    }
+    res.json({
+      status: "success",
+      data: result,
+    });
   });
 }
 

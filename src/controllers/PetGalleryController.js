@@ -3,26 +3,36 @@ const ApiError = require("../exceptions/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
 const cloudinary = require("cloudinary");
 const cache = require("../config/redis");
+const { promisify } = require('util');
 
 class PetGalleryController {
-  // Method to clear cache
-  clearPostCache = async (postId = null) => {
+  // Method to clear post cache
+  clearPostCache = async (postId = null, userId = null) => {
     try {
-      const keys = [
-        "cache:/api/pet-gallery/posts", // List of posts
-      ];
+      // Get all keys matching the pattern
+      const pattern = "cache:/api/community*";
+      const keys = await cache.keys(pattern);
 
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific post's cache if provided
       if (postId) {
-        keys.push(
-          `cache:/api/pet-gallery/posts/${postId}`, // Post details
-          `cache:/api/pet-gallery/posts/${postId}/comments` // Comments of post
-        );
+        await Promise.all([
+          cache.del(`cache:/api/community/posts/${postId}`),
+          cache.del(`cache:/api/community/posts/${postId}/comments`),
+          cache.del(`cache:/api/community/posts/${postId}/like/check`),
+          cache.del(`cache:/api/community/posts/${postId}/comments?*`)
+        ]);
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
+      // Clear user's posts cache if provided
+      if (userId) {
+        await cache.del(`cache:/api/community/my-posts`);
       }
+
     } catch (error) {
       console.error("Error clearing pet gallery cache:", error);
     }
@@ -31,16 +41,23 @@ class PetGalleryController {
   // Method to clear comment cache
   clearCommentCache = async (postId, commentId = null) => {
     try {
-      const keys = [`cache:/api/pet-gallery/posts/${postId}/comments`];
+      // Get all comment related keys
+      const pattern = `cache:/api/community/posts/${postId}/comments*`;
+      const keys = await cache.keys(pattern);
 
+      // Delete each found key
+      if (keys.length > 0) {
+        await Promise.all(keys.map(key => cache.del(key)));
+      }
+
+      // Clear specific comment's replies if provided
       if (commentId) {
-        keys.push(`cache:/api/pet-gallery/comments/${commentId}/replies`);
+        await Promise.all([
+          cache.del(`cache:/api/community/comments/${commentId}/replies`),
+          cache.del(`cache:/api/community/comments/${commentId}/replies?*`)
+        ]);
       }
 
-      // Clear cache
-      for (const key of keys) {
-        await cache.del(key);
-      }
     } catch (error) {
       console.error("Error clearing comment cache:", error);
     }
@@ -64,7 +81,7 @@ class PetGalleryController {
     const post = await PetGalleryService.createPost(req.body, userId, file);
 
     // Clear cache after creating new post
-    await this.clearPostCache();
+    await this.clearPostCache(null, userId);
 
     res.status(201).json({
       success: true,
@@ -174,7 +191,7 @@ class PetGalleryController {
       );
 
       // Clear cache after updating post
-      await this.clearPostCache(postId);
+      await this.clearPostCache(postId, post.user_id);
 
       res.json({
         success: true,
@@ -199,7 +216,7 @@ class PetGalleryController {
       await PetGalleryService.deletePost(postId, userId, isAdmin);
 
       // Clear cache after deleting post
-      await this.clearPostCache(postId);
+      await this.clearPostCache(postId, userId);
 
       res.json({
         success: true,
@@ -242,7 +259,7 @@ class PetGalleryController {
     const result = await PetGalleryService.toggleLike(postId, userId);
 
     // Clear cache after like/unlike post
-    await this.clearPostCache(postId);
+    await this.clearPostCache(postId, userId);
 
     res.json({
       success: true,
@@ -387,7 +404,7 @@ class PetGalleryController {
     );
 
     // Clear cache
-    await this.clearPostCache(id);
+    await this.clearPostCache(id, updatedPost.user_id);
 
     res.json({
       success: true,
@@ -421,6 +438,37 @@ class PetGalleryController {
     res.json({
       success: true,
       message: "Get all posts successful",
+      data: posts
+    });
+  });
+
+  // Get posts by logged in user
+  getMyPosts = asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const {
+      page = 1,
+      limit = 10,
+      pet_type,
+      tags,
+      sort_by,
+      sort_order,
+      status
+    } = req.query;
+
+    const posts = await PetGalleryService.getPosts({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      petType: pet_type,
+      tags,
+      userId: userId,
+      sortBy: sort_by,
+      sortOrder: sort_order,
+      status
+    });
+
+    res.json({
+      success: true,
+      message: "Get posts by logged in user successful",
       data: posts
     });
   });
