@@ -26,6 +26,10 @@ class AuthController {
   
       // Validate data
       await this.validateUserData({ email, password, full_name, phone_number });
+
+      if (role === "ADMIN") {
+        throw new ApiError(400, "Admin account cannot be created");
+      }
   
       // Check if email already exists
       if (await User.isEmailTaken(email)) {
