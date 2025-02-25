@@ -6,8 +6,17 @@ const Banner = require("../models/Banner");
 
 class UserService {
   async createUser(userData) {
+    // Check phone number before create user
+    if (!userData.phone_number) {
+      throw new ApiError(400, "Phone number is required");
+    }
+
+    if (!/^[0-9]{10}$/.test(userData.phone_number)) {
+      throw new ApiError(400, "Phone number is invalid. Please enter 10 digits");
+    }
+
     if (await User.isEmailTaken(userData.email)) {
-      // Xóa cả avatar và pet_photo nếu có
+      // Delete both avatar and pet_photo if exists
       if (userData.avatar && !userData.avatar.includes("default-avatar")) {
         try {
           const urlParts = userData.avatar.split("/");
