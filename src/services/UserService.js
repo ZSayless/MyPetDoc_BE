@@ -405,7 +405,7 @@ class UserService {
   async getDeletedUsers(filters = {}, page = 1, limit = 10) {
     const offset = (page - 1) * limit;
     
-    // Đảm bảo chỉ lấy những user đã bị xóa mềm
+    // Ensure only fetching soft-deleted users
     const deletedFilters = {
       ...filters,
       is_deleted: 1
@@ -428,7 +428,7 @@ class UserService {
   async getUserByEmail(email) {
     const user = await User.findByEmail(email);
     if (!user) {
-      throw new ApiError(404, "Không tìm thấy người dùng với email này");
+      throw new ApiError(404, "User not found");
     }
     return user;
   }
