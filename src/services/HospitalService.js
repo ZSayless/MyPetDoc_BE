@@ -458,12 +458,12 @@ class HospitalService {
       });
 
       // If hospital is active and has admin managing
-      if (hospital.is_active && adminCount > 0) {
-        throw new ApiError(
-          400,
-          "Cannot deactivate hospital that has active administrators"
-        );
-      }
+      // if (hospital.is_active && adminCount > 0) {
+      //   throw new ApiError(
+      //     400,
+      //     "Cannot deactivate hospital that has active administrators"
+      //   );
+      // }
 
       const updateData = {
         is_active: !hospital.is_active,

@@ -2,6 +2,7 @@ const express = require("express");
 const UserController = require("../controllers/UserController");
 const { validateAuth } = require("../middleware/validateAuth");
 const { handleUploadAvatar } = require("../middleware/uploadMiddleware");
+const cacheMiddleware = require("../middleware/cacheMiddleware");
 
 const router = express.Router();
 
@@ -12,6 +13,8 @@ router.put(
   handleUploadAvatar,
   UserController.updateProfile
 );
+
+router.get("/by-email", cacheMiddleware(3600), validateAuth(), UserController.getUserByEmail);
 
 // Routes require admin permission
 router.use(validateAuth(["ADMIN"]));

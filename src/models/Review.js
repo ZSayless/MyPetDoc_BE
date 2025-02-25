@@ -282,8 +282,8 @@ class Review extends BaseModel {
           AVG(rating) as raw_rating,
           ROUND(
             CASE 
-              WHEN COUNT(*) = 0 THEN 4.9
-              ELSE (COUNT(*) * COALESCE(AVG(rating), 0) + 10 * 4.9) / (COUNT(*) + 10)
+              WHEN COUNT(*) = 0 THEN 5.0
+              ELSE (COUNT(*) * COALESCE(AVG(rating), 0) + 10 * 5.0) / (COUNT(*) + 10)
             END, 
             1
           ) as average_rating,
@@ -300,7 +300,7 @@ class Review extends BaseModel {
 
       // Make sure average_rating is a number
       if (stats) {
-        stats.average_rating = parseFloat(stats.average_rating) || 4.9;
+        stats.average_rating = parseFloat(stats.average_rating) || 5.0;
         stats.raw_rating = parseFloat(stats.raw_rating) || 0;
         
         // Convert counts to numbers

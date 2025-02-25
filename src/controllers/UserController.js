@@ -27,7 +27,8 @@ class UserController {
           cache.del(`cache:/api/users/${userId}/stats`),
           cache.del(`cache:/api/users/${userId}?*`),
           cache.del(`cache:/api/users/${userId}/profile?*`),
-          cache.del(`cache:/api/users/${userId}/stats?*`)
+          cache.del(`cache:/api/users/${userId}/stats?*`),
+          cache.del(`cache:/api/users/by-email?*`)
         ]);
       }
 
@@ -330,6 +331,27 @@ class UserController {
       status: "success",
       message: "Get deleted users successful",
       data: result,
+    });
+  });
+
+  getUserByEmail = asyncHandler(async (req, res) => {
+    const { email } = req.query;
+    
+    if (!email) {
+      throw new ApiError(400, "Email is required");
+    }
+
+    if (email !== req.user.email && req.user.role !== 'ADMIN') {
+      throw new ApiError(403, "You are not allowed to view this email");
+    }
+
+    const user = await UserService.getUserByEmail(email);
+    delete user.password;
+
+    res.json({
+      status: "success", 
+      message: "Get user by email successful",
+      data: user
     });
   });
 }

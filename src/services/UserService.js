@@ -424,6 +424,14 @@ class UserService {
       },
     };
   }
+
+  async getUserByEmail(email) {
+    const user = await User.findByEmail(email);
+    if (!user) {
+      throw new ApiError(404, "Không tìm thấy người dùng với email này");
+    }
+    return user;
+  }
 }
 
 module.exports = new UserService();
