@@ -8,30 +8,61 @@ class FavoriteController {
   // Method to clear cache
   clearFavoriteCache = async (userId = null, hospitalId = null) => {
     try {
-      // Get all keys matching the pattern
-      const pattern = "cache:/api/favorites*";
-      const keys = await cache.keys(pattern);
-
-      // Delete each found key
-      if (keys.length > 0) {
-        await Promise.all(keys.map(key => cache.del(key)));
+      // List of patterns to delete
+      const patterns = [];
+      
+      // If there is no userId and hospitalId, delete all favorites cache
+      if (!userId && !hospitalId) {
+        patterns.push("cache:/api/favorites*");
       }
-
-      // Clear specific user's cache if provided
+      
+      // Add specific pattern for user if provided
       if (userId) {
-        await Promise.all([
-          cache.del(`cache:/api/favorites/user/${userId}/hospitals`),
-          cache.del(`cache:/api/favorites/user/${userId}/count`)
-        ]);
+        patterns.push(`cache:/api/favorites/user/${userId}*`);
+        patterns.push(`cache:/api/favorites/check/*`);
       }
-
-      // Clear specific hospital's cache if provided
+      
+      // Add specific pattern for hospital if provided
       if (hospitalId) {
-        await Promise.all([
-          cache.del(`cache:/api/favorites/hospital/${hospitalId}/users`),
-          cache.del(`cache:/api/favorites/hospital/${hospitalId}/count`),
-          cache.del(`cache:/api/favorites/check/${hospitalId}`)
-        ]);
+        patterns.push(`cache:/api/favorites/hospital/${hospitalId}*`);
+        patterns.push(`cache:/api/favorites/check/${hospitalId}*`);
+      }
+      
+      // Get and delete all keys matching the patterns
+      for (const pattern of patterns) {
+        const keys = await cache.keys(pattern);
+        if (keys.length > 0) {
+          console.log(`Xóa ${keys.length} cache key khớp với pattern: ${pattern}`);
+          await Promise.all(keys.map(key => cache.del(key)));
+        }
+      }
+      
+      // Delete specific keys
+      const specificKeys = [];
+      
+      if (userId) {
+        specificKeys.push(`cache:/api/favorites/user/${userId}/hospitals?page=1&limit=10`);
+        specificKeys.push(`cache:/api/favorites/user/${userId}/count`);
+      }
+      
+      if (hospitalId) {
+        specificKeys.push(`cache:/api/favorites/hospital/${hospitalId}/users?page=1&limit=10`);
+        specificKeys.push(`cache:/api/favorites/hospital/${hospitalId}/count`);
+        specificKeys.push(`cache:/api/favorites/check/${hospitalId}`);
+      }
+      
+      // Delete cache latest favorites if there is a change
+      if (userId || hospitalId) {
+        specificKeys.push(`cache:/api/favorites/latest`);
+        specificKeys.push(`cache:/api/favorites/latest?limit=10`);
+      }
+      
+      for (const key of specificKeys) {
+        const exists = await cache.exists(key);
+        if (exists) {
+          console.log(`Delete cache key: ${key}`);
+          await cache.del(key);
+        }
       }
 
     } catch (error) {
@@ -60,8 +91,13 @@ class FavoriteController {
   // Get user favorites
   getUserFavorites = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
-    const userId = req.user.id;
-
+    const { userId } = req.params;
+    
+    // check access
+    if (String(userId) !== String(req.user.id) && req.user.role !== 'ADMIN') {
+      throw new ApiError(403, "You can't have permission to view the list of favorites of other users");
+    }
+  
     const result = await FavoriteService.getUserFavorites(
       userId,
       parseInt(page),
@@ -116,7 +152,13 @@ class FavoriteController {
   });
 
   getUserFavoriteCount = asyncHandler(async (req, res) => {
-    const userId = req.user.id;
+    const { userId } = req.params;
+    
+    // check access
+    if (String(userId) !== String(req.user.id) && req.user.role !== 'ADMIN') {
+      throw new ApiError(403, "You can't have permission to view the number of favorites of other users");
+    }
+    
     const result = await FavoriteService.getUserFavoriteCount(userId);
 
     res.json({

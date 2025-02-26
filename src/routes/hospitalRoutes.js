@@ -32,6 +32,10 @@ router.get(
   HospitalController.getHospitalBySlug
 );
 
+// Like/unlike image routes
+router.post("/:hospitalId/images/:imageId/like", validateAuth(), HospitalController.toggleImageLike);
+router.get("/:hospitalId/images/:imageId/like/check", validateAuth(), HospitalController.checkImageLike);
+
 // Routes require admin or hospital admin permission
 router.use(validateAuth(["ADMIN", "HOSPITAL_ADMIN"]));
 
@@ -75,9 +79,6 @@ router.patch(
 // Routes require login (all roles)
 router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));
 
-// Like/unlike image routes
-router.post("/:hospitalId/images/:imageId/like", HospitalController.toggleImageLike);
-router.get("/:hospitalId/images/:imageId/like/check", HospitalController.checkImageLike);
 
 // Route toggle active
 router.patch(

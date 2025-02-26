@@ -10,8 +10,6 @@ const validateRegister = async (req, res, next) => {
       throw new ApiError(400, "No data provided");
     }
 
-    console.log("Request body:", req.body);
-
     const schema = Joi.object({
       email: Joi.string().email().required(),
       password: Joi.string().min(6).required(),
@@ -22,7 +20,7 @@ const validateRegister = async (req, res, next) => {
         .max(10)
         .required(),
       role: Joi.string()
-        .valid("GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN")
+        .valid("GENERAL_USER", "HOSPITAL_ADMIN")
         .required(),
       pet_type: Joi.string()
         .valid(

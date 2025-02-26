@@ -92,6 +92,7 @@ class Favorite extends BaseModel {
           h.id,
           h.name,
           h.address,
+          h.slug,
           h.phone,
           h.email,
           h.description,

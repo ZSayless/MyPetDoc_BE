@@ -19,14 +19,14 @@ router.get(
 
 // Get list of hospitals favorited by current user
 router.get(
-  "/user/hospitals",
+  "/user/:userId/hospitals",
   cacheMiddleware(300),
   FavoriteController.getUserFavorites
 );
 
 // Get count of favorites of current user
 router.get(
-  "/user/count",
+  "/user/:userId/count",
   cacheMiddleware(300),
   FavoriteController.getUserFavoriteCount
 );
