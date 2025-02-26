@@ -210,24 +210,30 @@ class ReviewService {
   // Hard delete review
   async hardDelete(reviewId) {
     try {
-      // Kiểm tra review tồn tại
+      // Get review information before deleting
       const review = await Review.findById(reviewId);
       if (!review) {
         throw new ApiError(404, "Review not found");
       }
 
-      // Xóa ảnh trên Cloudinary nếu có
-      if (review.image_url) {
+      // Delete image on Cloudinary if exists
+      if (review.photo && review.photo.image_url) {
         try {
-          const publicId = review.image_url.split("/").pop().split(".")[0];
-          await cloudinary.uploader.destroy(`reviews/${publicId}`);
-        } catch (deleteError) {
-          console.error("Error deleting image from Cloudinary:", deleteError);
-          // Tiếp tục xóa review ngay cả khi xóa ảnh thất bại
+          // Get public_id from image URL
+          const urlParts = review.photo.image_url.split('/');
+          const filename = urlParts[urlParts.length - 1].split('.')[0];
+          const publicId = `reviews/${filename}`;
+          
+          // Delete image on Cloudinary
+          await cloudinary.uploader.destroy(publicId);
+          console.log('Deleted image from Cloudinary:', publicId);
+        } catch (cloudinaryError) {
+          console.error("Error deleting image from Cloudinary:", cloudinaryError);
+          // Continue deleting review even if image deletion fails
         }
       }
 
-      // Xóa review trong database
+      // Delete review in database
       await Review.hardDelete(reviewId);
 
       return {
