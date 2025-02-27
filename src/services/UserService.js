@@ -168,11 +168,13 @@ class UserService {
 
         // Check admin count
         const adminCount = await User.countAdmins();
-        if (adminCount <= 2) {
-          throw new ApiError(
-            400,
-            "Cannot delete ADMIN account when there are only 2 ADMIN in the system"
-          );
+        if(userToDelete.is_deleted === 1) {
+          if (adminCount <= 2) {
+            throw new ApiError(
+              400,
+              "Cannot delete ADMIN account when there are only 2 ADMIN in the system"
+            );
+          }
         }
       }
 
