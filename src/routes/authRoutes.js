@@ -5,6 +5,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const {
   validateRegister,
   validateLogin,
+  validateGoogleSignup,
 } = require("../middleware/validateAuth");
 const { handleUploadAvatar } = require("../middleware/uploadMiddleware");
 const router = express.Router();
@@ -141,6 +142,7 @@ router.get(
 router.post(
   "/complete-google-signup",
   handleUploadAvatar,
+  validateGoogleSignup,
   asyncHandler(authController.completeGoogleSignup)
 );
 

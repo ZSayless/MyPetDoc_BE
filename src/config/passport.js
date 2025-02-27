@@ -35,39 +35,36 @@ passport.use(
     },
     async (req, accessToken, refreshToken, profile, done) => {
       try {
-        console.log("Google Strategy Profile:", profile);
 
-        // Check if user exists with google_id
-        let user = await User.findOne({ google_id: profile.id });
+        // Kiểm tra user theo email trước
+        let user = await User.findOne({ email: profile.emails[0].value });
 
-        if (!user) {
-          // Check if email is already used
-          user = await User.findOne({ email: profile.emails[0].value });
-
-          if (user) {
-            // If email is already used
-            console.log("Found existing user:", user);
+        if (user) {
+          // Nếu user đã tồn tại
+          if (user.google_id) {
+            if (user.google_id !== profile.id) {
+              return done(new ApiError(400, "This email has already been linked to a different Google account"));
+            }
+          } else {
+            // Nếu user chưa có google_id, cập nhật google_id
             user = await User.update(user.id, {
               google_id: profile.id,
               avatar: profile.photos[0]?.value || user.avatar,
             });
-            return done(null, user);
-          } else {
-            // New user
-            const newUserData = {
-              isNewUser: true,
-              email: profile.emails[0].value,
-              full_name: profile.displayName,
-              google_id: profile.id,
-              avatar: profile.photos[0]?.value,
-            };
-            console.log("New user data:", newUserData);
-            return done(null, newUserData);
           }
+          return done(null, user);
         }
 
-        // User already exists with google_id
-        return done(null, user);
+        // Nếu không tìm thấy user, tạo user mới
+        const newUserData = {
+          isNewUser: true,
+          email: profile.emails[0].value,
+          full_name: profile.displayName,
+          google_id: profile.id,
+          avatar: profile.photos[0]?.value,
+        };
+        return done(null, newUserData);
+
       } catch (error) {
         console.error("Passport Google Strategy Error:", error);
         return done(error);

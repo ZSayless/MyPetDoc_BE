@@ -24,7 +24,7 @@ class BaseModel {
       const where = entries.map(([key]) => `${key} = ?`).join(" AND ");
       const values = entries.map(([_, value]) => value);
 
-      const sql = `SELECT * FROM ${this.tableName} WHERE ${where} AND is_deleted = 0 LIMIT 1`;
+      const sql = `SELECT * FROM ${this.tableName} WHERE ${where} LIMIT 1`;
       const rows = await this.query(sql, values);
       return rows && rows.length > 0 ? rows[0] : null;
     } catch (error) {
