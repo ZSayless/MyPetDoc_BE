@@ -209,7 +209,7 @@ const petGalleryStorage = new CloudinaryStorage({
 const handleUploadReviewImages = (req, res, next) => {
   const upload = multer({
     storage: reviewStorage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (req, file, cb) => {
       const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
       if (!file) {
@@ -292,7 +292,7 @@ const petPhotoStorage = new CloudinaryStorage({
 const handleUploadAvatar = (req, res, next) => {
   const uploadFields = multer({
     storage: multer.diskStorage({}),
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
       const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
       if (!file) {
@@ -313,7 +313,7 @@ const handleUploadAvatar = (req, res, next) => {
   uploadFields(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === "LIMIT_FILE_SIZE") {
-        return next(new ApiError(400, "File size cannot exceed 5MB"));
+        return next(new ApiError(400, "File size cannot exceed 10MB"));
       }
       return next(new ApiError(400, `Upload error: ${err.message}`));
     }
@@ -401,7 +401,7 @@ const handleUploadAvatar = (req, res, next) => {
 const handleUploadPetPostImages = (req, res, next) => {
   const upload = multer({
     storage: petPostStorage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
       const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
       if (!allowedTypes.includes(file.mimetype)) {
@@ -417,7 +417,7 @@ const handleUploadPetPostImages = (req, res, next) => {
   upload(req, res, async (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === "LIMIT_FILE_SIZE") {
-        return next(new ApiError(400, "Image file size exceeds 5MB"));
+        return next(new ApiError(400, "Image file size exceeds 10MB"));
       }
       if (err.code === "LIMIT_UNEXPECTED_FILE") {
         return next(new ApiError(400, "Only upload up to 2 images"));
@@ -509,7 +509,7 @@ const handleUploadPetPostImages = (req, res, next) => {
 const handleUploadBannerImages = (req, res, next) => {
   const upload = multer({
     storage: bannerStorage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    limits: { fileSize: 10 * 1024 * 1024 }, // 5MB
     fileFilter: (req, file, cb) => {
       const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
       if (!file) {
@@ -568,7 +568,7 @@ const handleUploadBannerImages = (req, res, next) => {
 const handleUploadHospitalImages = (req, res, next) => {
   const upload = multer({
     storage: hospitalStorage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
       const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
       if (allowedTypes.includes(file.mimetype)) {
@@ -602,7 +602,7 @@ const handleUploadPetGalleryImages = (req, res, next) => {
 
   const upload = multer({
     storage: petGalleryStorage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    limits: { fileSize: 10 * 1024 * 1024 }, // 5MB
     fileFilter: (req, file, cb) => {
       // Check if there is a file uploaded
       if (req.file) {

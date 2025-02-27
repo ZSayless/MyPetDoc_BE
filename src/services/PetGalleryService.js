@@ -290,11 +290,11 @@ class PetGalleryService {
     // Validate tags if any
     if (data.tags) {
       const tags = data.tags.split(",").map((tag) => tag.trim());
-      if (tags.some((tag) => tag.length < 2)) {
-        errors.push("Each tag must be at least 2 characters");
+      if (tags.some((tag) => tag.length < 1)) {
+        errors.push("Each tag must be at least 1 characters");
       }
-      if (tags.length > 5) {
-        errors.push("Maximum 5 tags per post");
+      if (tags.length > 10) {
+        errors.push("Maximum 10 tags per post");
       }
     }
 
@@ -304,9 +304,8 @@ class PetGalleryService {
       if (!allowedTypes.includes(file.mimetype)) {
         errors.push("Only image files (jpg, png, gif) are accepted");
       }
-      if (file.size > 5 * 1024 * 1024) {
-        // 5MB
-        errors.push("Image size must be less than 5MB");
+      if (file.size > 10 * 1024 * 1024) {
+        errors.push("Image size must be less than 10MB");
       }
     }
 
