@@ -173,15 +173,15 @@ const validateLogin = async (req, res, next) => {
     const user = await User.findByEmail(req.body.email);
     if (user) {
       if (user.is_deleted) {
-        throw new ApiError(401, "Tài khoản đã bị xóa. Vui lòng liên hệ admin để được hỗ trợ");
+        throw new ApiError(401, "Account is deleted. Please contact admin for support");
       }
 
       if (!user.is_active) {
-        throw new ApiError(401, "Tài khoản chưa được kích hoạt. Vui lòng kiểm tra email để kích hoạt");
+        throw new ApiError(401, "Account is not activated. Please check your email to activate");
       }
 
       if (user.is_locked) {
-        throw new ApiError(401, "Tài khoản đã bị khóa. Vui lòng liên hệ admin để được hỗ trợ");
+        throw new ApiError(401, "Account is locked. Please contact admin for support");
       }
     }
 
@@ -195,7 +195,7 @@ const validateLogin = async (req, res, next) => {
 const validateGoogleSignup = async (req, res, next) => {
   try {
     if (!req.body) {
-      throw new ApiError(400, "Không có dữ liệu");
+      throw new ApiError(400, "No data provided");
     }
 
     // Kiểm tra email tồn tại và trạng thái của tài khoản
@@ -217,19 +217,19 @@ const validateGoogleSignup = async (req, res, next) => {
 
       // Kiểm tra các trường hợp đặc biệt
       if (existingUser.is_deleted) {
-        throw new ApiError(400, "Tài khoản đã bị xóa. Vui lòng liên hệ admin để được hỗ trợ");
+        throw new ApiError(400, "Account is deleted. Please contact admin for support");
       }
 
       if (!existingUser.is_active) {
-        throw new ApiError(400, "Tài khoản chưa được kích hoạt. Vui lòng kiểm tra email để kích hoạt");
+        throw new ApiError(400, "Account is not activated. Please check your email to activate");
       }
 
       if (existingUser.is_locked) {
-        throw new ApiError(400, "Tài khoản đã bị khóa. Vui lòng liên hệ admin để được hỗ trợ");
+        throw new ApiError(400, "Account is locked. Please contact admin for support");
       }
 
       if (existingUser.google_id) {
-        throw new ApiError(400, "Email này đã được đăng ký với tài khoản Google");
+        throw new ApiError(400, "This email is already registered with a Google account");
       }
     }
 

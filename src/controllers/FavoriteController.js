@@ -32,7 +32,7 @@ class FavoriteController {
       for (const pattern of patterns) {
         const keys = await cache.keys(pattern);
         if (keys.length > 0) {
-          console.log(`Xóa ${keys.length} cache key khớp với pattern: ${pattern}`);
+          // console.log(`Xóa ${keys.length} cache key khớp với pattern: ${pattern}`);
           await Promise.all(keys.map(key => cache.del(key)));
         }
       }
@@ -60,7 +60,7 @@ class FavoriteController {
       for (const key of specificKeys) {
         const exists = await cache.exists(key);
         if (exists) {
-          console.log(`Delete cache key: ${key}`);
+          // console.log(`Delete cache key: ${key}`);
           await cache.del(key);
         }
       }

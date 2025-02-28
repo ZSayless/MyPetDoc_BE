@@ -226,7 +226,7 @@ class ReviewService {
           
           // Delete image on Cloudinary
           await cloudinary.uploader.destroy(publicId);
-          console.log('Deleted image from Cloudinary:', publicId);
+          // console.log('Deleted image from Cloudinary:', publicId);
         } catch (cloudinaryError) {
           console.error("Error deleting image from Cloudinary:", cloudinaryError);
           // Continue deleting review even if image deletion fails

@@ -64,7 +64,7 @@ class PetPostController {
         ]);
       }
 
-      console.log("Cleared cache keys:", keysToDelete);
+      // console.log("Cleared cache keys:", keysToDelete);
     } catch (error) {
       console.error("Error clearing comment cache:", error);
     }

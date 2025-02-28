@@ -383,8 +383,6 @@ class AuthController {
   // Add new method to complete Google signup
   async completeGoogleSignup(req, res) {
     try {
-      console.log("Request body:", req.body);
-      console.log("Uploaded files:", req.uploadedFiles);
 
       const {
         email,
@@ -398,29 +396,6 @@ class AuthController {
         avatar: googleAvatarUrl,
       } = req.body;
 
-      const existingUser = await User.findByEmail(email);
-
-      if (existingUser) {
-        // Nếu tài khoản đã tồn tại và có google_id
-        if (existingUser.google_id) {
-          throw new ApiError(400, "Google account already registered");
-        }
-        
-        // Nếu tài khoản tồn tại nhưng chưa liên kết Google
-        // Cập nhật google_id cho tài khoản hiện có
-        await User.update(existingUser.id, {
-          google_id: google_id,
-          is_active: true
-        });
-  
-        return res.json({
-          status: "success",
-          message: "Linked Google account successfully",
-          data: {
-            user: existingUser
-          }
-        });
-      }
       // Validate required fields
       if (!email || !full_name || !phone_number || !role) {
         // Xóa ảnh đã upload nếu có lỗi
@@ -475,8 +450,6 @@ class AuthController {
         pet_photo: role === "GENERAL_USER" ? petPhotoPath : null,
         pet_notes: pet_notes || null,
       };
-
-      console.log("Creating user with data:", userData);
 
       let user = await User.create(userData);
 

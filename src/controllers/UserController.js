@@ -301,7 +301,7 @@ class UserController {
               urlParts[urlParts.length - 1].split(".")[0]
             }`;
             await cloudinary.uploader.destroy(publicId);
-            console.log("Deleted new avatar due to error:", publicId);
+            // console.log("Deleted new avatar due to error:", publicId);
           }
 
           if (req.uploadedFiles.pet_photo) {
@@ -310,7 +310,7 @@ class UserController {
               urlParts[urlParts.length - 1].split(".")[0]
             }`;
             await cloudinary.uploader.destroy(publicId);
-            console.log("Deleted new pet photo due to error:", publicId);
+            // console.log("Deleted new pet photo due to error:", publicId);
           }
         } catch (deleteError) {
           console.error("Error deleting uploaded files:", deleteError);

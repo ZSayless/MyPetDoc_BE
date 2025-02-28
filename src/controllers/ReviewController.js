@@ -58,7 +58,7 @@ class ReviewController {
         ]);
       }
 
-      console.log('=== Clear Cache Keys ===', keysToDelete);
+      // console.log('=== Clear Cache Keys ===', keysToDelete);
     } catch (error) {
       console.error("Error clearing review cache:", error);
     }

@@ -18,8 +18,7 @@ const securityMiddleware = (app) => {
   const corsOptions = {
     origin: [
       "https://mypetdoc.vn",
-      "https://www.mypetdoc.vn",
-      "http://localhost:3001"
+      "https://www.mypetdoc.vn"
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
@@ -31,7 +30,7 @@ const securityMiddleware = (app) => {
   // 3. Rate limiting - Limit request
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 150, // Limit each IP
+    max: 175, // Limit each IP
     message:
       "Too many requests from this IP, please try again after 15 minutes",
     standardHeaders: true,
@@ -57,7 +56,7 @@ const securityMiddleware = (app) => {
   app.use("/api", limiter);
 
   // 4. Limit request size
-  app.use(express.json({ limit: "50kb" }));
+  app.use(express.json({ limit: "5mb", strict: true }));
 
   // 5. XSS Protection
   app.use((req, res, next) => {
