@@ -172,6 +172,7 @@ const validateLogin = async (req, res, next) => {
     // Kiểm tra tài khoản tồn tại và trạng thái
     const user = await User.findByEmail(req.body.email);
     if (user) {
+      console.log(user);
       if (user.is_deleted) {
         throw new ApiError(401, "Account is deleted. Please contact admin for support");
       }

@@ -60,9 +60,10 @@ class User extends BaseModel {
   static async findByEmail(email) {
     const userData = await this.findOne({ email });
     if (!userData) return null;
-
+    
     userData.is_locked = convertBitToBoolean(userData.is_locked);
     userData.is_active = convertBitToBoolean(userData.is_active);
+    userData.is_deleted = convertBitToBoolean(userData.is_deleted);
 
     return new User(userData);
   }
