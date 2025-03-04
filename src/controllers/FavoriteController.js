@@ -8,61 +8,43 @@ class FavoriteController {
   // Method to clear cache
   clearFavoriteCache = async (userId = null, hospitalId = null) => {
     try {
-      // List of patterns to delete
-      const patterns = [];
+      // Get all keys matching the pattern
+      const favoritePattern = "cache:/api/favorites*";
       
-      // If there is no userId and hospitalId, delete all favorites cache
-      if (!userId && !hospitalId) {
-        patterns.push("cache:/api/favorites*");
+      // Get all keys for the pattern
+      const favoriteKeys = await cache.keys(favoritePattern);
+
+      // Delete all found keys
+      if (favoriteKeys.length > 0) {
+        await Promise.all(favoriteKeys.map(key => cache.del(key)));
       }
-      
-      // Add specific pattern for user if provided
+
+      // Clear user specific cache if provided
       if (userId) {
-        patterns.push(`cache:/api/favorites/user/${userId}*`);
-        patterns.push(`cache:/api/favorites/check/*`);
+        await Promise.all([
+          cache.del(`cache:/api/favorites/user/${userId}/hospitals`),
+          cache.del(`cache:/api/favorites/user/${userId}/count`),
+          cache.del(`cache:/api/favorites/user/${userId}/hospitals?*`),
+          cache.del(`cache:/api/favorites/check/*`)
+        ]);
       }
-      
-      // Add specific pattern for hospital if provided
+
+      // Clear hospital specific cache if provided
       if (hospitalId) {
-        patterns.push(`cache:/api/favorites/hospital/${hospitalId}*`);
-        patterns.push(`cache:/api/favorites/check/${hospitalId}*`);
+        await Promise.all([
+          cache.del(`cache:/api/favorites/hospital/${hospitalId}/users`),
+          cache.del(`cache:/api/favorites/hospital/${hospitalId}/count`),
+          cache.del(`cache:/api/favorites/hospital/${hospitalId}/users?*`),
+          cache.del(`cache:/api/favorites/check/${hospitalId}`)
+        ]);
       }
-      
-      // Get and delete all keys matching the patterns
-      for (const pattern of patterns) {
-        const keys = await cache.keys(pattern);
-        if (keys.length > 0) {
-          // console.log(`Xóa ${keys.length} cache key khớp với pattern: ${pattern}`);
-          await Promise.all(keys.map(key => cache.del(key)));
-        }
-      }
-      
-      // Delete specific keys
-      const specificKeys = [];
-      
-      if (userId) {
-        specificKeys.push(`cache:/api/favorites/user/${userId}/hospitals?page=1&limit=10`);
-        specificKeys.push(`cache:/api/favorites/user/${userId}/count`);
-      }
-      
-      if (hospitalId) {
-        specificKeys.push(`cache:/api/favorites/hospital/${hospitalId}/users?page=1&limit=10`);
-        specificKeys.push(`cache:/api/favorites/hospital/${hospitalId}/count`);
-        specificKeys.push(`cache:/api/favorites/check/${hospitalId}`);
-      }
-      
-      // Delete cache latest favorites if there is a change
+
+      // Clear latest favorites cache if there is any change
       if (userId || hospitalId) {
-        specificKeys.push(`cache:/api/favorites/latest`);
-        specificKeys.push(`cache:/api/favorites/latest?limit=10`);
-      }
-      
-      for (const key of specificKeys) {
-        const exists = await cache.exists(key);
-        if (exists) {
-          // console.log(`Delete cache key: ${key}`);
-          await cache.del(key);
-        }
+        await Promise.all([
+          cache.del('cache:/api/favorites/latest'),
+          cache.del('cache:/api/favorites/latest?*')
+        ]);
       }
 
     } catch (error) {
