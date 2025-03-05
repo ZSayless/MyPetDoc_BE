@@ -259,6 +259,7 @@ class PetGalleryService {
   // Validate post data
   async validatePostData(data, file = null, isUpdate = false) {
     const errors = [];
+    console.log(data);
 
     // Validate image when creating new
     if (!isUpdate && !file) {
@@ -270,11 +271,15 @@ class PetGalleryService {
       errors.push("Title is required");
     } else if (data.caption && data.caption.trim().length < 5) {
       errors.push("Title must be at least 5 characters");
+    } else if (data.caption && data.caption.trim().length > 100) {
+      errors.push("Title must be less than 100 characters");
     }
 
     // Validate description if any
     if (data.description && data.description.trim().length < 10) {
       errors.push("Description must be at least 10 characters");
+    } else if (data.description && data.description.trim().length > 1000) {
+      errors.push("Description must be less than 1000 characters");
     }
 
     // Validate pet_type
@@ -282,7 +287,7 @@ class PetGalleryService {
       errors.push("Pet type is required");
     } else if (
       data.pet_type &&
-      !["DOG", "CAT","BIRD", "OTHER"].includes(data.pet_type)
+      !["DOG", "CAT","BIRD", "FISH", "REPTILE", "RABBIT", "HAMSTER", "OTHER"].includes(data.pet_type)
     ) {
       errors.push("Invalid pet type (DOG, CAT, OTHER)");
     }

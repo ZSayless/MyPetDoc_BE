@@ -42,7 +42,7 @@ class PetGalleryController {
   clearCommentCache = async (postId, commentId = null) => {
     try {
       // Get all comment related keys
-      const pattern = `cache:/api/community/posts/${postId}/comments*`;
+      const pattern = `cache:/api/community*`;
       const keys = await cache.keys(pattern);
 
       // Delete each found key
@@ -53,8 +53,11 @@ class PetGalleryController {
       // Clear specific comment's replies if provided
       if (commentId) {
         await Promise.all([
+          cache.del(`cache:/api/community/posts/${postId}`),
           cache.del(`cache:/api/community/comments/${commentId}/replies`),
-          cache.del(`cache:/api/community/comments/${commentId}/replies?*`)
+          cache.del(`cache:/api/community/comments/${commentId}/replies?*`),
+          cache.del(`cache:/api/community/comments/${commentId}`),
+          cache.del(`cache:/api/community/posts/${postId}/comments*`)
         ]);
       }
 
@@ -79,6 +82,7 @@ class PetGalleryController {
     }
 
     const post = await PetGalleryService.createPost(req.body, userId, file);
+    console.log(post);
 
     // Clear cache after creating new post
     await this.clearPostCache(null, userId);
