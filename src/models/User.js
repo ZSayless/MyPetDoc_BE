@@ -58,32 +58,73 @@ class User extends BaseModel {
   }
 
   static async findByEmail(email) {
-    const userData = await this.findOne({ email });
-    if (!userData) return null;
-    
-    userData.is_locked = convertBitToBoolean(userData.is_locked);
-    userData.is_active = convertBitToBoolean(userData.is_active);
-    userData.is_deleted = convertBitToBoolean(userData.is_deleted);
+    try {
+      // Lấy thông tin user
+      const userSql = `
+        SELECT * FROM ${this.tableName}
+        WHERE email = ?
+      `;
+      const [userData] = await this.query(userSql, [email]);
+      
+      if (!userData) {
+        return null;
+      }
 
-    return new User(userData);
+      // Lấy tất cả pets của user
+      const petsSql = `
+        SELECT id, type, age, photo, notes
+        FROM pets
+        WHERE user_id = ? AND is_deleted = 0
+      `;
+      const pets = await this.query(petsSql, [userData.id]);
+
+      userData.is_locked = convertBitToBoolean(userData.is_locked);
+      userData.is_active = convertBitToBoolean(userData.is_active);
+      userData.is_deleted = convertBitToBoolean(userData.is_deleted);
+
+      return new User({
+        ...userData,
+        pets: pets
+      });
+    } catch (error) {
+      console.error("Error in findByEmail:", error);
+      throw error;
+    }
   }
 
   static async findById(id) {
-    const userData = await super.findById(id);
+    try {
+      // Lấy thông tin user
+      const userSql = `
+        SELECT * FROM ${this.tableName}
+        WHERE id = ?
+      `;
+      const [userData] = await this.query(userSql, [id]);
 
-    if (!userData) {
-      return null;
+      if (!userData) {
+        return null;
+      }
+
+      // Lấy tất cả pets của user
+      const petsSql = `
+        SELECT id, type, age, photo, notes
+        FROM pets
+        WHERE user_id = ? AND is_deleted = 0
+      `;
+      const pets = await this.query(petsSql, [id]);
+
+      // Convert bit fields to boolean
+      return new User({
+        ...userData,
+        is_active: convertBitToBoolean(userData.is_active),
+        is_locked: convertBitToBoolean(userData.is_locked),
+        is_deleted: convertBitToBoolean(userData.is_deleted),
+        pets: pets
+      });
+    } catch (error) {
+      console.error("Error in findById:", error);
+      throw error;
     }
-
-    // Convert bit fields to boolean
-    const user = new User({
-      ...userData,
-      is_active: convertBitToBoolean(userData.is_active),
-      is_locked: convertBitToBoolean(userData.is_locked),
-      is_deleted: convertBitToBoolean(userData.is_deleted),
-    });
-
-    return user;
   }
 
   static async isEmailTaken(email, excludeUserId) {
@@ -103,18 +144,45 @@ class User extends BaseModel {
   }
 
   static async findAll(filters = {}, options = {}) {
-    const users = await super.findAll(filters, options);
+    try {
+      const { offset = 0, limit = 10 } = options;
+      const entries = Object.entries(filters);
+      const where = entries.length > 0
+        ? entries.map(([key]) => `u.${key} = ?`).join(" AND ")
+        : "1=1";
+      const values = entries.map(([_, value]) => value);
 
-    // Convert bit fields to boolean for each user
-    return users.map(
-      (userData) =>
-        new User({
+      // Lấy danh sách users
+      const userSql = `
+        SELECT * FROM ${this.tableName} u
+        WHERE ${where} AND u.is_deleted = 0
+        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
+      `;
+      const users = await this.query(userSql, values);
+
+      // Lấy pets cho mỗi user
+      const usersWithPets = await Promise.all(users.map(async (userData) => {
+        const petsSql = `
+          SELECT id, type, age, photo, notes
+          FROM pets
+          WHERE user_id = ? AND is_deleted = 0
+        `;
+        const pets = await this.query(petsSql, [userData.id]);
+
+        return new User({
           ...userData,
           is_active: convertBitToBoolean(userData.is_active),
           is_locked: convertBitToBoolean(userData.is_locked),
           is_deleted: convertBitToBoolean(userData.is_deleted),
-        })
-    );
+          pets: pets
+        });
+      }));
+
+      return usersWithPets;
+    } catch (error) {
+      console.error("FindAll error:", error);
+      throw error;
+    }
   }
 
   async isPasswordMatch(password) {
@@ -123,22 +191,32 @@ class User extends BaseModel {
 
   static async findByHospitalId(hospitalId) {
     try {
-      const sql = `
+      // Lấy danh sách users của hospital
+      const userSql = `
         SELECT * FROM ${this.tableName}
         WHERE hospital_id = ? AND is_deleted = 0
       `;
-      const users = await this.query(sql, [hospitalId]);
+      const users = await this.query(userSql, [hospitalId]);
 
-      // Convert bit fields to boolean for each user
-      return users.map(
-        (userData) =>
-          new User({
-            ...userData,
-            is_active: convertBitToBoolean(userData.is_active),
-            is_locked: convertBitToBoolean(userData.is_locked),
-            is_deleted: convertBitToBoolean(userData.is_deleted),
-          })
-      );
+      // Lấy pets cho mỗi user
+      const usersWithPets = await Promise.all(users.map(async (userData) => {
+        const petsSql = `
+          SELECT id, type, age, photo, notes
+          FROM pets
+          WHERE user_id = ? AND is_deleted = 0
+        `;
+        const pets = await this.query(petsSql, [userData.id]);
+
+        return new User({
+          ...userData,
+          is_active: convertBitToBoolean(userData.is_active),
+          is_locked: convertBitToBoolean(userData.is_locked),
+          is_deleted: convertBitToBoolean(userData.is_deleted),
+          pets: pets
+        });
+      }));
+
+      return usersWithPets;
     } catch (error) {
       console.error("FindByHospitalId error:", error);
       throw error;
@@ -177,6 +255,9 @@ class User extends BaseModel {
       "UPDATE contact_information SET last_updated_by = NULL WHERE last_updated_by = ?",
       "UPDATE hospital_images SET created_by = NULL WHERE created_by = ?",
       "UPDATE hospitals SET created_by = NULL WHERE created_by = ?",
+
+      //7. Delete pet
+      "DELETE FROM pets WHERE user_id = ?",
     ];
 
     // Log for debug

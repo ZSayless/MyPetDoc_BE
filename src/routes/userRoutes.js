@@ -14,6 +14,20 @@ router.put(
   UserController.updateProfile
 );
 
+// Thêm routes mới cho pet
+router.post(
+  "/pets",
+  validateAuth(),
+  handleUploadAvatar,  // Sử dụng lại middleware upload cho pet_photo
+  UserController.createPet
+);
+
+router.delete(
+  "/pets/:petId",
+  validateAuth(),
+  UserController.deletePet
+);
+
 router.get("/by-email", cacheMiddleware(3600), validateAuth(), UserController.getUserByEmail);
 
 // Routes require admin permission

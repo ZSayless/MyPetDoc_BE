@@ -1,4 +1,5 @@
 const UserService = require("../services/UserService");
+const PetService = require("../services/PetService");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../exceptions/ApiError");
 const bcrypt = require("bcrypt");
@@ -93,16 +94,27 @@ class UserController {
       userData.avatar = req.uploadedFiles.avatar.path;
     }
 
-    // Handle pet_photo if role is GENERAL_USER or has pet information
-    if (
-      (userData.role === "GENERAL_USER" || userData.pet_type) &&
-      req.uploadedFiles?.pet_photo
-    ) {
-      userData.pet_photo = req.uploadedFiles.pet_photo.path;
-    }
-
+    // Tạo user trước
     const user = await UserService.createUser(userData);
     delete user.password;
+
+    // Nếu có thông tin về pet, tạo pet mới
+    if (userData.pet_type) {
+      const petData = {
+        user_id: user.id,
+        type: userData.pet_type,
+        age: userData.pet_age,
+        notes: userData.pet_notes,
+        photo: req.uploadedFiles?.pet_photo?.path
+      };
+
+      try {
+        await PetService.createPet(petData);
+      } catch (error) {
+        console.error("Error creating pet:", error);
+        // Không throw error vì user đã được tạo thành công
+      }
+    }
 
     // Clear cache after creating new user
     await this.clearUserCache();
@@ -169,6 +181,19 @@ class UserController {
     const userId = req.params.id;
     const currentUser = req.user;
 
+    // Get user's pets first
+    const userPets = await PetService.getUserPets(userId);
+    
+    // Delete all pets of the user
+    for (const pet of userPets.pets) {
+      try {
+        await PetService.deletePet(pet.id);
+      } catch (error) {
+        console.error(`Error deleting pet ${pet.id}:`, error);
+      }
+    }
+
+    // Delete user
     await UserService.apsoluteDelete(userId, currentUser);
 
     // Clear cache after hard delete
@@ -231,86 +256,108 @@ class UserController {
 
   updateProfile = asyncHandler(async (req, res) => {
     try {
-      // check user try to update other user
       if (req.body.id && parseInt(req.body.id) !== req.user.id) {
-        throw new ApiError(
-          403,
-          "You are not allowed to update other user's profile"
-        );
+        throw new ApiError(403, "You are not allowed to update other user's profile");
       }
 
-      // Basic fields that any user can update
+      // Basic user fields update
       const baseFields = ["full_name", "phone_number"];
       const updateData = {};
 
-      // Update basic fields
       baseFields.forEach((field) => {
         if (req.body[field] !== undefined) {
           updateData[field] = req.body[field];
         }
       });
 
-      // Handle avatar from uploadedFiles or URL
+      // Xử lý avatar
       if (req.uploadedFiles?.avatar) {
         updateData.avatar = req.uploadedFiles.avatar.path;
       } else if (req.body.avatar && req.body.avatar.startsWith("https://")) {
         updateData.avatar = req.body.avatar;
       }
 
-      // Allow updating pet information regardless of role
-      const petFields = ["pet_type", "pet_age", "pet_notes"];
-      petFields.forEach((field) => {
-        if (req.body[field] !== undefined) {
-          updateData[field] = req.body[field];
+      // Kiểm tra xem có dữ liệu cập nhật cho user không
+      if (Object.keys(updateData).length > 0) {
+        // Update user profile
+        const user = await UserService.updateProfile(req.user.id, updateData);
+        delete user.password;
+      }
+
+      // Xử lý thông tin pet
+      if (req.body.pet_id || req.body.pet_type || req.body.pet_age || req.body.pet_notes || req.uploadedFiles?.pet_photo) {
+        try {
+          const petData = {
+            user_id: req.user.id,
+          };
+
+          // Thêm các trường tùy chọn
+          if (req.body.pet_type) {
+            petData.type = req.body.pet_type;
+          }
+          
+          if (req.body.pet_age !== undefined && req.body.pet_age !== null) {
+            petData.age = parseInt(req.body.pet_age);
+          }
+          
+          if (req.body.pet_notes !== undefined && req.body.pet_notes !== null) {
+            petData.notes = req.body.pet_notes;
+          }
+
+          // Thêm ảnh pet nếu có
+          if (req.uploadedFiles?.pet_photo) {
+            petData.photo = req.uploadedFiles.pet_photo.path;
+          }
+
+          if (req.body.pet_id) {
+            // Kiểm tra quyền sở hữu pet
+            const existingPet = await PetService.getPetById(req.body.pet_id);
+            if (existingPet.user_id !== req.user.id) {
+              throw new ApiError(403, "You don't have permission to update this pet");
+            }
+            // Cập nhật pet hiện có
+            await PetService.updatePet(req.body.pet_id, petData);
+          } else {
+            // Kiểm tra số lượng pet hiện tại
+            const userPets = await PetService.getUserPets(req.user.id);
+            if (userPets.total >= 10) {
+              throw new ApiError(400, "You can only have maximum 10 pets");
+            }
+            // Tạo pet mới
+            await PetService.createPet(petData);
+          }
+        } catch (error) {
+          console.error("Error updating/creating pet:", error);
+          throw new ApiError(500, "Error updating/creating pet: " + error.message);
         }
-      });
-
-      // Handle pet_photo from uploadedFiles or URL
-      if (req.uploadedFiles?.pet_photo) {
-        updateData.pet_photo = req.uploadedFiles.pet_photo.path;
-      } else if (
-        req.body.pet_photo &&
-        req.body.pet_photo.startsWith("https://")
-      ) {
-        updateData.pet_photo = req.body.pet_photo;
       }
 
-      // Check if there is data to update
-      if (Object.keys(updateData).length === 0) {
-        throw new ApiError(400, "No data to update");
-      }
+      // Lấy lại thông tin user sau khi cập nhật
+      const updatedUser = await UserService.getUserById(req.user.id);
+      delete updatedUser.password;
 
-      const user = await UserService.updateProfile(req.user.id, updateData);
-      delete user.password;
-
-      // Clear cache after updating profile
+      // Clear cache
       await this.clearUserCache(req.user.id);
 
       res.json({
         status: "success",
         message: "Update profile successful",
-        data: user,
+        data: updatedUser,
       });
     } catch (error) {
-      // If there is an error and there is an uploaded image, delete the image on Cloudinary
+      // Xử lý cleanup files khi có lỗi
       if (req.uploadedFiles) {
         try {
           if (req.uploadedFiles.avatar) {
             const urlParts = req.uploadedFiles.avatar.path.split("/");
-            const publicId = `avatars/${
-              urlParts[urlParts.length - 1].split(".")[0]
-            }`;
+            const publicId = `avatars/${urlParts[urlParts.length - 1].split(".")[0]}`;
             await cloudinary.uploader.destroy(publicId);
-            // console.log("Deleted new avatar due to error:", publicId);
           }
 
           if (req.uploadedFiles.pet_photo) {
             const urlParts = req.uploadedFiles.pet_photo.path.split("/");
-            const publicId = `pets/${
-              urlParts[urlParts.length - 1].split(".")[0]
-            }`;
+            const publicId = `pets/${urlParts[urlParts.length - 1].split(".")[0]}`;
             await cloudinary.uploader.destroy(publicId);
-            // console.log("Deleted new pet photo due to error:", publicId);
           }
         } catch (deleteError) {
           console.error("Error deleting uploaded files:", deleteError);
@@ -352,6 +399,85 @@ class UserController {
       status: "success", 
       message: "Get user by email successful",
       data: user
+    });
+  });
+
+  createPet = asyncHandler(async (req, res) => {
+    try {
+      // Kiểm tra số lượng pet hiện tại
+      const userPets = await PetService.getUserPets(req.user.id);
+      if (userPets.total >= 10) {
+        throw new ApiError(400, "You can only have maximum 10 pets");
+      }
+
+      const petData = {
+        user_id: req.user.id,
+        type: req.body.pet_type || 'OTHER',
+      };
+
+      // Thêm các trường tùy chọn
+      if (req.body.pet_age !== undefined && req.body.pet_age !== null) {
+        petData.age = parseInt(req.body.pet_age);
+      }
+      
+      if (req.body.pet_notes !== undefined && req.body.pet_notes !== null) {
+        petData.notes = req.body.pet_notes;
+      }
+
+      // Thêm ảnh pet nếu có
+      if (req.uploadedFiles?.pet_photo) {
+        petData.photo = req.uploadedFiles.pet_photo.path;
+      }
+
+      // Tạo pet mới
+      const newPet = await PetService.createPet(petData);
+
+      res.status(201).json({
+        status: "success",
+        message: "Create pet successful",
+        data: newPet
+      });
+
+      // Clear cache after creating new pet
+      await this.clearUserCache(req.user.id);
+
+    } catch (error) {
+      // Xử lý cleanup ảnh nếu có lỗi
+      if (req.uploadedFiles?.pet_photo) {
+        try {
+          const urlParts = req.uploadedFiles.pet_photo.path.split("/");
+          const publicId = `pets/${urlParts[urlParts.length - 1].split(".")[0]}`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (deleteError) {
+          console.error("Error deleting pet photo:", deleteError);
+        }
+      }
+      throw error;
+    }
+  });
+
+  deletePet = asyncHandler(async (req, res) => {
+    const { petId } = req.params;
+    
+    // Kiểm tra quyền sở hữu pet
+    const pet = await PetService.getPetById(petId);
+    if (!pet) {
+      throw new ApiError(404, "Pet not found");
+    }
+    
+    if (pet.user_id !== req.user.id) {
+      throw new ApiError(403, "You don't have permission to delete this pet");
+    }
+
+    // Xóa cứng pet
+    await PetService.deletePet(petId);
+
+    // Clear cache after deleting pet
+    await this.clearUserCache(req.user.id);
+
+    res.json({
+      status: "success",
+      message: "Delete pet successful"
     });
   });
 }
