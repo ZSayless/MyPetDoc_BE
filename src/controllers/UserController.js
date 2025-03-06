@@ -135,45 +135,100 @@ class UserController {
       "password",
       "role",
       "phone_number",
-      "pet_type",
-      "pet_age",
-      "pet_notes",
       "is_active",
       "is_locked"
     ];
 
-
     // Chỉ lấy những trường được gửi đi và được phép cập nhật
     allowedFields.forEach((field) => {
-      if (req.body[field] !== undefined) {  // Bỏ điều kiện !== ""
+      if (req.body[field] !== undefined) {
         updateData[field] = req.body[field];
       }
     });
 
     // Handle avatar from uploadedFiles
     if (req.uploadedFiles?.avatar) {
+      // Lấy thông tin user hiện tại để có URL ảnh cũ
+      const currentUser = await UserService.getUserById(userId);
+      if (currentUser.avatar) {
+        // Xóa ảnh avatar cũ
+        const urlParts = currentUser.avatar.split("/");
+        const publicId = `avatars/${urlParts[urlParts.length - 1].split(".")[0]}`;
+        await cloudinary.uploader.destroy(publicId);
+      }
       updateData.avatar = req.uploadedFiles.avatar.path;
     }
 
-    // Handle pet_photo if role is GENERAL_USER
-    if (updateData.role === "GENERAL_USER" && req.uploadedFiles?.pet_photo) {
-      updateData.pet_photo = req.uploadedFiles.pet_photo.path;
+    let user = null;
+    // Chỉ update user nếu có dữ liệu cập nhật
+    if (Object.keys(updateData).length > 0) {
+      user = await UserService.updateUser(userId, updateData);
     }
 
+    // Xử lý thông tin pet
+    if (req.body.pet_id || req.body.pet_type || req.body.pet_age || req.body.pet_notes || req.uploadedFiles?.pet_photo) {
+      try {
+        const petData = {
+          user_id: userId,
+        };
 
-    if (Object.keys(updateData).length === 0) {
+        if (req.body.pet_type) {
+          petData.type = req.body.pet_type;
+        }
+        
+        if (req.body.pet_age !== undefined && req.body.pet_age !== null) {
+          petData.age = parseInt(req.body.pet_age);
+        }
+        
+        if (req.body.pet_notes !== undefined && req.body.pet_notes !== null) {
+          petData.notes = req.body.pet_notes;
+        }
+
+        if (req.uploadedFiles?.pet_photo) {
+          if (req.body.pet_id) {
+            // Nếu đang cập nhật pet, xóa ảnh cũ
+            const existingPet = await PetService.getPetById(req.body.pet_id);
+            if (existingPet.photo) {
+              const urlParts = existingPet.photo.split("/");
+              const publicId = `pets/${urlParts[urlParts.length - 1].split(".")[0]}`;
+              await cloudinary.uploader.destroy(publicId);
+            }
+          }
+          petData.photo = req.uploadedFiles.pet_photo.path;
+        }
+
+        if (req.body.pet_id) {
+          await PetService.updatePet(req.body.pet_id, petData);
+        } else {
+          // Kiểm tra số lượng pet hiện tại
+          const userPets = await PetService.getUserPets(userId);
+          if (userPets.total >= 10) {
+            throw new ApiError(400, "User can only have maximum 10 pets");
+          }
+          await PetService.createPet(petData);
+        }
+      } catch (error) {
+        console.error("Error updating/creating pet:", error);
+        throw new ApiError(500, "Error updating/creating pet: " + error.message);
+      }
+    }
+
+    // Throw error nếu không có dữ liệu nào được cập nhật
+    if (Object.keys(updateData).length === 0 && !req.body.pet_id && !req.body.pet_type && !req.body.pet_age && !req.body.pet_notes && !req.uploadedFiles?.pet_photo) {
       throw new ApiError(400, "No data to update");
     }
-
-    const user = await UserService.updateUser(userId, updateData);
 
     // Clear cache after updating
     await this.clearUserCache(userId);
 
+    // Lấy lại thông tin user sau khi cập nhật
+    const updatedUser = await UserService.getUserById(userId);
+    delete updatedUser.password;
+
     res.json({
       status: "success",
       message: "Update user successful",
-      data: user,
+      data: updatedUser,
     });
   });
 

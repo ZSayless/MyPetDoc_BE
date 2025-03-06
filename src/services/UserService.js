@@ -146,6 +146,17 @@ class UserService {
         delete updateData.password;
       }
 
+      // Xử lý xóa ảnh cũ trên Cloudinary nếu có ảnh mới
+      if (updateData.avatar && user.avatar) {
+        try {
+          const urlParts = user.avatar.split("/");
+          const publicId = `avatars/${urlParts[urlParts.length - 1].split(".")[0]}`;
+          await cloudinary.uploader.destroy(publicId);
+        } catch (error) {
+          console.error("Error deleting old avatar:", error);
+        }
+      }
+
       const updatedUser = await User.update(id, updateData);
 
       return updatedUser;
