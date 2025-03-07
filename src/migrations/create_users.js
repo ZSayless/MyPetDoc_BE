@@ -29,7 +29,6 @@ module.exports = async (connection) => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         is_deleted BIT(1) DEFAULT 0,
-        version BIGINT DEFAULT 1,
         user_id BIGINT NOT NULL,
         type ENUM('DOG', 'CAT', 'BIRD', 'RABBIT', 'FISH', 'HAMSTER', 'REPTILE', 'OTHER') NOT NULL,
         age INT,
