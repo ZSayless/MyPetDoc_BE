@@ -11,6 +11,7 @@ module.exports = async (connection) => {
         address VARCHAR(255),
         phone VARCHAR(255),
         slug VARCHAR(255),
+        proposal BIT(1) DEFAULT 0,
         email VARCHAR(255),
         link_website VARCHAR(255),
         map_location LONGTEXT,

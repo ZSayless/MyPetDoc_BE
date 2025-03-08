@@ -549,6 +549,28 @@ class HospitalService {
       throw error;
     }
   }
+
+  async toggleProposal(id) {
+    try {
+      const hospital = await Hospital.findById(id);
+      if (!hospital) {
+        throw new ApiError(404, "Hospital not found");
+      }
+
+      // Chuyển đổi từ Buffer sang boolean rồi đảo ngược giá trị
+      const currentProposal = hospital.proposal?.data?.[0] === 1;
+      
+      const updateData = {
+        proposal: currentProposal ? 0 : 1,  // Chuyển đổi rõ ràng sang bit
+        updated_at: new Date()
+      };
+
+      return await Hospital.update(id, updateData);
+    } catch (error) {
+      console.error("Toggle hospital proposal error:", error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new HospitalService();

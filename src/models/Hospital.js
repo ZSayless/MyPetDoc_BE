@@ -149,7 +149,8 @@ class Hospital extends BaseModel {
       return {
         ...hospital,
         is_active: convertBitToBoolean(hospital.is_active),
-        is_deleted: convertBitToBoolean(hospital.is_deleted)
+        is_deleted: convertBitToBoolean(hospital.is_deleted),
+        proposal: convertBitToBoolean(hospital.proposal)
       };
     } catch (error) {
       console.error("Find hospital by id error:", error);
@@ -233,6 +234,11 @@ class Hospital extends BaseModel {
         data.is_deleted = data.is_deleted ? 1 : 0;
       }
 
+      // Thêm xử lý cho trường proposal
+      if (data.proposal !== undefined) {
+        data.proposal = data.proposal ? 1 : 0;
+      }
+
       const updateFields = Object.keys(data)
         .map((key) => `${key} = ?`)
         .join(", ");
@@ -290,6 +296,7 @@ class Hospital extends BaseModel {
         specialties: hospital.specialties,
         staff_description: hospital.staff_description,
         staff_credentials: hospital.staff_credentials,
+        proposal: convertBitToBoolean(hospital.proposal),
         is_active: convertBitToBoolean(hospital.is_active),
         is_deleted: convertBitToBoolean(hospital.is_deleted),
         version: hospital.version,

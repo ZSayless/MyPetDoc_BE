@@ -325,6 +325,22 @@ class HospitalController {
     });
   });
 
+  // Toggle proposal hospital
+  toggleProposal = asyncHandler(async (req, res) => {
+    const hospital = await HospitalService.toggleProposal(req.params.id);
+
+    // Clear cache after changing status
+    await this.clearHospitalCache(req.params.id);
+
+    res.json({
+      status: "success",
+      message: hospital.proposal
+        ? "Set proposal hospital successful"
+        : "Unset proposal hospital successful",
+      data: hospital,
+    });
+  });
+
   // Method to clear cache
   clearHospitalCache = async () => {
     try {

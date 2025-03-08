@@ -76,6 +76,13 @@ router.patch(
   HospitalController.toggleDelete
 );
 
+// Route toggle proposal
+router.patch(
+  "/:id/toggle-proposal",
+  validateAuth(["ADMIN"]),
+  HospitalController.toggleProposal
+);
+
 // Routes require login (all roles)
 router.use(validateAuth(["GENERAL_USER", "HOSPITAL_ADMIN", "ADMIN"]));
 
