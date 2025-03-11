@@ -218,7 +218,7 @@ class AuthController {
       ) {
         // Create new verification token
         const verificationToken = crypto.randomBytes(32).toString("hex");
-        const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const verificationExpires = new Date(Date.now() + 168 * 60 * 60 * 1000);
 
         // Update new token
         await User.update(user.id, {
