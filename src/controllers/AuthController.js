@@ -4,6 +4,7 @@ const emailService = require("../services/EmailService");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const cloudinary = require("cloudinary");
+const PetService = require("../services/PetService");
 
 class AuthController {
   // Register account
@@ -19,10 +20,6 @@ class AuthController {
         pet_age = null,
         pet_notes = null,
       } = req.body;
-  
-      // Chuyển đổi pet_age từ chuỗi rỗng thành null
-      const sanitizedPetAge = pet_age === '' ? null : 
-                             pet_age ? parseInt(pet_age) : null;
   
       // Validate data
       await this.validateUserData({ email, password, full_name, phone_number });
@@ -83,11 +80,18 @@ class AuthController {
           verification_token: verificationToken,
           verification_expires: verificationExpires,
           avatar: userAvatar,
-          pet_type: pet_type || null,
-          pet_age: sanitizedPetAge,
-          pet_photo: petPhoto,
-          pet_notes: pet_notes || null,
         });
+  
+        // Nếu có thông tin pet, tạo pet mới
+        if (role === "GENERAL_USER" && pet_type) {
+          await PetService.createPet({
+            user_id: user.id,
+            type: pet_type,
+            age: pet_age ? parseInt(pet_age) : null,
+            photo: petPhoto,
+            notes: pet_notes
+          });
+        }
   
         // Send verification email
         await emailService.sendVerificationEmail(email, verificationToken);
