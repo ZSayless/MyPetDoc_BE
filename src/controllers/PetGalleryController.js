@@ -82,7 +82,6 @@ class PetGalleryController {
     }
 
     const post = await PetGalleryService.createPost(req.body, userId, file);
-    console.log(post);
 
     // Clear cache after creating new post
     await this.clearPostCache(null, userId);

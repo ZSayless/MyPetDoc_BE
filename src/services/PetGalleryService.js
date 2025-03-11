@@ -21,6 +21,7 @@ class PetGalleryService {
         image_url: file ? file.path : null,
         likes_count: 0,
         comments_count: 0,
+        status: 'INACTIVE'
       };
 
       // Create post
