@@ -457,16 +457,8 @@ class HospitalService {
         is_deleted: 0
       });
 
-      // If hospital is active and has admin managing
-      // if (hospital.is_active && adminCount > 0) {
-      //   throw new ApiError(
-      //     400,
-      //     "Cannot deactivate hospital that has active administrators"
-      //   );
-      // }
-
       const updateData = {
-        is_active: !hospital.is_active,
+        is_active: hospital.is_active ? 0 : 1,
         updated_at: new Date()
       };
 
@@ -557,11 +549,9 @@ class HospitalService {
         throw new ApiError(404, "Hospital not found");
       }
 
-      // Chuyển đổi từ Buffer sang boolean rồi đảo ngược giá trị
-      const currentProposal = hospital.proposal?.data?.[0] === 1;
-      
+      // Sửa lại cách kiểm tra giá trị proposal hiện tại
       const updateData = {
-        proposal: currentProposal ? 0 : 1,  // Chuyển đổi rõ ràng sang bit
+        proposal: hospital.proposal ? 0 : 1,  // Đảo ngược giá trị bit
         updated_at: new Date()
       };
 

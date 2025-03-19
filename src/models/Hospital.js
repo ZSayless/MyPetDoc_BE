@@ -234,9 +234,10 @@ class Hospital extends BaseModel {
         data.is_deleted = data.is_deleted ? 1 : 0;
       }
 
-      // Thêm xử lý cho trường proposal
+      // Handle special case for proposal
       if (data.proposal !== undefined) {
-        data.proposal = data.proposal ? 1 : 0;
+        // Convert to bit value (0 or 1)
+        data.proposal = data.proposal === 0 || data.proposal === false ? 0 : 1;
       }
 
       const updateFields = Object.keys(data)
